@@ -1,5 +1,5 @@
 import { runMockDifyCheck } from "./mock"
-import { parseWithRetryAndFallback } from "./parse"
+import { buildFallbackFinding, parseWithRetryAndFallback } from "./parse"
 import {
   decideMockMode,
   getDifyApiKey,
@@ -13,6 +13,7 @@ import {
   type DifyFileMapping,
 } from "./files"
 import type { DifyCheckInput, DifyCheckResult } from "./types"
+import { CHECK_UI } from "@/lib/copy/check-ui"
 
 type DifyWorkflowResponse = {
   data?: {
@@ -22,6 +23,8 @@ type DifyWorkflowResponse = {
   }
   answer?: string
   message?: string
+  code?: string
+  status?: number
 }
 
 /**
@@ -96,6 +99,7 @@ function logDifyDiag(info: {
   parseOk?: boolean
   usedFallback?: boolean
   errorKind?: string
+  errorHint?: string
 }) {
   console.error("[dify] check", {
     attempt: info.attempt,
@@ -106,7 +110,60 @@ function logDifyDiag(info: {
     parseOk: info.parseOk,
     usedFallback: info.usedFallback,
     errorKind: info.errorKind,
+    errorHint: info.errorHint,
   })
+}
+
+/** document_text が空だと LLM の messages が空になり 400 になることがある */
+function ensureDocumentText(raw: string | undefined, hasImage: boolean): string {
+  const text = (raw ?? "").trim()
+  if (text.length > 0) return text.slice(0, 80000)
+  if (hasImage) {
+    return "（添付の画像ファイルを読み取り、介護書類として点検してください。結果は指定の JSON 形式で返してください。）"
+  }
+  return "（書類テキストが取得できませんでした。可能な範囲でご確認ください。）"
+}
+
+function sanitizeErrorHint(raw: string | undefined): string | undefined {
+  if (!raw?.trim()) return undefined
+  // 個人情報を避けるため短く・キーワードのみ
+  const s = raw.replace(/\s+/g, " ").trim().slice(0, 180)
+  if (/at least one message is required/i.test(s)) {
+    return "llm_empty_messages"
+  }
+  if (/invalid_param|must be a file/i.test(s)) {
+    return "invalid_file_param"
+  }
+  if (/Bad Request|invalid_request/i.test(s)) {
+    return "bad_request"
+  }
+  return s.slice(0, 80)
+}
+
+function buildWorkflowFailedFinding(hint?: string): DifyCheckResult {
+  const isEmptyMessages = hint === "llm_empty_messages"
+  const finding = isEmptyMessages
+    ? {
+        severity: "mid",
+        title: CHECK_UI.summaryUnreadable,
+        description:
+          "AIモデルへ渡す内容（文章または画像）が空だったため点検できませんでした。Vision に files が繋がっているか、プロンプトに固定の指示文があるかご確認ください。",
+        basis: "システム",
+        suggestion:
+          "Dify の LLM プロンプトに「必ずこの文を含める」固定文を入れ、Vision 変数に files を設定したうえで、ワークフローを再公開してください。",
+      }
+    : buildFallbackFinding()
+
+  if (!isEmptyMessages && hint) {
+    finding.description = `${finding.description}\n（詳細コード: ${hint}）`
+  }
+
+  return {
+    findings: [finding],
+    rawText: hint ?? "",
+    parseOk: false,
+    usedFallback: true,
+  }
 }
 
 /**
@@ -115,7 +172,8 @@ function logDifyDiag(info: {
  *
  * Workflow 入力変数:
  * - document_text / prefecture / municipality / doc_type / national
- * - files（File Array）: 画像・スキャンPDF は File Upload 後に載せる
+ * - 画像は File Upload 後、top-level の files[]（variable 名は DIFY_FILE_INPUT_KEY）へ載せる
+ *   ※ inputs 内に File を埋め込むと Dify 側で壊れ、LLM が空 messages で 400 になることがある
  */
 export async function runDifyCheck(
   input: DifyCheckInput
@@ -123,7 +181,6 @@ export async function runDifyCheck(
   const decision = decideMockMode({ mockScenario: input.mockScenario })
 
   if (decision.mock) {
-    // 本番では黙ってモックせず失敗させる（監視0のまま成功するのを防ぐ）
     if (isProductionRuntime() && decision.reason !== "mock_scenario") {
       console.error("[dify] refuse_mock_in_production", {
         reason: decision.reason,
@@ -135,7 +192,6 @@ export async function runDifyCheck(
       )
     }
 
-    // 開発時の mockScenario 指定、または明示的モック
     if (isProductionRuntime() && decision.reason === "mock_scenario") {
       console.error("[dify] refuse_client_mock_scenario_in_production")
       throw new Error("本番ではモックシナリオを指定できません。")
@@ -148,13 +204,15 @@ export async function runDifyCheck(
   const apiKey = getDifyApiKey()
   const baseUrl = getDifyBaseUrl()
   const fileInputKey = getDifyFileInputKey()
+  const hasImage = Boolean(input.imageBase64)
 
-  const inputs: Record<string, string | DifyFileMapping[]> = {
-    document_text: input.documentText?.slice(0, 80000) ?? "",
+  // テキスト入力のみ（File は top-level files へ）
+  const inputs: Record<string, string> = {
+    document_text: ensureDocumentText(input.documentText, hasImage),
     prefecture: input.prefecture || "",
     municipality: input.municipality || "",
-    doc_type: input.docType,
-    national: input.national,
+    doc_type: input.docType || "その他",
+    national: input.national || "1",
   }
 
   let hasVisionFile = false
@@ -167,21 +225,17 @@ export async function runDifyCheck(
         fileName: `check.${(input.imageMimeType ?? "image/png").includes("png") ? "png" : "jpg"}`,
       })
       visionMappings = [mapping]
-      inputs[fileInputKey] = visionMappings
       hasVisionFile = true
     } catch (err) {
       console.error("[dify] vision_file_skip", {
         errorKind: err instanceof Error ? err.name : "unknown",
         message: err instanceof Error ? err.message.slice(0, 200) : "unknown",
       })
-      // アップロード失敗時は従来どおり base64 文字列も送る（テキスト経路の保険）
-      inputs.image_base64 = input.imageBase64
-      inputs.image_mime_type = input.imageMimeType ?? "image/jpeg"
     }
   }
 
   const body: {
-    inputs: Record<string, string | DifyFileMapping[]>
+    inputs: Record<string, string>
     response_mode: "blocking"
     user: string
     files?: Array<DifyFileMapping & { variable: string }>
@@ -191,7 +245,7 @@ export async function runDifyCheck(
     user: DIFY_CHECK_USER,
   }
 
-  // 一部の Dify 版は top-level files + variable 名が必要
+  // File は inputs に入れず top-level files のみ（Dify 推奨）
   if (visionMappings.length > 0) {
     body.files = visionMappings.map((m) => ({
       ...m,
@@ -203,11 +257,11 @@ export async function runDifyCheck(
     baseUrl,
     hasKey: Boolean(apiKey),
     keyPrefix: apiKey.slice(0, 4),
-    textLength:
-      typeof inputs.document_text === "string" ? inputs.document_text.length : 0,
-    hasImage: Boolean(input.imageBase64),
+    textLength: inputs.document_text.length,
+    hasImage,
     hasVisionFile,
     fileInputKey,
+    filesCount: body.files?.length ?? 0,
     docType: input.docType,
     national: input.national,
   })
@@ -231,13 +285,19 @@ export async function runDifyCheck(
       lastRaw = text
 
       if (!res.ok) {
+        const hint = sanitizeErrorHint(text)
         logDifyDiag({
           attempt,
           httpStatus: res.status,
           errorKind: "http_error",
           answerLength: text.length,
+          errorHint: hint,
         })
         repairTexts.push(text)
+        // 空 messages / ファイル不正はリトライしても同じなので即返す
+        if (hint === "llm_empty_messages" || hint === "invalid_file_param") {
+          return buildWorkflowFailedFinding(hint)
+        }
         continue
       }
 
@@ -255,9 +315,26 @@ export async function runDifyCheck(
         continue
       }
 
+      const workflowStatus = payload.data?.status
+      const workflowError = payload.data?.error
       const outputKeys = payload.data?.outputs
         ? Object.keys(payload.data.outputs)
         : []
+
+      // Workflow 自体が failed（LLM 400 など）
+      if (workflowStatus === "failed" || workflowError) {
+        const hint = sanitizeErrorHint(workflowError ?? text)
+        logDifyDiag({
+          attempt,
+          httpStatus: res.status,
+          workflowStatus,
+          outputKeys,
+          errorKind: "workflow_failed",
+          errorHint: hint,
+        })
+        return buildWorkflowFailedFinding(hint)
+      }
+
       const answer = pickAnswerText(payload)
       const parsed = parseWithRetryAndFallback(answer, repairTexts)
 
@@ -265,7 +342,7 @@ export async function runDifyCheck(
         logDifyDiag({
           attempt,
           httpStatus: res.status,
-          workflowStatus: payload.data?.status,
+          workflowStatus,
           outputKeys,
           answerLength: answer.length,
           parseOk: false,
@@ -279,7 +356,7 @@ export async function runDifyCheck(
           logDifyDiag({
             attempt,
             httpStatus: res.status,
-            workflowStatus: payload.data?.status,
+            workflowStatus,
             outputKeys,
             answerLength: answer.length,
             parseOk: false,
@@ -290,7 +367,7 @@ export async function runDifyCheck(
           logDifyDiag({
             attempt,
             httpStatus: res.status,
-            workflowStatus: payload.data?.status,
+            workflowStatus,
             outputKeys,
             answerLength: answer.length,
             parseOk: true,
@@ -311,12 +388,18 @@ export async function runDifyCheck(
     }
   }
 
+  const hint = sanitizeErrorHint(lastRaw)
+  if (hint === "llm_empty_messages" || hint === "invalid_file_param") {
+    return buildWorkflowFailedFinding(hint)
+  }
+
   const fallback = parseWithRetryAndFallback(lastRaw || "{}", repairTexts)
   logDifyDiag({
     attempt: maxAttempts,
     parseOk: fallback.parseOk,
     usedFallback: fallback.usedFallback,
     errorKind: "exhausted_retries",
+    errorHint: hint,
   })
   return fallback
 }
