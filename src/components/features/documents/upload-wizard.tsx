@@ -20,8 +20,7 @@ import type { DocType } from "@/types/database"
 
 const STEPS = [
   { id: 1, label: "アップ" },
-  { id: 2, label: "種類を選ぶ" },
-  { id: 3, label: "開始" },
+  { id: 2, label: "種類を選んで開始" },
 ] as const
 
 export function UploadWizard() {
@@ -104,7 +103,7 @@ export function UploadWizard() {
     <div className="mx-auto flex max-w-2xl flex-col pb-28">
       <div className="mb-6">
         <p className="text-sm font-medium text-muted-foreground">
-          書類チェック {step}/3
+          書類チェック {step}/{STEPS.length}
         </p>
         <Progress value={progress} className="mt-2 h-2" aria-label="進捗" />
         <ol className="mt-3 flex gap-2 text-sm">
@@ -156,7 +155,8 @@ export function UploadWizard() {
               書類の種類を選ぶ
             </h1>
             <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-              自動判定の候補を先頭に出しています。正しければそのまま1タップで確定できます。
+              自動判定の候補を先頭に出しています。選んだらそのままチェックを開始できます（
+              {doneItems.length}件）。
             </p>
           </div>
 
@@ -171,33 +171,6 @@ export function UploadWizard() {
                   suggested={item.suggestedDocType}
                   onSelect={(docType) => setDocType(item.localId, docType)}
                 />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {step === 3 ? (
-        <section className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-primary-dark">
-              チェックを開始する
-            </h1>
-            <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-              {doneItems.length}
-              件の書類をWチェックします。結果は一覧で確認できます（合否の保証ではありません）。
-            </p>
-          </div>
-          <ul className="space-y-2 rounded-lg border border-border bg-background p-4">
-            {doneItems.map((item) => (
-              <li
-                key={item.localId}
-                className="flex items-center justify-between gap-3 text-base"
-              >
-                <span className="truncate font-medium">{item.file.name}</span>
-                <span className="shrink-0 text-sm text-muted-foreground">
-                  {item.docType}
-                </span>
               </li>
             ))}
           </ul>
@@ -227,26 +200,6 @@ export function UploadWizard() {
                 type="button"
                 size="lg"
                 className="w-full"
-                onClick={() => setStep(3)}
-              >
-                内容を確認する
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => setStep(1)}
-              >
-                戻る
-              </Button>
-            </>
-          ) : null}
-          {step === 3 ? (
-            <>
-              <Button
-                type="button"
-                size="lg"
-                className="w-full"
                 disabled={pending}
                 onClick={startCheck}
               >
@@ -257,7 +210,7 @@ export function UploadWizard() {
                 variant="ghost"
                 className="w-full"
                 disabled={pending}
-                onClick={() => setStep(2)}
+                onClick={() => setStep(1)}
               >
                 戻る
               </Button>
