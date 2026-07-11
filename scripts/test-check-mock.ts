@@ -74,6 +74,28 @@ function testParseHelpers() {
   assert.equal(ok.parseOk, true)
   assert.equal(ok.findings.length, 1)
 
+  const withObjectBasis = parseDifyFindings(
+    JSON.stringify({
+      findings: [
+        {
+          severity: "high",
+          title: "同意確認",
+          description: "ご確認ください",
+          basis: {
+            source_name: "点検書",
+            quote: "同意を文書により得ている。",
+          },
+        },
+      ],
+    })
+  )
+  assert.equal(withObjectBasis.parseOk, true)
+  assert.equal(withObjectBasis.findings[0]?.basis?.includes("点検書"), true)
+  assert.equal(
+    withObjectBasis.findings[0]?.basis?.includes("同意を文書により得ている"),
+    true
+  )
+
   const fail = parseWithRetryAndFallback("not json at all")
   assert.equal(fail.usedFallback, true)
   assert.equal(fail.findings[0]?.title, buildFallbackFinding().title)

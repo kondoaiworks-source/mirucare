@@ -34,21 +34,64 @@ export function extractJsonCandidate(text: string): string | null {
 
 function coerceFindings(parsed: unknown): DifyFindingItem[] | null {
   if (Array.isArray(parsed)) {
-    return parsed as DifyFindingItem[]
+    return parsed.map(normalizeFindingItem)
   }
   if (parsed && typeof parsed === "object") {
     const obj = parsed as Record<string, unknown>
     if (Array.isArray(obj.findings)) {
-      return obj.findings as DifyFindingItem[]
+      return obj.findings.map(normalizeFindingItem)
     }
     if (Array.isArray(obj.items)) {
-      return obj.items as DifyFindingItem[]
+      return obj.items.map(normalizeFindingItem)
     }
     if (Array.isArray(obj.results)) {
-      return obj.results as DifyFindingItem[]
+      return obj.results.map(normalizeFindingItem)
     }
   }
   return null
+}
+
+/** Dify が basis をオブジェクトで返す場合などに文字列へ揃える */
+function normalizeFindingItem(raw: unknown): DifyFindingItem {
+  if (!raw || typeof raw !== "object") {
+    return {}
+  }
+  const f = raw as Record<string, unknown>
+  return {
+    severity: typeof f.severity === "string" ? f.severity : undefined,
+    title: typeof f.title === "string" ? f.title : undefined,
+    description: typeof f.description === "string" ? f.description : undefined,
+    basis: fieldToText(f.basis),
+    suggestion: fieldToText(f.suggestion),
+  }
+}
+
+function fieldToText(value: unknown): string | undefined {
+  if (value == null) return undefined
+  if (typeof value === "string") return value
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value)
+  }
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>
+    const parts: string[] = []
+    if (typeof obj.source_name === "string" && obj.source_name.trim()) {
+      parts.push(obj.source_name.trim())
+    }
+    if (typeof obj.quote === "string" && obj.quote.trim()) {
+      parts.push(obj.quote.trim())
+    }
+    if (typeof obj.text === "string" && obj.text.trim()) {
+      parts.push(obj.text.trim())
+    }
+    if (parts.length > 0) return parts.join("\n")
+    try {
+      return JSON.stringify(value)
+    } catch {
+      return undefined
+    }
+  }
+  return undefined
 }
 
 export function parseDifyFindings(rawText: string): {

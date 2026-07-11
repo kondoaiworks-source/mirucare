@@ -101,7 +101,7 @@ SQL Editor で次を **順番に** 実行します。
 3. **`DIFY_MOCK=0`** にして開発サーバー再起動（本番は Vercel 再デプロイ）。`DIFY_MOCK=1` のままだと本物の Dify は呼ばれません
 4. Workflow 入力変数は次を想定:
    - `document_text` / `prefecture` / `municipality` / `doc_type` / `national`（`"1"`=国基準・`"0"`=自治体基準）
-5. Workflow 出力は JSON（例: `{ "findings": [{ "severity", "title", "description", "basis", "suggestion" }] }`）。パースできないと「AIが確認できませんでした…」になります
+5. Workflow 出力は JSON（例: `{ "findings": [{ "severity", "title", "description", "basis", "suggestion" }] }`）。出力変数名は `check_result` / `result` / `text` / `answer` / `output` / `findings` などに対応。パースできないと「AIが確認できませんでした…」になります
 6. 失敗時は Vercel Runtime Logs の `[dify] check`（HTTP status・outputKeys・parseOk）を確認（個人情報は含めません）
 
 ## 動作確認手順（STEP 5：ダッシュボードと期限アラート）

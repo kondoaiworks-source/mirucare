@@ -24,6 +24,7 @@ function pickAnswerText(payload: DifyWorkflowResponse): string {
   const outputs = payload.data?.outputs
   if (outputs) {
     for (const key of [
+      "check_result",
       "result",
       "text",
       "answer",
@@ -56,7 +57,15 @@ function coerceOutputValue(v: unknown): string | null {
       return JSON.stringify(obj)
     }
     // 1段ネスト（例: { text: "..." } / { result: {...} }）
-    for (const key of ["result", "text", "answer", "output", "findings", "json"]) {
+    for (const key of [
+      "check_result",
+      "result",
+      "text",
+      "answer",
+      "output",
+      "findings",
+      "json",
+    ]) {
       const inner = obj[key]
       if (typeof inner === "string" && inner.trim()) return inner.trim()
       if (inner && typeof inner === "object") return JSON.stringify(inner)
