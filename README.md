@@ -122,10 +122,11 @@ SQL Editor で次を **順番に** 実行します。
 4. 本番ではモックを黙って使わずエラーにします（監視が 0 のまま成功する事故を防ぐ）
 5. Workflow 入力変数は次を想定:
    - `document_text` / `prefecture` / `municipality` / `doc_type` / `national`（`"1"`=国基準・`"0"`=自治体基準）
-   - 画像・スキャンPDF時: `image_base64` / `image_mime_type`（ビジョン対応モデルで読むこと）
+   - 画像・スキャンPDF時: File Upload API のあと、File Array 変数（既定名 `files`）に載せる。LLM の Vision にはこの `files` を接続すること
+   - 変数名が違う場合は Vercel / `.env.local` の `DIFY_FILE_INPUT_KEY` を合わせる
 6. Workflow 出力は JSON（例: `{ "findings": [{ "severity", "title", "description", "basis", "suggestion" }] }`）。出力変数名は `check_result` / `result` / `text` / `answer` / `output` / `findings` などに対応。パースできないと「AIが確認できませんでした…」になります
 7. 読めない場合は `{ "findings": [], "meta": { "unreadable": true, "model_notes": "…" } }` を返すと、アプリが「画像のため確認できませんでした」と表示します
-8. 失敗時は Vercel Runtime Logs の `[dify] check`（HTTP status・outputKeys・parseOk）を確認（個人情報は含めません）
+8. 失敗時は Vercel Runtime Logs の `[dify] check` / `[dify] file_uploaded`（HTTP status・outputKeys・parseOk）を確認（個人情報は含めません）
 
 ## 動作確認手順（STEP 5：ダッシュボードと期限アラート）
 

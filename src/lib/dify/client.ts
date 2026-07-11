@@ -6,6 +6,12 @@ import {
   getDifyBaseUrl,
   isProductionRuntime,
 } from "./env"
+import {
+  DIFY_CHECK_USER,
+  getDifyFileInputKey,
+  uploadBase64AsDifyFile,
+  type DifyFileMapping,
+} from "./files"
 import type { DifyCheckInput, DifyCheckResult } from "./types"
 
 type DifyWorkflowResponse = {
@@ -109,6 +115,7 @@ function logDifyDiag(info: {
  *
  * Workflow 入力変数:
  * - document_text / prefecture / municipality / doc_type / national
+ * - files（File Array）: 画像・スキャンPDF は File Upload 後に載せる
  */
 export async function runDifyCheck(
   input: DifyCheckInput
@@ -140,8 +147,9 @@ export async function runDifyCheck(
 
   const apiKey = getDifyApiKey()
   const baseUrl = getDifyBaseUrl()
+  const fileInputKey = getDifyFileInputKey()
 
-  const inputs: Record<string, string> = {
+  const inputs: Record<string, string | DifyFileMapping[]> = {
     document_text: input.documentText?.slice(0, 80000) ?? "",
     prefecture: input.prefecture || "",
     municipality: input.municipality || "",
@@ -149,24 +157,57 @@ export async function runDifyCheck(
     national: input.national,
   }
 
-  // 画像はビジョン入力用に渡す（Workflow 側で受け取る場合）
+  let hasVisionFile = false
+  let visionMappings: DifyFileMapping[] = []
   if (input.imageBase64) {
-    inputs.image_base64 = input.imageBase64
-    inputs.image_mime_type = input.imageMimeType ?? "image/jpeg"
+    try {
+      const mapping = await uploadBase64AsDifyFile({
+        imageBase64: input.imageBase64,
+        mimeType: input.imageMimeType ?? "image/png",
+        fileName: `check.${(input.imageMimeType ?? "image/png").includes("png") ? "png" : "jpg"}`,
+      })
+      visionMappings = [mapping]
+      inputs[fileInputKey] = visionMappings
+      hasVisionFile = true
+    } catch (err) {
+      console.error("[dify] vision_file_skip", {
+        errorKind: err instanceof Error ? err.name : "unknown",
+        message: err instanceof Error ? err.message.slice(0, 200) : "unknown",
+      })
+      // アップロード失敗時は従来どおり base64 文字列も送る（テキスト経路の保険）
+      inputs.image_base64 = input.imageBase64
+      inputs.image_mime_type = input.imageMimeType ?? "image/jpeg"
+    }
   }
 
-  const body = {
+  const body: {
+    inputs: Record<string, string | DifyFileMapping[]>
+    response_mode: "blocking"
+    user: string
+    files?: Array<DifyFileMapping & { variable: string }>
+  } = {
     inputs,
     response_mode: "blocking",
-    user: "kansatsu-check",
+    user: DIFY_CHECK_USER,
+  }
+
+  // 一部の Dify 版は top-level files + variable 名が必要
+  if (visionMappings.length > 0) {
+    body.files = visionMappings.map((m) => ({
+      ...m,
+      variable: fileInputKey,
+    }))
   }
 
   console.error("[dify] invoke_live", {
     baseUrl,
     hasKey: Boolean(apiKey),
     keyPrefix: apiKey.slice(0, 4),
-    textLength: inputs.document_text.length,
+    textLength:
+      typeof inputs.document_text === "string" ? inputs.document_text.length : 0,
     hasImage: Boolean(input.imageBase64),
+    hasVisionFile,
+    fileInputKey,
     docType: input.docType,
     national: input.national,
   })
