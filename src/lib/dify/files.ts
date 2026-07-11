@@ -16,10 +16,10 @@ export type DifyFileMapping = {
   upload_file_id: string
 }
 
-/** Vision / File Array 変数名。開始ノードの files に合わせる */
+/** Vision / File Array 変数名。開始ノードの document_image に合わせる */
 export function getDifyFileInputKey(): string {
   const raw = normalizeEnvValue(process.env.DIFY_FILE_INPUT_KEY)
-  return raw || "files"
+  return raw || "document_image"
 }
 
 export function mimeToDifyFileType(

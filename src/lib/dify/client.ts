@@ -27,6 +27,18 @@ type DifyWorkflowResponse = {
   status?: number
 }
 
+type WorkflowRequestBody = {
+  inputs: Record<string, string>
+  response_mode: "blocking"
+  user: string
+  files?: Array<DifyFileMapping & { variable: string }>
+}
+
+type WorkflowAttemptResult =
+  | { kind: "ok"; result: DifyCheckResult }
+  | { kind: "empty_messages"; raw: string; hint: string }
+  | { kind: "continue"; raw: string; hint?: string }
+
 /**
  * Workflow outputs から findings 候補テキストを取り出す。
  * 個人名・被保険者番号はログに出さない。
@@ -51,7 +63,6 @@ function pickAnswerText(payload: DifyWorkflowResponse): string {
       const extracted = coerceOutputValue(outputs[key])
       if (extracted) return extracted
     }
-    // outputs 全体を JSON として試す
     return JSON.stringify(outputs)
   }
 
@@ -71,7 +82,6 @@ function coerceOutputValue(v: unknown): string | null {
     ) {
       return JSON.stringify(obj)
     }
-    // 1段ネスト（例: { text: "..." } / { result: {...} }）
     for (const key of [
       "check_result",
       "result",
@@ -100,6 +110,7 @@ function logDifyDiag(info: {
   usedFallback?: boolean
   errorKind?: string
   errorHint?: string
+  withoutFiles?: boolean
 }) {
   console.error("[dify] check", {
     attempt: info.attempt,
@@ -111,6 +122,7 @@ function logDifyDiag(info: {
     usedFallback: info.usedFallback,
     errorKind: info.errorKind,
     errorHint: info.errorHint,
+    withoutFiles: info.withoutFiles,
   })
 }
 
@@ -126,7 +138,6 @@ function ensureDocumentText(raw: string | undefined, hasImage: boolean): string 
 
 function sanitizeErrorHint(raw: string | undefined): string | undefined {
   if (!raw?.trim()) return undefined
-  // 個人情報を避けるため短く・キーワードのみ
   const s = raw.replace(/\s+/g, " ").trim().slice(0, 180)
   if (/at least one message is required/i.test(s)) {
     return "llm_empty_messages"
@@ -140,6 +151,10 @@ function sanitizeErrorHint(raw: string | undefined): string | undefined {
   return s.slice(0, 80)
 }
 
+function isEmptyMessagesHint(hint: string | undefined): boolean {
+  return hint === "llm_empty_messages" || hint === "invalid_file_param"
+}
+
 function buildWorkflowFailedFinding(hint?: string): DifyCheckResult {
   const isEmptyMessages = hint === "llm_empty_messages"
   const finding = isEmptyMessages
@@ -147,10 +162,10 @@ function buildWorkflowFailedFinding(hint?: string): DifyCheckResult {
         severity: "mid",
         title: CHECK_UI.summaryUnreadable,
         description:
-          "AIモデルへ渡す内容（文章または画像）が空だったため点検できませんでした。Vision に files が繋がっているか、プロンプトに固定の指示文があるかご確認ください。",
+          "AIモデルへ渡す内容（文章または画像）が空だったため点検できませんでした。開始ノードに document_image（ファイルリスト）を追加し、LLM の Vision に document_image を接続して公開してください。",
         basis: "システム",
         suggestion:
-          "Dify の LLM プロンプトに「必ずこの文を含める」固定文を入れ、Vision 変数に files を設定したうえで、ワークフローを再公開してください。",
+          "Dify 開始ノードに変数 document_image（ファイルリスト・必須オフ）を追加 → Vision に document_image を設定 → ワークフローを再公開してください。",
       }
     : buildFallbackFinding()
 
@@ -166,14 +181,115 @@ function buildWorkflowFailedFinding(hint?: string): DifyCheckResult {
   }
 }
 
+async function postWorkflowOnce(options: {
+  baseUrl: string
+  apiKey: string
+  body: WorkflowRequestBody
+  attempt: number
+  withoutFiles: boolean
+  repairTexts: string[]
+}): Promise<WorkflowAttemptResult> {
+  const { baseUrl, apiKey, body, attempt, withoutFiles, repairTexts } = options
+
+  const res = await fetch(`${baseUrl}/v1/workflows/run`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  })
+
+  const text = await res.text()
+
+  if (!res.ok) {
+    const hint = sanitizeErrorHint(text)
+    logDifyDiag({
+      attempt,
+      httpStatus: res.status,
+      errorKind: "http_error",
+      answerLength: text.length,
+      errorHint: hint,
+      withoutFiles,
+    })
+    repairTexts.push(text)
+    if (isEmptyMessagesHint(hint)) {
+      return { kind: "empty_messages", raw: text, hint: hint! }
+    }
+    return { kind: "continue", raw: text, hint }
+  }
+
+  let payload: DifyWorkflowResponse
+  try {
+    payload = JSON.parse(text) as DifyWorkflowResponse
+  } catch {
+    logDifyDiag({
+      attempt,
+      httpStatus: res.status,
+      errorKind: "invalid_json_body",
+      answerLength: text.length,
+      withoutFiles,
+    })
+    repairTexts.push(text)
+    return { kind: "continue", raw: text }
+  }
+
+  const workflowStatus = payload.data?.status
+  const workflowError = payload.data?.error
+  const outputKeys = payload.data?.outputs
+    ? Object.keys(payload.data.outputs)
+    : []
+
+  if (workflowStatus === "failed" || workflowError) {
+    const hint = sanitizeErrorHint(workflowError ?? text)
+    logDifyDiag({
+      attempt,
+      httpStatus: res.status,
+      workflowStatus,
+      outputKeys,
+      errorKind: "workflow_failed",
+      errorHint: hint,
+      withoutFiles,
+    })
+    if (isEmptyMessagesHint(hint)) {
+      return { kind: "empty_messages", raw: text, hint: hint ?? "llm_empty_messages" }
+    }
+    return {
+      kind: "ok",
+      result: buildWorkflowFailedFinding(hint),
+    }
+  }
+
+  const answer = pickAnswerText(payload)
+  const parsed = parseWithRetryAndFallback(answer, repairTexts)
+
+  logDifyDiag({
+    attempt,
+    httpStatus: res.status,
+    workflowStatus,
+    outputKeys,
+    answerLength: answer.length,
+    parseOk: parsed.parseOk,
+    usedFallback: parsed.usedFallback,
+    errorKind: parsed.usedFallback
+      ? parsed.parseOk
+        ? "fallback"
+        : "parse_failed"
+      : undefined,
+    withoutFiles,
+  })
+
+  return { kind: "ok", result: parsed }
+}
+
 /**
  * Dify Workflow へチェック依頼を送る。
  * APIキーはサーバー環境変数のみ。クライアントに露出しない。
  *
  * Workflow 入力変数:
  * - document_text / prefecture / municipality / doc_type / national
- * - 画像は File Upload 後、top-level の files[]（variable 名は DIFY_FILE_INPUT_KEY）へ載せる
- *   ※ inputs 内に File を埋め込むと Dify 側で壊れ、LLM が空 messages で 400 になることがある
+ * - 画像は File Upload 後、top-level の files[]（variable = DIFY_FILE_INPUT_KEY、既定 document_image）
+ * - 空 messages エラー時は files なしで1回だけ再試行する
  */
 export async function runDifyCheck(
   input: DifyCheckInput
@@ -206,7 +322,6 @@ export async function runDifyCheck(
   const fileInputKey = getDifyFileInputKey()
   const hasImage = Boolean(input.imageBase64)
 
-  // テキスト入力のみ（File は top-level files へ）
   const inputs: Record<string, string> = {
     document_text: ensureDocumentText(input.documentText, hasImage),
     prefecture: input.prefecture || "",
@@ -234,20 +349,13 @@ export async function runDifyCheck(
     }
   }
 
-  const body: {
-    inputs: Record<string, string>
-    response_mode: "blocking"
-    user: string
-    files?: Array<DifyFileMapping & { variable: string }>
-  } = {
+  const bodyWithFiles: WorkflowRequestBody = {
     inputs,
     response_mode: "blocking",
     user: DIFY_CHECK_USER,
   }
-
-  // File は inputs に入れず top-level files のみ（Dify 推奨）
   if (visionMappings.length > 0) {
-    body.files = visionMappings.map((m) => ({
+    bodyWithFiles.files = visionMappings.map((m) => ({
       ...m,
       variable: fileInputKey,
     }))
@@ -261,122 +369,102 @@ export async function runDifyCheck(
     hasImage,
     hasVisionFile,
     fileInputKey,
-    filesCount: body.files?.length ?? 0,
+    filesCount: bodyWithFiles.files?.length ?? 0,
     docType: input.docType,
     national: input.national,
   })
 
-  const maxAttempts = 3
-  let lastRaw = ""
   const repairTexts: string[] = []
+  const first = await postWorkflowOnce({
+    baseUrl,
+    apiKey,
+    body: bodyWithFiles,
+    attempt: 1,
+    withoutFiles: false,
+    repairTexts,
+  })
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  if (first.kind === "ok") {
+    return first.result
+  }
+
+  // 空 messages / 不正ファイル → files なしで1回だけ再試行
+  if (
+    first.kind === "empty_messages" &&
+    bodyWithFiles.files &&
+    bodyWithFiles.files.length > 0
+  ) {
+    console.error("[dify] retry_without_files", {
+      reason: first.hint,
+      fileInputKey,
+    })
+    const bodyTextOnly: WorkflowRequestBody = {
+      inputs,
+      response_mode: "blocking",
+      user: DIFY_CHECK_USER,
+    }
+    const second = await postWorkflowOnce({
+      baseUrl,
+      apiKey,
+      body: bodyTextOnly,
+      attempt: 2,
+      withoutFiles: true,
+      repairTexts,
+    })
+    if (second.kind === "ok") {
+      return second.result
+    }
+    if (second.kind === "empty_messages") {
+      return buildWorkflowFailedFinding(second.hint)
+    }
+    // continue → 通常リトライへ
+  } else if (first.kind === "empty_messages") {
+    return buildWorkflowFailedFinding(first.hint)
+  }
+
+  // 通常の追加リトライ（files 付きのまま、ネットワーク等）
+  let lastRaw = first.raw
+  for (let attempt = 2; attempt <= 3; attempt++) {
     try {
-      const res = await fetch(`${baseUrl}/v1/workflows/run`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
+      const next = await postWorkflowOnce({
+        baseUrl,
+        apiKey,
+        body: bodyWithFiles,
+        attempt,
+        withoutFiles: false,
+        repairTexts,
       })
-
-      const text = await res.text()
-      lastRaw = text
-
-      if (!res.ok) {
-        const hint = sanitizeErrorHint(text)
-        logDifyDiag({
-          attempt,
-          httpStatus: res.status,
-          errorKind: "http_error",
-          answerLength: text.length,
-          errorHint: hint,
-        })
-        repairTexts.push(text)
-        // 空 messages / ファイル不正はリトライしても同じなので即返す
-        if (hint === "llm_empty_messages" || hint === "invalid_file_param") {
-          return buildWorkflowFailedFinding(hint)
-        }
-        continue
-      }
-
-      let payload: DifyWorkflowResponse
-      try {
-        payload = JSON.parse(text) as DifyWorkflowResponse
-      } catch {
-        logDifyDiag({
-          attempt,
-          httpStatus: res.status,
-          errorKind: "invalid_json_body",
-          answerLength: text.length,
-        })
-        repairTexts.push(text)
-        continue
-      }
-
-      const workflowStatus = payload.data?.status
-      const workflowError = payload.data?.error
-      const outputKeys = payload.data?.outputs
-        ? Object.keys(payload.data.outputs)
-        : []
-
-      // Workflow 自体が failed（LLM 400 など）
-      if (workflowStatus === "failed" || workflowError) {
-        const hint = sanitizeErrorHint(workflowError ?? text)
-        logDifyDiag({
-          attempt,
-          httpStatus: res.status,
-          workflowStatus,
-          outputKeys,
-          errorKind: "workflow_failed",
-          errorHint: hint,
-        })
-        return buildWorkflowFailedFinding(hint)
-      }
-
-      const answer = pickAnswerText(payload)
-      const parsed = parseWithRetryAndFallback(answer, repairTexts)
-
-      if (!parsed.parseOk) {
-        logDifyDiag({
-          attempt,
-          httpStatus: res.status,
-          workflowStatus,
-          outputKeys,
-          answerLength: answer.length,
-          parseOk: false,
-          usedFallback: parsed.usedFallback,
-          errorKind: "parse_failed",
-        })
-      }
-
-      if (parsed.parseOk || attempt === maxAttempts) {
-        if (parsed.usedFallback) {
-          logDifyDiag({
-            attempt,
-            httpStatus: res.status,
-            workflowStatus,
-            outputKeys,
-            answerLength: answer.length,
-            parseOk: false,
-            usedFallback: true,
-            errorKind: "fallback",
+      if (next.kind === "ok") return next.result
+      if (next.kind === "empty_messages") {
+        if (bodyWithFiles.files?.length) {
+          console.error("[dify] retry_without_files", {
+            reason: next.hint,
+            fileInputKey,
+            fromAttempt: attempt,
           })
+          const textOnly = await postWorkflowOnce({
+            baseUrl,
+            apiKey,
+            body: {
+              inputs,
+              response_mode: "blocking",
+              user: DIFY_CHECK_USER,
+            },
+            attempt: attempt + 1,
+            withoutFiles: true,
+            repairTexts,
+          })
+          if (textOnly.kind === "ok") return textOnly.result
+          if (textOnly.kind === "empty_messages") {
+            return buildWorkflowFailedFinding(textOnly.hint)
+          }
+          lastRaw = textOnly.raw
         } else {
-          logDifyDiag({
-            attempt,
-            httpStatus: res.status,
-            workflowStatus,
-            outputKeys,
-            answerLength: answer.length,
-            parseOk: true,
-            usedFallback: false,
-          })
+          return buildWorkflowFailedFinding(next.hint)
         }
-        return parsed
+      } else {
+        lastRaw = next.raw
       }
-      repairTexts.push(answer)
     } catch (err) {
       lastRaw = err instanceof Error ? err.message : "network_error"
       logDifyDiag({
@@ -389,13 +477,13 @@ export async function runDifyCheck(
   }
 
   const hint = sanitizeErrorHint(lastRaw)
-  if (hint === "llm_empty_messages" || hint === "invalid_file_param") {
+  if (isEmptyMessagesHint(hint)) {
     return buildWorkflowFailedFinding(hint)
   }
 
   const fallback = parseWithRetryAndFallback(lastRaw || "{}", repairTexts)
   logDifyDiag({
-    attempt: maxAttempts,
+    attempt: 3,
     parseOk: fallback.parseOk,
     usedFallback: fallback.usedFallback,
     errorKind: "exhausted_retries",

@@ -111,8 +111,8 @@ SQL Editor で次を **順番に** 実行します。
    - `[dify] check` で `parseOk: true` → 成功
    - `[dify] using_mock` / `[check] storage_download_failed` → **Dify は呼ばれていない**
 5. Dify の「ログ」に `kansatsu-check` の実行が増えていれば API 到達成功（「監視」のメッセージ数は Workflow では増えにくいことがあります）
-6. **スキャンPDF（画像のみのPDF）**: 文字がほぼ無い場合、アプリが1ページ目を PNG 化し File Upload → top-level `files` で送ります。Vercel Logs に `[dify] file_uploaded` / `hasVisionFile: true` が出ること
-7. Dify ログで FAILURE かつ `messages: at least one message is required` のときは、Vision の files 未接続か、LLM プロンプトが空です。LLM に固定の指示文を入れ、Vision に `files` を接続して再公開してください
+6. **スキャンPDF（画像のみのPDF）**: 文字がほぼ無い場合、アプリが1ページ目を PNG 化し File Upload → top-level `files`（variable=`document_image`）で送ります。Vercel Logs に `[dify] file_uploaded` / `hasVisionFile: true` が出ること
+7. Dify ログで FAILURE かつ `messages: at least one message is required` のときは、Vision が LEGACY `files` のままか、`document_image` 未接続です。開始に `document_image`（ファイルリスト）を追加し Vision に接続して再公開。アプリは同エラー時に `files` なしで1回再試行します（ログ: `[dify] retry_without_files`）
 8. Dify が `meta.unreadable: true` を返した場合、画面に「画像のため確認できませんでした」と出ること
 
 ### 本番 Dify への切替
@@ -123,11 +123,12 @@ SQL Editor で次を **順番に** 実行します。
 4. 本番ではモックを黙って使わずエラーにします（監視が 0 のまま成功する事故を防ぐ）
 5. Workflow 入力変数は次を想定:
    - `document_text` / `prefecture` / `municipality` / `doc_type` / `national`（`"1"`=国基準・`"0"`=自治体基準）
-   - 画像・スキャンPDF時: File Upload API のあと、**リクエスト top-level の `files`** に載せる（`inputs` 内に File を埋め込まない）。LLM の Vision には開始の `files` を接続すること
-   - 変数名が違う場合は Vercel / `.env.local` の `DIFY_FILE_INPUT_KEY` を合わせる
+   - 画像・スキャンPDF時: File Upload API のあと、**リクエスト top-level の `files`** に `variable: "document_image"` で載せる（`inputs` 内に File を埋め込まない）
+   - **Dify 開始ノード**: ファイルリスト変数 **`document_image`** を追加（必須オフ）。LLM Vision には LEGACY `files` ではなく **`document_image`** を接続して公開
+   - 変数名が違う場合は Vercel / `.env.local` の `DIFY_FILE_INPUT_KEY` を合わせる（既定: `document_image`）
 6. Workflow 出力は JSON（例: `{ "findings": [{ "severity", "title", "description", "basis", "suggestion" }] }`）。出力変数名は `check_result` / `result` / `text` / `answer` / `output` / `findings` などに対応。パースできないと「AIが確認できませんでした…」になります
 7. 読めない場合は `{ "findings": [], "meta": { "unreadable": true, "model_notes": "…" } }` を返すと、アプリが「画像のため確認できませんでした」と表示します
-8. 失敗時は Vercel Runtime Logs の `[dify] check` / `[dify] file_uploaded`（HTTP status・outputKeys・parseOk）を確認（個人情報は含めません）
+8. 失敗時は Vercel Runtime Logs の `[dify] check` / `[dify] file_uploaded` / `[dify] retry_without_files` を確認（個人情報は含めません）
 
 ## 動作確認手順（STEP 5：ダッシュボードと期限アラート）
 
