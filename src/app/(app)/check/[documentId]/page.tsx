@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { CheckRunner } from "@/components/features/check/check-runner"
 import { FindingsResultView } from "@/components/features/check/findings-result-view"
 import { ApproveFindingsButton } from "@/components/features/check/approve-findings-button"
+import { ZeroFindingsComplete } from "@/components/features/check/zero-findings-complete"
 import { getDocumentWithFindingsAction } from "@/app/actions/findings"
 import { getCurrentProfile } from "@/app/actions/auth"
 import { CHECK_UI } from "@/lib/copy/check-ui"
@@ -143,9 +144,10 @@ export default async function CheckResultPage({ params }: PageProps) {
               </div>
             ) : (
               <div className="mt-8">
-                <Button asChild size="lg">
-                  <Link href="/documents">{CHECK_UI.backToList}</Link>
-                </Button>
+                <ZeroFindingsComplete
+                  documentId={document.id}
+                  alreadyDone={document.status === "done"}
+                />
               </div>
             )}
           </>

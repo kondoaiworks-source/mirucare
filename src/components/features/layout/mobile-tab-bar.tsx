@@ -5,7 +5,13 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { NAV_ITEMS } from "./nav-items"
 
-export function MobileTabBar({ laterCount = 0 }: { laterCount?: number }) {
+export function MobileTabBar({
+  laterCount = 0,
+  incompleteDocumentsCount = 0,
+}: {
+  laterCount?: number
+  incompleteDocumentsCount?: number
+}) {
   const pathname = usePathname()
 
   return (
@@ -25,6 +31,14 @@ export function MobileTabBar({ laterCount = 0 }: { laterCount?: number }) {
                   pathname.startsWith("/check")
                 : pathname.startsWith(item.href)
           const showLaterBadge = item.href === "/later" && laterCount > 0
+          const showDocsBadge =
+            item.href === "/documents" && incompleteDocumentsCount > 0
+          const badgeCount = showLaterBadge
+            ? laterCount
+            : showDocsBadge
+              ? incompleteDocumentsCount
+              : 0
+          const showBadge = showLaterBadge || showDocsBadge
 
           return (
             <li key={item.href} className="min-w-0 flex-1">
@@ -36,16 +50,21 @@ export function MobileTabBar({ laterCount = 0 }: { laterCount?: number }) {
                 )}
                 aria-current={isActive ? "page" : undefined}
                 aria-label={
-                  showLaterBadge
-                    ? `${item.label}（${laterCount}件）`
-                    : undefined
+                  showBadge ? `${item.label}（${badgeCount}件）` : undefined
                 }
               >
                 <span className="relative">
                   <Icon className="size-5" aria-hidden />
-                  {showLaterBadge ? (
-                    <span className="absolute -right-2.5 -top-1.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[9px] font-bold tabular-nums leading-none text-warning-foreground">
-                      {laterCount > 99 ? "99+" : laterCount}
+                  {showBadge ? (
+                    <span
+                      className={cn(
+                        "absolute -right-2.5 -top-1.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold tabular-nums leading-none",
+                        showLaterBadge
+                          ? "bg-warning text-warning-foreground"
+                          : "bg-primary text-primary-foreground"
+                      )}
+                    >
+                      {badgeCount > 99 ? "99+" : badgeCount}
                     </span>
                   ) : null}
                 </span>

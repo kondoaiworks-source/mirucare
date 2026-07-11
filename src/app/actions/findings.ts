@@ -256,6 +256,7 @@ export async function updateFindingAction(input: {
   revalidatePath("/documents")
   revalidatePath("/later")
   revalidatePath("/reports")
+  revalidatePath("/", "layout")
 
   return {
     ok: true,

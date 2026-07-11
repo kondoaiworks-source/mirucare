@@ -1,4 +1,4 @@
-import type { DocType } from "@/types/database"
+import type { DocType, Document } from "@/types/database"
 import {
   ClipboardList,
   FileText,
@@ -203,4 +203,55 @@ export function statusLabel(status: string): string {
     default:
       return status
   }
+}
+
+/** 一覧用：指摘件数付き書類 */
+export type DocumentListItem = Document & {
+  openCount: number
+  laterCount: number
+}
+
+/** 一覧バッジ・並び用バケット（小さいほど上） */
+export type DocumentListBucket = "pending" | "later" | "done"
+
+export function documentListBucket(
+  doc: Pick<DocumentListItem, "status" | "openCount" | "laterCount">
+): DocumentListBucket {
+  if (doc.status === "done") return "done"
+  if (
+    doc.status === "reviewed" &&
+    doc.openCount === 0 &&
+    doc.laterCount > 0
+  ) {
+    return "later"
+  }
+  return "pending"
+}
+
+export function documentListBucketOrder(bucket: DocumentListBucket): number {
+  if (bucket === "pending") return 0
+  if (bucket === "later") return 1
+  return 2
+}
+
+export function documentListBadgeLabel(
+  doc: Pick<DocumentListItem, "status" | "openCount" | "laterCount">
+): string {
+  if (doc.status === "checking") return "チェック中"
+  if (doc.status === "done") return "完了"
+  if (documentListBucket(doc) === "later") return "後で確認"
+  if (doc.status === "uploaded") return "種類未設定"
+  return "確認待ち"
+}
+
+export function sortDocumentListItems(
+  docs: DocumentListItem[]
+): DocumentListItem[] {
+  return [...docs].sort((a, b) => {
+    const orderDiff =
+      documentListBucketOrder(documentListBucket(a)) -
+      documentListBucketOrder(documentListBucket(b))
+    if (orderDiff !== 0) return orderDiff
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
 }

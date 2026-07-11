@@ -1,7 +1,9 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
-import { Loader2, Upload, Check } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Loader2, Upload, Check, Clock } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -12,8 +14,14 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/features/empty-state"
-import { formatFileSize, statusLabel, DOC_TYPE_OPTIONS } from "@/lib/documents"
-import type { Document } from "@/types/database"
+import {
+  formatFileSize,
+  DOC_TYPE_OPTIONS,
+  documentListBadgeLabel,
+  documentListBucket,
+  sortDocumentListItems,
+  type DocumentListItem,
+} from "@/lib/documents"
 import { cn } from "@/lib/utils"
 
 function startOfToday() {
@@ -22,54 +30,64 @@ function startOfToday() {
   return d
 }
 
-function StatusBadge({ status }: { status: Document["status"] }) {
-  if (status === "checking") {
+function StatusBadge({ doc }: { doc: DocumentListItem }) {
+  const label = documentListBadgeLabel(doc)
+  const bucket = documentListBucket(doc)
+
+  if (doc.status === "checking") {
     return (
       <Badge
         variant="secondary"
         className="gap-1 rounded-lg border border-primary/20 bg-primary/10 text-primary"
       >
         <Loader2 className="size-3.5 animate-spin" aria-hidden />
-        チェック中
+        {label}
       </Badge>
     )
   }
 
-  if (status === "reviewed") {
-    return (
-      <Badge
-        variant="secondary"
-        className="rounded-lg border border-warning/30 bg-warning/10 text-warning"
-      >
-        確認待ち
-      </Badge>
-    )
-  }
-
-  if (status === "done") {
+  if (bucket === "done") {
     return (
       <Badge className="gap-1 rounded-lg border-transparent bg-primary text-primary-foreground hover:bg-primary">
         <Check className="size-3.5" aria-hidden />
-        完了
+        {label}
+      </Badge>
+    )
+  }
+
+  if (bucket === "later") {
+    return (
+      <Badge
+        variant="secondary"
+        className="gap-1 rounded-lg border border-warning/30 bg-warning/10 text-warning"
+      >
+        <Clock className="size-3.5" aria-hidden />
+        {label}
       </Badge>
     )
   }
 
   return (
-    <Badge variant="outline" className="rounded-lg">
-      {statusLabel(status)}
+    <Badge
+      variant="secondary"
+      className="rounded-lg border border-warning/30 bg-warning/10 text-warning"
+    >
+      {label}
     </Badge>
   )
 }
 
-function DocumentCard({ doc }: { doc: Document }) {
+function DocumentCard({ doc }: { doc: DocumentListItem }) {
   const typeMeta = DOC_TYPE_OPTIONS.find((o) => o.value === doc.doc_type)
   const Icon = typeMeta?.icon
   const href =
     doc.status === "uploaded" ? "/check/upload" : `/check/${doc.id}`
 
   return (
-    <Link href={href} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <Link
+      href={href}
+      className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
       <Card className="rounded-lg shadow-subtle transition-colors hover:bg-muted/40">
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-3">
@@ -89,7 +107,7 @@ function DocumentCard({ doc }: { doc: Document }) {
                 </CardDescription>
               </div>
             </div>
-            <StatusBadge status={doc.status} />
+            <StatusBadge doc={doc} />
           </div>
         </CardHeader>
         <CardContent>
@@ -107,7 +125,18 @@ function DocumentCard({ doc }: { doc: Document }) {
   )
 }
 
-export function DocumentList({ documents }: { documents: Document[] }) {
+function DocumentsRefreshPoller() {
+  const router = useRouter()
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      router.refresh()
+    }, 4000)
+    return () => window.clearInterval(id)
+  }, [router])
+  return null
+}
+
+export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
   if (documents.length === 0) {
     return (
       <EmptyState
@@ -124,11 +153,16 @@ export function DocumentList({ documents }: { documents: Document[] }) {
   }
 
   const todayStart = startOfToday()
-  const today = documents.filter((d) => new Date(d.created_at) >= todayStart)
-  const past = documents.filter((d) => new Date(d.created_at) < todayStart)
+  const today = sortDocumentListItems(
+    documents.filter((d) => new Date(d.created_at) >= todayStart)
+  )
+  const past = sortDocumentListItems(
+    documents.filter((d) => new Date(d.created_at) < todayStart)
+  )
 
   return (
     <div className="space-y-8">
+      <DocumentsRefreshPoller />
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3">
           <h2 className="text-lg font-bold text-primary-dark">今日の分</h2>

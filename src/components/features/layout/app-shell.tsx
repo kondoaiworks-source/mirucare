@@ -7,16 +7,21 @@ type AppShellProps = {
   children: React.ReactNode
   facilityName?: string
   laterCount?: number
+  incompleteDocumentsCount?: number
 }
 
 export function AppShell({
   children,
   facilityName,
   laterCount = 0,
+  incompleteDocumentsCount = 0,
 }: AppShellProps) {
   return (
     <div className="flex min-h-dvh bg-background">
-      <Sidebar laterCount={laterCount} />
+      <Sidebar
+        laterCount={laterCount}
+        incompleteDocumentsCount={incompleteDocumentsCount}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader facilityName={facilityName} />
         <main className="flex-1 overflow-y-auto bg-surface px-4 py-6 pb-24 md:px-8 md:pb-8 print:bg-white print:p-0 print:pb-0">
@@ -26,7 +31,10 @@ export function AppShell({
           <AppFooter />
         </div>
       </div>
-      <MobileTabBar laterCount={laterCount} />
+      <MobileTabBar
+        laterCount={laterCount}
+        incompleteDocumentsCount={incompleteDocumentsCount}
+      />
     </div>
   )
 }

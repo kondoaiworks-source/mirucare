@@ -5,7 +5,13 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { NAV_ITEMS } from "./nav-items"
 
-export function Sidebar({ laterCount = 0 }: { laterCount?: number }) {
+export function Sidebar({
+  laterCount = 0,
+  incompleteDocumentsCount = 0,
+}: {
+  laterCount?: number
+  incompleteDocumentsCount?: number
+}) {
   const pathname = usePathname()
 
   return (
@@ -39,6 +45,14 @@ export function Sidebar({ laterCount = 0 }: { laterCount?: number }) {
                   pathname.startsWith("/check")
                 : pathname.startsWith(item.href)
           const showLaterBadge = item.href === "/later" && laterCount > 0
+          const showDocsBadge =
+            item.href === "/documents" && incompleteDocumentsCount > 0
+          const badgeCount = showLaterBadge
+            ? laterCount
+            : showDocsBadge
+              ? incompleteDocumentsCount
+              : 0
+          const showBadge = showLaterBadge || showDocsBadge
 
           return (
             <Link
@@ -52,16 +66,21 @@ export function Sidebar({ laterCount = 0 }: { laterCount?: number }) {
               )}
               aria-current={isActive ? "page" : undefined}
               aria-label={
-                showLaterBadge
-                  ? `${item.label}（${laterCount}件）`
-                  : undefined
+                showBadge ? `${item.label}（${badgeCount}件）` : undefined
               }
             >
               <Icon className="size-5 shrink-0" aria-hidden />
               <span className="flex-1">{item.label}</span>
-              {showLaterBadge ? (
-                <span className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-lg bg-warning px-1.5 text-xs font-bold tabular-nums text-warning-foreground">
-                  {laterCount > 99 ? "99+" : laterCount}
+              {showBadge ? (
+                <span
+                  className={cn(
+                    "inline-flex min-h-6 min-w-6 items-center justify-center rounded-lg px-1.5 text-xs font-bold tabular-nums",
+                    showLaterBadge
+                      ? "bg-warning text-warning-foreground"
+                      : "bg-primary text-primary-foreground"
+                  )}
+                >
+                  {badgeCount > 99 ? "99+" : badgeCount}
                 </span>
               ) : null}
             </Link>

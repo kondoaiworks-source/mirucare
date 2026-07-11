@@ -7,9 +7,11 @@ import {
   guessDocType,
   MAX_FILE_SIZE_BYTES,
   buildStoragePath,
+  type DocumentListItem,
 } from "@/lib/documents"
 import { assertCanStartChecks } from "@/app/actions/billing"
 import type { DocType, Document, DocumentStatus } from "@/types/database"
+import { revalidatePath } from "next/cache"
 
 export type ActionResult<T = undefined> = {
   ok: boolean
@@ -245,7 +247,7 @@ export async function startDocumentCheckAction(
 }
 
 export async function listDocumentsAction(): Promise<
-  ActionResult<{ documents: Document[] }>
+  ActionResult<{ documents: DocumentListItem[] }>
 > {
   const ctx = await requireOrgContext()
   if ("error" in ctx) return { ok: false, error: ctx.error }
@@ -261,7 +263,122 @@ export async function listDocumentsAction(): Promise<
     return { ok: false, error: toUserErrorMessage(error) }
   }
 
-  return { ok: true, data: { documents: (data ?? []) as Document[] } }
+  const docs = (data ?? []) as Document[]
+  const ids = docs.map((d) => d.id)
+
+  const counts = new Map<string, { openCount: number; laterCount: number }>()
+  for (const id of ids) {
+    counts.set(id, { openCount: 0, laterCount: 0 })
+  }
+
+  if (ids.length > 0) {
+    const { data: findings } = await ctx.supabase
+      .from("findings")
+      .select("document_id, status")
+      .eq("organization_id", ctx.organizationId)
+      .in("document_id", ids)
+      .eq("review_status", "approved")
+      .is("deleted_at", null)
+
+    for (const f of findings ?? []) {
+      const entry = counts.get(f.document_id as string)
+      if (!entry) continue
+      if (f.status === "open") entry.openCount += 1
+      if (f.status === "later") entry.laterCount += 1
+    }
+  }
+
+  const documents: DocumentListItem[] = docs.map((d) => ({
+    ...d,
+    openCount: counts.get(d.id)?.openCount ?? 0,
+    laterCount: counts.get(d.id)?.laterCount ?? 0,
+  }))
+
+  return { ok: true, data: { documents } }
+}
+
+/** ナビバッジ用：未完了（完了以外）の書類件数 */
+export async function countIncompleteDocumentsAction(): Promise<
+  ActionResult<{ count: number }>
+> {
+  const ctx = await requireOrgContext()
+  if ("error" in ctx) return { ok: false, error: ctx.error }
+
+  const { count, error } = await ctx.supabase
+    .from("documents")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", ctx.organizationId)
+    .neq("status", "done")
+    .is("deleted_at", null)
+
+  if (error) {
+    return { ok: false, error: toUserErrorMessage(error) }
+  }
+
+  return { ok: true, data: { count: count ?? 0 } }
+}
+
+/** 指摘0件の書類を完了にする（一覧の完了と同じ扱い） */
+export async function markDocumentDoneAction(
+  documentId: string
+): Promise<ActionResult> {
+  const ctx = await requireOrgContext()
+  if ("error" in ctx) return { ok: false, error: ctx.error }
+
+  const { data: doc, error: docError } = await ctx.supabase
+    .from("documents")
+    .select("id, status")
+    .eq("id", documentId)
+    .eq("organization_id", ctx.organizationId)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (docError || !doc) {
+    return { ok: false, error: "書類が見つかりません。" }
+  }
+
+  if (doc.status === "done") {
+    return { ok: true }
+  }
+
+  if (doc.status === "checking" || doc.status === "uploaded") {
+    return {
+      ok: false,
+      error: "チェック完了後に完了にできます。",
+    }
+  }
+
+  const { data: pending } = await ctx.supabase
+    .from("findings")
+    .select("id, status")
+    .eq("document_id", documentId)
+    .eq("organization_id", ctx.organizationId)
+    .in("status", ["open", "later"])
+    .eq("review_status", "approved")
+    .is("deleted_at", null)
+
+  if ((pending ?? []).length > 0) {
+    return {
+      ok: false,
+      error: "未対応の指摘が残っています。指摘への対応を先に完了してください。",
+    }
+  }
+
+  const { error } = await ctx.supabase
+    .from("documents")
+    .update({ status: "done" satisfies DocumentStatus })
+    .eq("id", documentId)
+    .eq("organization_id", ctx.organizationId)
+
+  if (error) {
+    return { ok: false, error: toUserErrorMessage(error) }
+  }
+
+  revalidatePath(`/check/${documentId}`)
+  revalidatePath("/documents")
+  revalidatePath("/")
+  revalidatePath("/", "layout")
+  return { ok: true }
 }
 
 /**
