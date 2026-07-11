@@ -2,6 +2,10 @@
 
 介護事業所向け「AI書類Wチェック」SaaS（Wチェック支援）。
 
+## 利用マニュアル
+
+施設長・サービス提供責任者向けの操作手順は [USAGE_MANUAL.md](./USAGE_MANUAL.md) を参照してください。
+
 ## 技術スタック
 
 - Next.js 14+ (App Router) / TypeScript strict
@@ -186,6 +190,11 @@ SQL Editor で次を **順番に** 実行します。
    ```sql
    UPDATE public.organizations SET plan = 'light' WHERE id = '<事業所ID>';
    ```
+
+## 動作確認手順（利用マニュアル）
+
+1. [USAGE_MANUAL.md](./USAGE_MANUAL.md) を開き、ログイン前から日々のチェック、設定、プラン確認までの流れが読めることを確認する
+2. README上部の「利用マニュアル」リンクから同ファイルへ移動できることを確認する
 
 ## 主なルート
 
