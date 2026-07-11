@@ -14,12 +14,13 @@ export const REPORT_UI = {
   fixedLabel: "対応済み",
   fixedHint: "「対応した」とした指摘の件数です",
   analysisTitle: "原因分析",
-  analysisHint: "運営が作成した、月次の振り返りレポートです",
+  analysisHint:
+    "管理者が手入力で作成した、月次の振り返りレポートです（AI自動生成ではありません）",
   breakdownTitle: "指摘の内訳",
   breakdownHint: "種類（リスクの高さ）別の件数です。多い順に表示しています",
-  emptyTitle: "作成中です",
+  emptyTitle: "まだレポートがありません",
   emptyDescription:
-    "毎月5営業日目までにお届けします。しばらくお待ちください。",
+    "原因分析は管理者が「設定 → レポート管理」で作成します。作成後、こちらに表示されます。",
   upgradeTitle: "プレミアムプランで月次レポートを確認できます",
   upgradeDescription:
     "原因分析と内訳グラフは、施設内会議や法人本部への報告に使えます。ライト／スタンダードではプレビューのみご覧いただけます。",
@@ -28,7 +29,9 @@ export const REPORT_UI = {
   pdfHint: "印刷ダイアログで「PDFに保存」を選ぶと、A4縦の資料になります",
   adminTitle: "月次レポート管理",
   adminDescription:
-    "事業所向けの原因分析レポートを作成・更新します（管理者のみ）。",
+    "原因分析はAI自動生成ではなく、管理者がMarkdownで手入力して保存します。",
+  adminHowTo:
+    "対象月を選び、原因分析を書いて「レポートを保存する」と、プレミアムの月次レポート画面に表示されます。",
   save: "レポートを保存する",
   saved: "レポートを保存しました",
 } as const

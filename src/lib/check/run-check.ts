@@ -63,6 +63,10 @@ export async function runDocumentCheck(
     .download(doc.file_path)
 
   if (downloadError || !fileData) {
+    console.error("[check] storage_download_failed", {
+      documentId: doc.id,
+      hasPath: Boolean(doc.file_path),
+    })
     await saveFallbackAndFinish(admin, {
       documentId: doc.id,
       organizationId: options.organizationId,

@@ -116,6 +116,7 @@ export function AdminReportsForm({ initialReports }: AdminReportsFormProps) {
         <CardHeader>
           <CardTitle className="text-lg">レポートを作成・更新</CardTitle>
           <CardDescription className="text-base leading-relaxed">
+            {REPORT_UI.adminHowTo}
             Markdown（見出し・引用・表）で原因分析を書けます。件数は指摘データから自動反映もできます。
           </CardDescription>
         </CardHeader>

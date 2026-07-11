@@ -161,7 +161,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
           <CardHeader>
             <CardTitle className="text-lg">月次レポート管理</CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              運営向け：原因分析レポートの作成・更新（管理者のみ）。
+              原因分析はAI自動生成ではなく、管理者が手入力で作成します。「レポート管理」からMarkdownで保存すると、プレミアムの月次レポートに表示されます。
             </CardDescription>
           </CardHeader>
           <CardContent>

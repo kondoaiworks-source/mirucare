@@ -164,12 +164,8 @@ export async function createCheckoutSessionAction(
 
     return { ok: true, data: { url: session.url } }
   } catch (error) {
-    console.error("[stripe] checkout", error)
-    return {
-      ok: false,
-      error:
-        "決済ページを開けませんでした。しばらくしてから再度お試しください。",
-    }
+    console.error("[stripe] checkout", stripeErrorLog(error))
+    return { ok: false, error: userFacingStripeError(error, "checkout") }
   }
 }
 
@@ -201,13 +197,66 @@ export async function createBillingPortalSessionAction(): Promise<
     })
     return { ok: true, data: { url: session.url } }
   } catch (error) {
-    console.error("[stripe] portal", error)
+    console.error("[stripe] portal", stripeErrorLog(error))
+    return { ok: false, error: userFacingStripeError(error, "portal") }
+  }
+}
+
+/** 個人情報を含めず Stripe エラーをログ用に要約 */
+function stripeErrorLog(error: unknown): Record<string, unknown> {
+  if (error && typeof error === "object") {
+    const e = error as {
+      type?: string
+      code?: string
+      message?: string
+      statusCode?: number
+    }
     return {
-      ok: false,
-      error:
-        "お客様ポータルを開けませんでした。しばらくしてから再度お試しください。",
+      type: e.type,
+      code: e.code,
+      statusCode: e.statusCode,
+      message: e.message?.slice(0, 200),
     }
   }
+  return { message: String(error).slice(0, 200) }
+}
+
+function userFacingStripeError(
+  error: unknown,
+  kind: "checkout" | "portal"
+): string {
+  const msg =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: string }).message ?? "")
+      : ""
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String((error as { code?: string }).code ?? "")
+      : ""
+
+  if (
+    kind === "portal" &&
+    (code === "resource_missing" ||
+      /portal|configuration|customer portal/i.test(msg))
+  ) {
+    return "お客様ポータルの設定が未完了の可能性があります。Stripeダッシュボード（テストモード）の「設定 → 請求 → カスタマーポータル」を保存してから再度お試しください。"
+  }
+
+  if (/No such price|invalid.*price|price_/i.test(msg)) {
+    return "Stripeの価格IDが正しくない可能性があります。環境変数の STRIPE_PRICE_*（price_…）をご確認ください。"
+  }
+
+  if (/No such customer/i.test(msg)) {
+    return "Stripeの顧客情報とキーのモード（テスト／本番）が一致していない可能性があります。"
+  }
+
+  if (/Invalid API Key|api[_ ]?key/i.test(msg)) {
+    return "StripeのAPIキーが未設定、または無効です。STRIPE_SECRET_KEY をご確認ください。"
+  }
+
+  return kind === "portal"
+    ? "お客様ポータルを開けませんでした。しばらくしてから再度お試しください。"
+    : "決済ページを開けませんでした。しばらくしてから再度お試しください。"
 }
 
 export type CheckQuotaResult = {

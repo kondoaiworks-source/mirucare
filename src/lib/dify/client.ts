@@ -12,6 +12,10 @@ type DifyWorkflowResponse = {
   message?: string
 }
 
+/**
+ * Workflow outputs から findings 候補テキストを取り出す。
+ * 個人名・被保険者番号はログに出さない。
+ */
 function pickAnswerText(payload: DifyWorkflowResponse): string {
   if (typeof payload.answer === "string" && payload.answer.trim()) {
     return payload.answer
@@ -19,10 +23,17 @@ function pickAnswerText(payload: DifyWorkflowResponse): string {
 
   const outputs = payload.data?.outputs
   if (outputs) {
-    for (const key of ["result", "text", "answer", "output", "findings"]) {
-      const v = outputs[key]
-      if (typeof v === "string" && v.trim()) return v
-      if (v && typeof v === "object") return JSON.stringify(v)
+    for (const key of [
+      "result",
+      "text",
+      "answer",
+      "output",
+      "findings",
+      "json",
+      "data",
+    ]) {
+      const extracted = coerceOutputValue(outputs[key])
+      if (extracted) return extracted
     }
     // outputs 全体を JSON として試す
     return JSON.stringify(outputs)
@@ -32,9 +43,54 @@ function pickAnswerText(payload: DifyWorkflowResponse): string {
   return JSON.stringify(payload)
 }
 
+function coerceOutputValue(v: unknown): string | null {
+  if (typeof v === "string" && v.trim()) return v.trim()
+  if (Array.isArray(v)) return JSON.stringify(v)
+  if (v && typeof v === "object") {
+    const obj = v as Record<string, unknown>
+    if (
+      Array.isArray(obj.findings) ||
+      Array.isArray(obj.items) ||
+      Array.isArray(obj.results)
+    ) {
+      return JSON.stringify(obj)
+    }
+    // 1段ネスト（例: { text: "..." } / { result: {...} }）
+    for (const key of ["result", "text", "answer", "output", "findings", "json"]) {
+      const inner = obj[key]
+      if (typeof inner === "string" && inner.trim()) return inner.trim()
+      if (inner && typeof inner === "object") return JSON.stringify(inner)
+    }
+    return JSON.stringify(obj)
+  }
+  return null
+}
+
 /** DIFY_BASE_URL はオリジンのみ。末尾の /v1 は除去してから付与する */
 function normalizeDifyBaseUrl(raw: string): string {
-  return raw.replace(/\/$/, "").replace(/\/v1$/i, "")
+  return raw.trim().replace(/\/$/, "").replace(/\/v1$/i, "")
+}
+
+function logDifyDiag(info: {
+  attempt: number
+  httpStatus?: number
+  workflowStatus?: string
+  outputKeys?: string[]
+  answerLength?: number
+  parseOk?: boolean
+  usedFallback?: boolean
+  errorKind?: string
+}) {
+  console.error("[dify] check", {
+    attempt: info.attempt,
+    httpStatus: info.httpStatus,
+    workflowStatus: info.workflowStatus,
+    outputKeys: info.outputKeys,
+    answerLength: info.answerLength,
+    parseOk: info.parseOk,
+    usedFallback: info.usedFallback,
+    errorKind: info.errorKind,
+  })
 }
 
 /**
@@ -95,6 +151,12 @@ export async function runDifyCheck(
       lastRaw = text
 
       if (!res.ok) {
+        logDifyDiag({
+          attempt,
+          httpStatus: res.status,
+          errorKind: "http_error",
+          answerLength: text.length,
+        })
         repairTexts.push(text)
         continue
       }
@@ -103,21 +165,68 @@ export async function runDifyCheck(
       try {
         payload = JSON.parse(text) as DifyWorkflowResponse
       } catch {
+        logDifyDiag({
+          attempt,
+          httpStatus: res.status,
+          errorKind: "invalid_json_body",
+          answerLength: text.length,
+        })
         repairTexts.push(text)
         continue
       }
 
+      const outputKeys = payload.data?.outputs
+        ? Object.keys(payload.data.outputs)
+        : []
       const answer = pickAnswerText(payload)
       const parsed = parseWithRetryAndFallback(answer, repairTexts)
+
+      if (!parsed.parseOk) {
+        logDifyDiag({
+          attempt,
+          httpStatus: res.status,
+          workflowStatus: payload.data?.status,
+          outputKeys,
+          answerLength: answer.length,
+          parseOk: false,
+          usedFallback: parsed.usedFallback,
+          errorKind: "parse_failed",
+        })
+      }
+
       if (parsed.parseOk || attempt === maxAttempts) {
+        if (parsed.usedFallback) {
+          logDifyDiag({
+            attempt,
+            httpStatus: res.status,
+            workflowStatus: payload.data?.status,
+            outputKeys,
+            answerLength: answer.length,
+            parseOk: false,
+            usedFallback: true,
+            errorKind: "fallback",
+          })
+        }
         return parsed
       }
       repairTexts.push(answer)
     } catch (err) {
       lastRaw = err instanceof Error ? err.message : "network_error"
+      logDifyDiag({
+        attempt,
+        errorKind: "network_or_throw",
+        answerLength: lastRaw.length,
+      })
       repairTexts.push(lastRaw)
     }
   }
 
-  return parseWithRetryAndFallback(lastRaw || "{}", repairTexts)
+  const fallback = parseWithRetryAndFallback(lastRaw || "{}", repairTexts)
+  logDifyDiag({
+    attempt: maxAttempts,
+    parseOk: fallback.parseOk,
+    usedFallback: fallback.usedFallback,
+    errorKind: "exhausted_retries",
+  })
+  return fallback
 }

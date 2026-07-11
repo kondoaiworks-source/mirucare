@@ -98,9 +98,11 @@ SQL Editor で次を **順番に** 実行します。
 
 1. Dify Workflow の API キーを `.env.local` / Vercel の `DIFY_API_KEY` に設定（チャットや Git に書かない）
 2. `DIFY_BASE_URL=https://api.dify.ai`（末尾 `/v1` ありでも可。コード側で正規化）
-3. `DIFY_MOCK=0` にして開発サーバー再起動（本番は Vercel 再デプロイ）
+3. **`DIFY_MOCK=0`** にして開発サーバー再起動（本番は Vercel 再デプロイ）。`DIFY_MOCK=1` のままだと本物の Dify は呼ばれません
 4. Workflow 入力変数は次を想定:
    - `document_text` / `prefecture` / `municipality` / `doc_type` / `national`（`"1"`=国基準・`"0"`=自治体基準）
+5. Workflow 出力は JSON（例: `{ "findings": [{ "severity", "title", "description", "basis", "suggestion" }] }`）。パースできないと「AIが確認できませんでした…」になります
+6. 失敗時は Vercel Runtime Logs の `[dify] check`（HTTP status・outputKeys・parseOk）を確認（個人情報は含めません）
 
 ## 動作確認手順（STEP 5：ダッシュボードと期限アラート）
 
@@ -124,6 +126,7 @@ SQL Editor で次を **順番に** 実行します。
    UPDATE public.organizations SET plan = 'premium' WHERE id = '<事業所ID>';
    ```
 3. 管理者で [http://localhost:3000/admin/reports](http://localhost:3000/admin/reports) を開く
+   - **原因分析はAI自動生成ではありません。** 管理者が Markdown を手入力して保存します
    - 対象月・件数・Markdown本文を入力して「レポートを保存する」
    - 「指摘データから件数を反映する」で high／対応済み件数を自動入力できること
 4. [http://localhost:3000/reports](http://localhost:3000/reports) で
@@ -131,7 +134,7 @@ SQL Editor で次を **順番に** 実行します。
    - 原因分析が見出し・引用・表つきで読めること
    - 指摘の内訳が横棒（多い順）であること
    - 「PDFをダウンロード」→ 印刷ダイアログで「PDFに保存」、A4縦・フッターに免責文言
-5. 未作成の月を選ぶと「作成中です（毎月5営業日目までにお届けします）」が出ること
+5. 未作成の月を選ぶと「まだレポートがありません」（設定→レポート管理で作成する案内）が出ること
 6. プラン制限
    ```sql
    UPDATE public.organizations SET plan = 'light' WHERE id = '<事業所ID>';
@@ -185,12 +188,14 @@ SQL Editor で次を **順番に** 実行します。
    ```
    表示された `whsec_...` を `STRIPE_WEBHOOK_SECRET` に入れる（dev 再起動）
 5. [http://localhost:3000/pricing](http://localhost:3000/pricing) でスタンダード（主力プランバッジ）を契約（テストカード `4242…`）
-6. 設定でプラン表示・「カード変更・解約する」→ Customer Portal でプラン変更／解約
-7. 受け入れの目安
+6. **Customer Portal（必須）**  
+   Stripe Dashboard（テストモード）→ [Settings → Billing → Customer portal](https://dashboard.stripe.com/test/settings/billing/portal) を開き、カード変更・解約などを有効にして **Save** する。未保存だと「カード変更・解約」が開けません。
+7. 設定でプラン表示・「カード変更・解約する」→ Customer Portal でプラン変更／解約
+8. 受け入れの目安
    - [1] 契約→変更→解約が一巡できること
    - [2] 解約後も書類・指摘は残り、設定に「閲覧のみ」案内と再契約導線があること
    - [3] ライトで月2回目のチェック開始時に「今月の上限に達しました。スタンダードなら毎日チェックできます」が出ること
-8. （開発用）Stripeなしでプランだけ試す場合
+9. （開発用）Stripeなしでプランだけ試す場合
    ```sql
    UPDATE public.organizations SET plan = 'light' WHERE id = '<事業所ID>';
    ```
