@@ -1,5 +1,11 @@
-import { isMockMode, runMockDifyCheck } from "./mock"
+import { runMockDifyCheck } from "./mock"
 import { parseWithRetryAndFallback } from "./parse"
+import {
+  decideMockMode,
+  getDifyApiKey,
+  getDifyBaseUrl,
+  isProductionRuntime,
+} from "./env"
 import type { DifyCheckInput, DifyCheckResult } from "./types"
 
 type DifyWorkflowResponse = {
@@ -75,11 +81,6 @@ function coerceOutputValue(v: unknown): string | null {
   return null
 }
 
-/** DIFY_BASE_URL はオリジンのみ。末尾の /v1 は除去してから付与する */
-function normalizeDifyBaseUrl(raw: string): string {
-  return raw.trim().replace(/\/$/, "").replace(/\/v1$/i, "")
-}
-
 function logDifyDiag(info: {
   attempt: number
   httpStatus?: number
@@ -112,17 +113,33 @@ function logDifyDiag(info: {
 export async function runDifyCheck(
   input: DifyCheckInput
 ): Promise<DifyCheckResult> {
-  if (isMockMode() || input.mockScenario) {
+  const decision = decideMockMode({ mockScenario: input.mockScenario })
+
+  if (decision.mock) {
+    // 本番では黙ってモックせず失敗させる（監視0のまま成功するのを防ぐ）
+    if (isProductionRuntime() && decision.reason !== "mock_scenario") {
+      console.error("[dify] refuse_mock_in_production", {
+        reason: decision.reason,
+      })
+      throw new Error(
+        decision.reason === "missing_api_key"
+          ? "DIFY_API_KEY が未設定です。Vercel の環境変数を確認してください。"
+          : "本番で DIFY_MOCK が有効です。DIFY_MOCK=0 にして再デプロイしてください。"
+      )
+    }
+
+    // 開発時の mockScenario 指定、または明示的モック
+    if (isProductionRuntime() && decision.reason === "mock_scenario") {
+      console.error("[dify] refuse_client_mock_scenario_in_production")
+      throw new Error("本番ではモックシナリオを指定できません。")
+    }
+
+    console.error("[dify] using_mock", { reason: decision.reason })
     return runMockDifyCheck(input)
   }
 
-  const apiKey = process.env.DIFY_API_KEY?.trim()
-  if (!apiKey) {
-    throw new Error("DIFY_API_KEY が未設定です")
-  }
-  const baseUrl = normalizeDifyBaseUrl(
-    process.env.DIFY_BASE_URL ?? "https://api.dify.ai"
-  )
+  const apiKey = getDifyApiKey()
+  const baseUrl = getDifyBaseUrl()
 
   const inputs: Record<string, string> = {
     document_text: input.documentText?.slice(0, 80000) ?? "",
@@ -143,6 +160,16 @@ export async function runDifyCheck(
     response_mode: "blocking",
     user: "kansatsu-check",
   }
+
+  console.error("[dify] invoke_live", {
+    baseUrl,
+    hasKey: Boolean(apiKey),
+    keyPrefix: apiKey.slice(0, 4),
+    textLength: inputs.document_text.length,
+    hasImage: Boolean(input.imageBase64),
+    docType: input.docType,
+    national: input.national,
+  })
 
   const maxAttempts = 3
   let lastRaw = ""
@@ -217,6 +244,16 @@ export async function runDifyCheck(
             parseOk: false,
             usedFallback: true,
             errorKind: "fallback",
+          })
+        } else {
+          logDifyDiag({
+            attempt,
+            httpStatus: res.status,
+            workflowStatus: payload.data?.status,
+            outputKeys,
+            answerLength: answer.length,
+            parseOk: true,
+            usedFallback: false,
           })
         }
         return parsed

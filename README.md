@@ -99,22 +99,29 @@ SQL Editor で次を **順番に** 実行します。
 
 ### Dify が動いているか確かめる
 
-1. 本番で新しい書類をアップロードしてチェックする（古い結果は残るので新規が確実）
-2. 「AIが確認できませんでした…」ではなく、具体的な指摘タイトルが出れば Dify 連携成功
-3. Vercel → Deployments → Runtime Logs で `[dify] check` を検索
-   - `parseOk: true` / `usedFallback` なし → 成功
-   - `httpStatus` が 4xx/5xx や `parse_failed` → 失敗原因の手がかり
-4. Dify 側の Workflow 実行履歴に、同じ時刻の run が増えていれば API 呼び出し自体は成功
+1. 本番で**新しい**書類をアップロードしてチェックする（古い結果は残るので新規が確実）
+2. レスポンス JSON の `mode` を確認（DevTools → Network → `/api/check`）
+   - `mode: "live"` → 本物の Dify を呼んだ
+   - `mode: "mock"` → モック（本番では出ない想定）
+   - `mode: "skipped_no_file"` → Storage 取得失敗で **Dify 未呼び出し**
+   - `mode: "dify_error"` → キー未設定 / `DIFY_MOCK=1` などで拒否
+3. 「AIが確認できませんでした…」ではなく、具体的な指摘タイトルが出れば連携成功
+4. Vercel → Deployments → Runtime Logs で検索
+   - `[dify] invoke_live` → API 呼び出し開始
+   - `[dify] check` で `parseOk: true` → 成功
+   - `[dify] using_mock` / `[check] storage_download_failed` → **Dify は呼ばれていない**
+5. Dify の「監視」でメッセージ数・トークンが増えていれば到達成功（増えないなら未呼び出し）
 
 ### 本番 Dify への切替
 
 1. Dify Workflow の API キーを `.env.local` / Vercel の `DIFY_API_KEY` に設定（チャットや Git に書かない）
 2. `DIFY_BASE_URL=https://api.dify.ai`（末尾 `/v1` ありでも可。コード側で正規化）
 3. **`DIFY_MOCK=0`** にして開発サーバー再起動（本番は Vercel 再デプロイ）。`DIFY_MOCK=1` のままだと本物の Dify は呼ばれません
-4. Workflow 入力変数は次を想定:
+4. 本番ではモックを黙って使わずエラーにします（監視が 0 のまま成功する事故を防ぐ）
+5. Workflow 入力変数は次を想定:
    - `document_text` / `prefecture` / `municipality` / `doc_type` / `national`（`"1"`=国基準・`"0"`=自治体基準）
-5. Workflow 出力は JSON（例: `{ "findings": [{ "severity", "title", "description", "basis", "suggestion" }] }`）。出力変数名は `check_result` / `result` / `text` / `answer` / `output` / `findings` などに対応。パースできないと「AIが確認できませんでした…」になります
-6. 失敗時は Vercel Runtime Logs の `[dify] check`（HTTP status・outputKeys・parseOk）を確認（個人情報は含めません）
+6. Workflow 出力は JSON（例: `{ "findings": [{ "severity", "title", "description", "basis", "suggestion" }] }`）。出力変数名は `check_result` / `result` / `text` / `answer` / `output` / `findings` などに対応。パースできないと「AIが確認できませんでした…」になります
+7. 失敗時は Vercel Runtime Logs の `[dify] check`（HTTP status・outputKeys・parseOk）を確認（個人情報は含めません）
 
 ## 動作確認手順（STEP 5：ダッシュボードと期限アラート）
 

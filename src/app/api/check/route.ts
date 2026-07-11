@@ -2,14 +2,18 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { runDocumentCheck } from "@/lib/check/run-check"
 import { assertCanStartChecks } from "@/app/actions/billing"
+import { decideMockMode, isProductionRuntime } from "@/lib/dify/env"
 import type { MockScenario } from "@/lib/dify/types"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
 
+const ALLOWED_MOCK: MockScenario[] = ["success", "parse_error", "empty"]
+
 /**
  * POST /api/check
  * body: { documentId: string, mockScenario?: "success"|"parse_error"|"empty" }
+ * mockScenario は開発時かつ DIFY_MOCK=1 のときのみ有効（本番では無視・拒否）
  */
 export async function POST(request: Request) {
   try {
@@ -85,10 +89,33 @@ export async function POST(request: Request) {
       }
     }
 
+    // 本番・live 設定時はクライアントからの mockScenario を受け付けない
+    let mockScenario: MockScenario | undefined
+    const requested = body?.mockScenario
+    if (requested && ALLOWED_MOCK.includes(requested)) {
+      if (isProductionRuntime()) {
+        return NextResponse.json(
+          { error: "本番ではモックチェックを実行できません。" },
+          { status: 400 }
+        )
+      }
+      const decision = decideMockMode()
+      if (!decision.mock) {
+        return NextResponse.json(
+          {
+            error:
+              "モックシナリオを使うには DIFY_MOCK=1 にしてください（本番 Dify を呼ぶ設定のままです）。",
+          },
+          { status: 400 }
+        )
+      }
+      mockScenario = requested
+    }
+
     const result = await runDocumentCheck({
       documentId,
       organizationId: profile.organization_id,
-      mockScenario: body?.mockScenario,
+      mockScenario,
     })
 
     if (!result.ok) {
@@ -103,6 +130,7 @@ export async function POST(request: Request) {
       findingCount: result.findingCount ?? 0,
       usedFallback: result.usedFallback ?? false,
       reviewStatus: result.reviewStatus,
+      mode: result.mode ?? "live",
     })
   } catch {
     return NextResponse.json(

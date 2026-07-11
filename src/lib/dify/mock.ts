@@ -1,5 +1,6 @@
 import type { DifyCheckInput, DifyCheckResult, MockScenario } from "./types"
 import { parseWithRetryAndFallback } from "./parse"
+import { decideMockMode, isProductionRuntime } from "./env"
 
 const SUCCESS_JSON = JSON.stringify({
   findings: [
@@ -50,12 +51,13 @@ export function resolveMockScenario(
   return "success"
 }
 
+/**
+ * ローカル開発向け。本番では常に false（黙ってモックしない）。
+ * @deprecated decideMockMode を優先。互換のため残す。
+ */
 export function isMockMode(): boolean {
-  if (process.env.DIFY_MOCK === "1" || process.env.DIFY_MOCK === "true") {
-    return true
-  }
-  // キー未設定時はモック（ローカル開発を止めない）
-  return !process.env.DIFY_API_KEY?.trim()
+  if (isProductionRuntime()) return false
+  return decideMockMode().mock
 }
 
 /**
@@ -66,11 +68,17 @@ export async function runMockDifyCheck(
 ): Promise<DifyCheckResult> {
   const scenario = resolveMockScenario(input.mockScenario)
 
+  console.error("[dify] mock_response", {
+    scenario,
+    docType: input.docType,
+    hasText: Boolean(input.documentText?.trim()),
+    hasImage: Boolean(input.imageBase64),
+  })
+
   // 入力が渡されていることをログ相当で検証（個人情報は出さない）
   void input.municipality
   void input.prefecture
   void input.national
-  void input.docType
 
   await new Promise((r) => setTimeout(r, 80))
 

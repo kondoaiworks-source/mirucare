@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server"
 import { extractDocumentContent } from "@/lib/check/extract"
 import { runDifyCheck } from "@/lib/dify/client"
+import { decideMockMode } from "@/lib/dify/env"
 import { normalizeSeverity, type MockScenario } from "@/lib/dify/types"
 import { prefectureFromMunicipality } from "@/lib/municipalities"
 import type { DocumentStatus } from "@/types/database"
@@ -17,6 +18,8 @@ export type RunCheckResult = {
   findingCount?: number
   usedFallback?: boolean
   reviewStatus?: "pending" | "approved"
+  /** live=本物の Dify / mock=ローカルモック / skipped_no_file|dify_error=未呼び出し */
+  mode?: "live" | "mock" | "skipped_no_file" | "dify_error"
 }
 
 /**
@@ -63,9 +66,14 @@ export async function runDocumentCheck(
     .download(doc.file_path)
 
   if (downloadError || !fileData) {
+    // 個人情報は出さない。Storage 失敗だと Dify は呼ばれない
     console.error("[check] storage_download_failed", {
       documentId: doc.id,
       hasPath: Boolean(doc.file_path),
+      pathDepth: doc.file_path?.split("/").length ?? 0,
+      mimeType: doc.mime_type,
+      errorMessage: downloadError?.message?.slice(0, 200) ?? "empty_body",
+      errorName: downloadError?.name?.slice(0, 80),
     })
     await saveFallbackAndFinish(admin, {
       documentId: doc.id,
@@ -78,6 +86,7 @@ export async function runDocumentCheck(
       findingCount: 1,
       usedFallback: true,
       reviewStatus: org.skip_finding_review ? "approved" : "pending",
+      mode: "skipped_no_file",
     }
   }
 
@@ -88,18 +97,49 @@ export async function runDocumentCheck(
     doc.original_name
   )
 
+  console.error("[check] extracted", {
+    documentId: doc.id,
+    kind: extracted.kind,
+    textLength: extracted.text?.length ?? 0,
+    hasImage: Boolean(extracted.imageBase64),
+    bufferBytes: buffer.length,
+  })
+
   const municipality = org.municipality?.trim() || ""
   const useNational = !municipality
-  const difyResult = await runDifyCheck({
-    municipality,
-    prefecture: prefectureFromMunicipality(municipality),
-    national: useNational ? "1" : "0",
-    docType: doc.doc_type,
-    documentText: extracted.text,
-    imageBase64: extracted.imageBase64,
-    imageMimeType: extracted.imageMimeType,
-    mockScenario: options.mockScenario,
-  })
+
+  let difyResult
+  try {
+    difyResult = await runDifyCheck({
+      municipality,
+      prefecture: prefectureFromMunicipality(municipality),
+      national: useNational ? "1" : "0",
+      docType: doc.doc_type,
+      documentText: extracted.text,
+      imageBase64: extracted.imageBase64,
+      imageMimeType: extracted.imageMimeType,
+      mockScenario: options.mockScenario,
+    })
+  } catch (err) {
+    console.error("[check] dify_invoke_failed", {
+      documentId: doc.id,
+      errorKind: err instanceof Error ? err.name : "unknown",
+      message: err instanceof Error ? err.message.slice(0, 200) : "unknown",
+    })
+    await saveFallbackAndFinish(admin, {
+      documentId: doc.id,
+      organizationId: options.organizationId,
+      skipReview: Boolean(org.skip_finding_review),
+      reason: "dify_invoke_failed",
+    })
+    return {
+      ok: true,
+      findingCount: 1,
+      usedFallback: true,
+      reviewStatus: org.skip_finding_review ? "approved" : "pending",
+      mode: "dify_error",
+    }
+  }
 
   const reviewStatus = org.skip_finding_review ? "approved" : "pending"
 
@@ -165,11 +205,25 @@ export async function runDocumentCheck(
     .update({ status: "reviewed" satisfies DocumentStatus })
     .eq("id", doc.id)
 
+  const mode: RunCheckResult["mode"] = decideMockMode({
+    mockScenario: options.mockScenario,
+  }).mock
+    ? "mock"
+    : "live"
+
+  console.error("[check] finished", {
+    documentId: doc.id,
+    findingCount: rows.length,
+    usedFallback: difyResult.usedFallback,
+    mode,
+  })
+
   return {
     ok: true,
     findingCount: rows.length,
     usedFallback: difyResult.usedFallback,
     reviewStatus,
+    mode,
   }
 }
 
