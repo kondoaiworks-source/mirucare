@@ -70,7 +70,6 @@ export async function runMockDifyCheck(
   void input.municipality
   void input.prefecture
   void input.national
-  void input.serviceType
   void input.docType
 
   await new Promise((r) => setTimeout(r, 80))

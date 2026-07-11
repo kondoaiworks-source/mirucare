@@ -18,7 +18,8 @@ import {
 async function testSuccess() {
   const result = await runMockDifyCheck({
     municipality: "渋谷区",
-    serviceType: "訪問介護",
+    prefecture: "東京都",
+    national: "0",
     docType: "提供記録",
     mockScenario: "success",
   })
@@ -40,7 +41,8 @@ async function testSuccess() {
 async function testParseError() {
   const result = await runMockDifyCheck({
     municipality: "渋谷区",
-    serviceType: "訪問介護",
+    prefecture: "東京都",
+    national: "0",
     docType: "提供記録",
     mockScenario: "parse_error",
   })
@@ -54,7 +56,8 @@ async function testParseError() {
 async function testEmpty() {
   const result = await runMockDifyCheck({
     municipality: "渋谷区",
-    serviceType: "訪問介護",
+    prefecture: "東京都",
+    national: "0",
     docType: "提供記録",
     mockScenario: "empty",
   })
