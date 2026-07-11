@@ -32,9 +32,17 @@ function pickAnswerText(payload: DifyWorkflowResponse): string {
   return JSON.stringify(payload)
 }
 
+/** DIFY_BASE_URL はオリジンのみ。末尾の /v1 は除去してから付与する */
+function normalizeDifyBaseUrl(raw: string): string {
+  return raw.replace(/\/$/, "").replace(/\/v1$/i, "")
+}
+
 /**
- * Dify Workflow / Chat へチェック依頼を送る。
+ * Dify Workflow へチェック依頼を送る。
  * APIキーはサーバー環境変数のみ。クライアントに露出しない。
+ *
+ * Workflow 入力変数:
+ * - document_text / prefecture / municipality / doc_type / national
  */
 export async function runDifyCheck(
   input: DifyCheckInput
@@ -44,19 +52,19 @@ export async function runDifyCheck(
   }
 
   const apiKey = process.env.DIFY_API_KEY!.trim()
-  const baseUrl = (process.env.DIFY_BASE_URL ?? "https://api.dify.ai").replace(
-    /\/$/,
-    ""
+  const baseUrl = normalizeDifyBaseUrl(
+    process.env.DIFY_BASE_URL ?? "https://api.dify.ai"
   )
 
   const inputs: Record<string, string> = {
-    municipality: input.municipality || "未設定",
-    service_type: input.serviceType,
-    doc_type: input.docType,
     document_text: input.documentText?.slice(0, 80000) ?? "",
+    prefecture: input.prefecture || "",
+    municipality: input.municipality || "",
+    doc_type: input.docType,
+    national: input.national,
   }
 
-  // 画像はビジョン入力用に渡す（Workflow 側で files / image 変数を受ける想定）
+  // 画像はビジョン入力用に渡す（Workflow 側で受け取る場合）
   if (input.imageBase64) {
     inputs.image_base64 = input.imageBase64
     inputs.image_mime_type = input.imageMimeType ?? "image/jpeg"

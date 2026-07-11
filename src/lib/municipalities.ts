@@ -56,6 +56,25 @@ export const MUNICIPALITIES: MunicipalityOption[] = [
   { prefecture: "沖縄県", name: "那覇市", label: "沖縄県 那覇市" },
 ]
 
+/** オンボーディングで保存した市区町村名から都道府県を解決する */
+export function findMunicipalityByName(
+  name: string | null | undefined
+): MunicipalityOption | undefined {
+  if (!name?.trim()) return undefined
+  const trimmed = name.trim()
+  return (
+    MUNICIPALITIES.find((m) => m.name === trimmed) ??
+    MUNICIPALITIES.find((m) => m.label === trimmed) ??
+    MUNICIPALITIES.find((m) => trimmed.endsWith(m.name))
+  )
+}
+
+export function prefectureFromMunicipality(
+  municipality: string | null | undefined
+): string {
+  return findMunicipalityByName(municipality)?.prefecture ?? ""
+}
+
 export const SERVICE_TYPE_OPTIONS = [
   {
     value: "訪問介護" as const,

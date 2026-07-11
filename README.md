@@ -94,6 +94,14 @@ SQL Editor で次を **順番に** 実行します。
 6. 設定 →「人間レビューをスキップ」をオフにすると、承認前は指摘が非表示になること
 7. 「対応した」操作が `finding_action_logs` に残ること（月次レポート集計用）
 
+### 本番 Dify への切替
+
+1. Dify Workflow の API キーを `.env.local` / Vercel の `DIFY_API_KEY` に設定（チャットや Git に書かない）
+2. `DIFY_BASE_URL=https://api.dify.ai`（末尾 `/v1` ありでも可。コード側で正規化）
+3. `DIFY_MOCK=0` にして開発サーバー再起動（本番は Vercel 再デプロイ）
+4. Workflow 入力変数は次を想定:
+   - `document_text` / `prefecture` / `municipality` / `doc_type` / `national`（`"1"`=国基準・`"0"`=自治体基準）
+
 ## 動作確認手順（STEP 5：ダッシュボードと期限アラート）
 
 1. マイグレーション⑤（`20260711040000_deadlines.sql`）を SQL Editor で実行する（**ファイルの中身**を貼る）

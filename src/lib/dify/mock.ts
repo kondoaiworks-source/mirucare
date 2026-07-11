@@ -68,6 +68,8 @@ export async function runMockDifyCheck(
 
   // 入力が渡されていることをログ相当で検証（個人情報は出さない）
   void input.municipality
+  void input.prefecture
+  void input.national
   void input.serviceType
   void input.docType
 

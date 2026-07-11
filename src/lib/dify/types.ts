@@ -17,8 +17,12 @@ export type DifyCheckResult = {
 }
 
 export type DifyCheckInput = {
+  /** 市区町村名（ローカル基準）。未設定時は国基準 */
   municipality: string
-  serviceType: string
+  /** 都道府県名 */
+  prefecture: string
+  /** 国基準フラグ（"1"=国基準 / "0"=自治体基準） */
+  national: "0" | "1"
   docType: string
   /** PDF/CSV 等から抽出したテキスト */
   documentText?: string

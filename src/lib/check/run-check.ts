@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { extractDocumentContent } from "@/lib/check/extract"
 import { runDifyCheck } from "@/lib/dify/client"
 import { normalizeSeverity, type MockScenario } from "@/lib/dify/types"
+import { prefectureFromMunicipality } from "@/lib/municipalities"
 import type { DocumentStatus } from "@/types/database"
 
 export type RunCheckOptions = {
@@ -43,7 +44,7 @@ export async function runDocumentCheck(
 
   const { data: org, error: orgError } = await admin
     .from("organizations")
-    .select("id, municipality, service_type, skip_finding_review")
+    .select("id, municipality, skip_finding_review")
     .eq("id", options.organizationId)
     .maybeSingle()
 
@@ -83,9 +84,12 @@ export async function runDocumentCheck(
     doc.original_name
   )
 
+  const municipality = org.municipality?.trim() || ""
+  const useNational = !municipality
   const difyResult = await runDifyCheck({
-    municipality: org.municipality ?? "未設定",
-    serviceType: org.service_type,
+    municipality,
+    prefecture: prefectureFromMunicipality(municipality),
+    national: useNational ? "1" : "0",
     docType: doc.doc_type,
     documentText: extracted.text,
     imageBase64: extracted.imageBase64,
