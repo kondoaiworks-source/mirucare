@@ -110,8 +110,9 @@ export function isCheckoutPlan(
 
 /** Stripe Checkout は Price ID（price_…）が必要。Product ID（prod_…）は不可 */
 function asStripePriceId(value: string | undefined): string | undefined {
-  if (!value) return undefined
-  if (value.startsWith("price_")) return value
+  const trimmed = value?.trim().replace(/^["']|["']$/g, "")
+  if (!trimmed) return undefined
+  if (trimmed.startsWith("price_")) return trimmed
   return undefined
 }
 
@@ -130,8 +131,11 @@ export function setupPriceId(): string | undefined {
 
 export function planFromPriceId(priceId: string | null | undefined): PlanType {
   if (!priceId) return "none"
-  if (priceId === process.env.STRIPE_PRICE_LIGHT) return "light"
-  if (priceId === process.env.STRIPE_PRICE_STANDARD) return "standard"
-  if (priceId === process.env.STRIPE_PRICE_PREMIUM) return "premium"
+  const light = asStripePriceId(process.env.STRIPE_PRICE_LIGHT)
+  const standard = asStripePriceId(process.env.STRIPE_PRICE_STANDARD)
+  const premium = asStripePriceId(process.env.STRIPE_PRICE_PREMIUM)
+  if (priceId === light) return "light"
+  if (priceId === standard) return "standard"
+  if (priceId === premium) return "premium"
   return "none"
 }

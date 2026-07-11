@@ -107,7 +107,10 @@ export async function runDifyCheck(
     return runMockDifyCheck(input)
   }
 
-  const apiKey = process.env.DIFY_API_KEY!.trim()
+  const apiKey = process.env.DIFY_API_KEY?.trim()
+  if (!apiKey) {
+    throw new Error("DIFY_API_KEY が未設定です")
+  }
   const baseUrl = normalizeDifyBaseUrl(
     process.env.DIFY_BASE_URL ?? "https://api.dify.ai"
   )
