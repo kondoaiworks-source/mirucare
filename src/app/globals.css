@@ -1,27 +1,197 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
+/* =========================================================
+   監査のミカタ — デザイントークン
+   「信頼のプロフェッショナル」
+   ========================================================= */
 :root {
+  /* Brand */
+  --primary: #0f766e;
+  --primary-dark: #0b3b37;
+  --primary-foreground: #ffffff;
+
+  /* Semantic */
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --danger: #b42318;
+  --danger-foreground: #ffffff;
+  --success: #0f766e;
+  --success-foreground: #ffffff;
+
+  /* Surfaces */
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0b3b37;
+  --surface: #f6f8fa;
+  --card: #ffffff;
+  --card-foreground: #0b3b37;
+  --popover: #ffffff;
+  --popover-foreground: #0b3b37;
+
+  /* Neutrals */
+  --secondary: #f6f8fa;
+  --secondary-foreground: #0b3b37;
+  --muted: #f6f8fa;
+  --muted-foreground: #4b5563;
+  --accent: #f6f8fa;
+  --accent-foreground: #0b3b37;
+
+  --destructive: #b42318;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #0f766e;
+
+  /* Charts (teal scale) */
+  --chart-1: #0f766e;
+  --chart-2: #0b3b37;
+  --chart-3: #b45309;
+  --chart-4: #14b8a6;
+  --chart-5: #5eead4;
+
+  /* Radius: 12px */
+  --radius: 0.75rem;
+
+  /* Shadow: blur小・透明度14%以下 */
+  --shadow-sm: 0 1px 2px rgb(11 59 55 / 0.08);
+  --shadow-md: 0 2px 8px rgb(11 59 55 / 0.1);
+  --shadow-lg: 0 4px 16px rgb(11 59 55 / 0.12);
+
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0b3b37;
+  --sidebar-primary: #0f766e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f6f8fa;
+  --sidebar-accent-foreground: #0b3b37;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #0f766e;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  --font-sans: var(--font-noto-sans-jp), "Noto Sans JP", ui-sans-serif, system-ui,
+    sans-serif;
+  --font-heading: var(--font-noto-sans-jp), "Noto Sans JP", ui-sans-serif,
+    system-ui, sans-serif;
+
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  html {
+    @apply font-sans antialiased;
+  }
+
+  body {
+    @apply bg-background text-foreground text-base leading-relaxed;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  /* フォーカスリング明示（WCAG 2.1 AA） */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* 数字は tabular-nums */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .shadow-subtle {
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* 月次レポート PDF（印刷時のみ） */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 16mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #0b3b37 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .report-print-root {
+    display: block !important;
+    font-size: 11pt;
+    line-height: 1.6;
+  }
+
+  .report-print-footer {
+    break-inside: avoid;
+  }
+
+  .report-print-root .shadow-subtle {
+    box-shadow: none !important;
   }
 }

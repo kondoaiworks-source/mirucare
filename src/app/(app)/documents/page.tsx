@@ -1,0 +1,49 @@
+import type { Metadata } from "next"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { DocumentList } from "@/components/features/documents/document-list"
+import {
+  healStuckCheckingDocumentsAction,
+  listDocumentsAction,
+} from "@/app/actions/documents"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "書類チェック",
+}
+
+export default async function DocumentsPage() {
+  await healStuckCheckingDocumentsAction()
+  const result = await listDocumentsAction()
+  const documents = result.data?.documents ?? []
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-primary-dark">書類チェック</h1>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            今日の記録をアップして、指摘されやすい不備の可能性を確認しましょう。
+          </p>
+        </div>
+        <Button asChild size="lg" className="shrink-0">
+          <Link href="/check/upload">今日の分をチェックする</Link>
+        </Button>
+      </div>
+
+      {!result.ok ? (
+        <Alert variant="destructive" className="rounded-lg">
+          <AlertCircle />
+          <AlertTitle>一覧を取得できませんでした</AlertTitle>
+          <AlertDescription>
+            {result.error ??
+              "通信状況をご確認のうえ、ページを再読み込みしてください。"}
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <DocumentList documents={documents} />
+      )}
+    </div>
+  )
+}

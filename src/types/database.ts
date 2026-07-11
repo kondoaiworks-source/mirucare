@@ -1,0 +1,162 @@
+export type ServiceType = "訪問介護" | "通所介護" | "その他"
+export type PlanType = "light" | "standard" | "premium" | "none"
+export type UserRole = "admin" | "staff"
+export type InvitationStatus = "pending" | "accepted" | "revoked" | "expired"
+
+export type DocType =
+  | "ケアプラン"
+  | "提供記録"
+  | "勤務表"
+  | "請求データ"
+  | "その他"
+
+export type DocumentStatus = "uploaded" | "checking" | "reviewed" | "done"
+
+export type FindingSeverity = "high" | "mid" | "low"
+export type FindingStatus = "open" | "later" | "fixed" | "dismissed"
+export type FindingReviewStatus = "pending" | "approved" | "rejected"
+export type FindingReviewAction = "approved" | "edited" | "rejected"
+export type FindingActionType = "fixed" | "later" | "dismissed" | "reopened"
+
+export type DeadlineKind = "同意日" | "交付日" | "更新期限" | "モニタリング"
+export type DeadlineStatus = "ok" | "warning" | "overdue" | "done"
+
+export type Deadline = {
+  id: string
+  organization_id: string
+  subject: string
+  kind: DeadlineKind
+  due_date: string
+  source_document_id: string | null
+  source_finding_id: string | null
+  status: DeadlineStatus
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+export type Organization = {
+  id: string
+  name: string
+  service_type: ServiceType
+  municipality: string | null
+  plan: PlanType
+  /** 未マイグレーション時は undefined → スキップ扱い */
+  skip_finding_review?: boolean
+  stripe_customer_id?: string | null
+  stripe_subscription_id?: string | null
+  stripe_subscription_status?: string | null
+  setup_fee_paid_at?: string | null
+  onboarding_completed_at: string | null
+  created_at: string
+  deleted_at: string | null
+}
+
+export type Finding = {
+  id: string
+  document_id: string
+  organization_id: string
+  severity: FindingSeverity
+  title: string
+  description: string
+  basis: string | null
+  suggestion: string | null
+  status: FindingStatus
+  review_status: FindingReviewStatus
+  is_fallback: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+export type FindingActionLog = {
+  id: string
+  finding_id: string
+  document_id: string
+  organization_id: string
+  actor_id: string
+  action: FindingActionType
+  note: string | null
+  created_at: string
+}
+
+export type Profile = {
+  id: string
+  organization_id: string | null
+  display_name: string
+  role: UserRole
+  /** プラットフォーム運営（全事業所レビュー） */
+  is_operator?: boolean
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+export type FindingFeedback = {
+  id: string
+  finding_id: string
+  document_id: string
+  organization_id: string
+  actor_id: string
+  reason: string | null
+  operator_note: string | null
+  operator_note_updated_at: string | null
+  operator_id: string | null
+  created_at: string
+}
+
+export type FindingReviewLog = {
+  id: string
+  finding_id: string
+  organization_id: string
+  reviewer_id: string
+  action: FindingReviewAction
+  duration_ms: number
+  created_at: string
+}
+
+export type Invitation = {
+  id: string
+  organization_id: string
+  email: string
+  role: UserRole
+  token: string
+  invited_by: string
+  status: InvitationStatus
+  expires_at: string
+  created_at: string
+  deleted_at: string | null
+}
+
+export type Document = {
+  id: string
+  organization_id: string
+  uploaded_by: string
+  doc_type: DocType
+  file_path: string
+  original_name: string
+  mime_type: string | null
+  file_size: number | null
+  status: DocumentStatus
+  created_at: string
+  deleted_at: string | null
+}
+
+export type Report = {
+  id: string
+  organization_id: string
+  /** 対象月の1日（YYYY-MM-DD） */
+  month: string
+  summary_md: string
+  risk_count: number
+  fixed_count: number
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+export type ProfileWithOrganization = Profile & {
+  organizations: Organization | null
+}
