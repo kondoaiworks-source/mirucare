@@ -9,6 +9,7 @@ import {
   buildFallbackFinding,
 } from "../src/lib/dify/parse"
 import { runMockDifyCheck, mockRawForScenario } from "../src/lib/dify/mock"
+import { isMostlyNoisePdfText } from "../src/lib/check/extract"
 import {
   CHECK_UI,
   containsForbiddenAssertion,
@@ -100,6 +101,21 @@ function testParseHelpers() {
   assert.equal(fail.usedFallback, true)
   assert.equal(fail.findings[0]?.title, buildFallbackFinding().title)
 
+  const unreadable = parseWithRetryAndFallback(
+    JSON.stringify({
+      findings: [],
+      meta: {
+        unreadable: true,
+        model_notes: "画像データのみであり点検不能です。",
+      },
+    })
+  )
+  assert.equal(unreadable.parseOk, true)
+  assert.equal(unreadable.usedFallback, true)
+  assert.equal(unreadable.findings.length, 1)
+  assert.equal(unreadable.findings[0]?.title, CHECK_UI.summaryUnreadable)
+  assert.ok(unreadable.findings[0]?.description?.includes("画像データのみ"))
+
   const rawEmpty = mockRawForScenario("empty")
   assert.ok(rawEmpty.includes("findings"))
   console.log("PASS parse helpers")
@@ -129,9 +145,22 @@ function testCopyLint() {
   console.log("PASS copy lint")
 }
 
+function testPdfNoiseText() {
+  assert.equal(isMostlyNoisePdfText("-- 1 of 1 --"), true)
+  assert.equal(isMostlyNoisePdfText(""), true)
+  assert.equal(
+    isMostlyNoisePdfText(
+      "サービス実施記録です。利用者の同意欄に日付がありません。ご確認ください。署名欄も空欄の可能性があります。"
+    ),
+    false
+  )
+  console.log("PASS pdf noise text")
+}
+
 async function main() {
   testParseHelpers()
   testCopyLint()
+  testPdfNoiseText()
   await testSuccess()
   await testParseError()
   await testEmpty()

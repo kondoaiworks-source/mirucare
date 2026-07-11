@@ -94,9 +94,35 @@ function fieldToText(value: unknown): string | undefined {
   return undefined
 }
 
+function readUnreadableMeta(parsed: unknown): {
+  unreadable: boolean
+  notes?: string
+} {
+  if (!parsed || typeof parsed !== "object") {
+    return { unreadable: false }
+  }
+  const meta = (parsed as Record<string, unknown>).meta
+  if (!meta || typeof meta !== "object") {
+    return { unreadable: false }
+  }
+  const m = meta as Record<string, unknown>
+  const flag = m.unreadable
+  const unreadable =
+    flag === true || flag === 1 || flag === "1" || flag === "true"
+  const notes =
+    typeof m.model_notes === "string"
+      ? m.model_notes
+      : typeof m.notes === "string"
+        ? m.notes
+        : undefined
+  return { unreadable, notes }
+}
+
 export function parseDifyFindings(rawText: string): {
   findings: DifyFindingItem[]
   parseOk: boolean
+  unreadable?: boolean
+  unreadableNotes?: string
 } {
   const candidate = extractJsonCandidate(rawText)
   if (!candidate) {
@@ -105,6 +131,7 @@ export function parseDifyFindings(rawText: string): {
 
   try {
     const parsed = JSON.parse(candidate) as unknown
+    const { unreadable, notes } = readUnreadableMeta(parsed)
     const findings = coerceFindings(parsed)
     if (!findings) {
       return { findings: [], parseOk: false }
@@ -115,7 +142,12 @@ export function parseDifyFindings(rawText: string): {
         (typeof f.title === "string" && f.title.trim()) ||
         (typeof f.description === "string" && f.description.trim())
     )
-    return { findings: cleaned, parseOk: true }
+    return {
+      findings: cleaned,
+      parseOk: true,
+      unreadable,
+      unreadableNotes: notes,
+    }
   } catch {
     return { findings: [], parseOk: false }
   }
@@ -135,8 +167,25 @@ export function buildFallbackFinding(): DifyFindingItem {
   }
 }
 
+/** Dify が meta.unreadable を返したときの指摘 */
+export function buildUnreadableFinding(notes?: string): DifyFindingItem {
+  const note =
+    notes?.trim() && notes.trim().length > 0
+      ? `（AIメモ: ${notes.trim().slice(0, 500)}）`
+      : ""
+  return {
+    severity: "mid",
+    title: CHECK_UI.summaryUnreadable,
+    description: `${CHECK_UI.summaryUnreadableBody}${note ? `\n${note}` : ""}`,
+    basis: "システム",
+    suggestion:
+      "文字情報のあるPDFやCSVでの再アップロードをご検討ください。画像の場合は文字がはっきり写っているかご確認ください。",
+  }
+}
+
 /**
  * リトライ付きパース。失敗時はフォールバック1件。
+ * meta.unreadable かつ findings 空のときは「画像のため確認できませんでした」。
  */
 export function parseWithRetryAndFallback(
   rawText: string,
@@ -147,8 +196,17 @@ export function parseWithRetryAndFallback(
 
   for (let i = 0; i < Math.min(attempts.length, MAX_PARSE_RETRIES + 1); i++) {
     lastRaw = attempts[i] ?? rawText
-    const { findings, parseOk } = parseDifyFindings(lastRaw)
+    const { findings, parseOk, unreadable, unreadableNotes } =
+      parseDifyFindings(lastRaw)
     if (parseOk) {
+      if (unreadable && findings.length === 0) {
+        return {
+          findings: [buildUnreadableFinding(unreadableNotes)],
+          rawText: lastRaw,
+          parseOk: true,
+          usedFallback: true,
+        }
+      }
       return {
         findings,
         rawText: lastRaw,

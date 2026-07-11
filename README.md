@@ -110,7 +110,9 @@ SQL Editor で次を **順番に** 実行します。
    - `[dify] invoke_live` → API 呼び出し開始
    - `[dify] check` で `parseOk: true` → 成功
    - `[dify] using_mock` / `[check] storage_download_failed` → **Dify は呼ばれていない**
-5. Dify の「監視」でメッセージ数・トークンが増えていれば到達成功（増えないなら未呼び出し）
+5. Dify の「ログ」に `kansatsu-check` の実行が増えていれば API 到達成功（「監視」のメッセージ数は Workflow では増えにくいことがあります）
+6. **スキャンPDF（画像のみのPDF）**: 文字がほぼ無い場合、アプリが1ページ目を PNG 化し `image_base64` で送ります。Vercel Logs に `[check] pdf_scan_as_image` が出ること
+7. Dify が `meta.unreadable: true` を返した場合、画面に「画像のため確認できませんでした」と出ること
 
 ### 本番 Dify への切替
 
@@ -120,8 +122,10 @@ SQL Editor で次を **順番に** 実行します。
 4. 本番ではモックを黙って使わずエラーにします（監視が 0 のまま成功する事故を防ぐ）
 5. Workflow 入力変数は次を想定:
    - `document_text` / `prefecture` / `municipality` / `doc_type` / `national`（`"1"`=国基準・`"0"`=自治体基準）
+   - 画像・スキャンPDF時: `image_base64` / `image_mime_type`（ビジョン対応モデルで読むこと）
 6. Workflow 出力は JSON（例: `{ "findings": [{ "severity", "title", "description", "basis", "suggestion" }] }`）。出力変数名は `check_result` / `result` / `text` / `answer` / `output` / `findings` などに対応。パースできないと「AIが確認できませんでした…」になります
-7. 失敗時は Vercel Runtime Logs の `[dify] check`（HTTP status・outputKeys・parseOk）を確認（個人情報は含めません）
+7. 読めない場合は `{ "findings": [], "meta": { "unreadable": true, "model_notes": "…" } }` を返すと、アプリが「画像のため確認できませんでした」と表示します
+8. 失敗時は Vercel Runtime Logs の `[dify] check`（HTTP status・outputKeys・parseOk）を確認（個人情報は含めません）
 
 ## 動作確認手順（STEP 5：ダッシュボードと期限アラート）
 
