@@ -19,15 +19,15 @@ export default async function DocumentsPage() {
   const documents = result.data?.documents ?? []
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+    <div className="mx-auto w-full min-w-0 max-w-3xl space-y-6">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-primary-dark">書類チェック</h1>
           <p className="mt-2 text-base leading-relaxed text-muted-foreground">
             今日の記録をアップして、指摘されやすい不備の可能性を確認しましょう。
           </p>
         </div>
-        <Button asChild size="lg" className="shrink-0">
+        <Button asChild size="lg" className="w-full shrink-0 sm:w-auto">
           <Link href="/check/upload">今日の分をチェックする</Link>
         </Button>
       </div>

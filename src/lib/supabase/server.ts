@@ -38,7 +38,8 @@ export function createClient() {
  * Route Handler / 管理処理のみ。クライアントにキーを渡さないこと。
  */
 export function createServiceClient() {
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
+  // createClient（ユーザー）と同じ URL 優先順にする（プロジェクト食い違い防止）
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!url || !key) {

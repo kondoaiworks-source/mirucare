@@ -63,10 +63,9 @@ export function toUserErrorMessage(error: unknown, fallback?: string): string {
   }
 
   if (
-    normalized.includes("permission") ||
-    normalized.includes("policy") ||
     normalized.includes("row-level security") ||
-    normalized.includes("rls") ||
+    normalized.includes("violates row-level security") ||
+    normalized.includes("permission denied") ||
     normalized.includes("42501")
   ) {
     return "この操作を行う権限がありません。ログイン状態をご確認ください。"

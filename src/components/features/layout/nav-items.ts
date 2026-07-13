@@ -44,7 +44,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     href: "/alerts",
     label: "アラート",
-    shortLabel: "アラート",
+    shortLabel: "期限",
     icon: Bell,
   },
   {

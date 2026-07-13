@@ -110,33 +110,35 @@ function DocumentCard({ doc }: { doc: DocumentListItem }) {
   }
 
   return (
-    <Card className="rounded-lg shadow-subtle transition-colors hover:bg-muted/40">
+    <Card className="min-w-0 overflow-hidden rounded-lg shadow-subtle transition-colors hover:bg-muted/40">
       <Link
         href={href}
-        className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="block min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              {Icon ? (
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Icon className="size-5" aria-hidden />
-                </span>
-              ) : null}
-              <div className="min-w-0">
-                <CardTitle className="truncate text-base">
+        <CardHeader className="min-w-0 space-y-2 pb-2">
+          <div className="flex min-w-0 items-start gap-3">
+            {Icon ? (
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Icon className="size-5" aria-hidden />
+              </span>
+            ) : null}
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+                <CardTitle className="min-w-0 flex-1 break-words text-base leading-snug [overflow-wrap:anywhere]">
                   {doc.original_name}
                 </CardTitle>
-                <CardDescription className="mt-1 text-sm">
-                  {isUploaded ? "種類未設定" : doc.doc_type}
-                  {doc.file_size ? ` · ${formatFileSize(doc.file_size)}` : null}
-                </CardDescription>
+                <span className="shrink-0">
+                  <StatusBadge doc={doc} />
+                </span>
               </div>
+              <CardDescription className="break-words text-sm [overflow-wrap:anywhere]">
+                {isUploaded ? "種類未設定" : doc.doc_type}
+                {doc.file_size ? ` · ${formatFileSize(doc.file_size)}` : null}
+              </CardDescription>
             </div>
-            <StatusBadge doc={doc} />
           </div>
         </CardHeader>
-        <CardContent className="pb-3">
+        <CardContent className="min-w-0 pb-3">
           <p className="text-sm text-muted-foreground">
             {new Date(doc.created_at).toLocaleString("ja-JP", {
               month: "short",
@@ -153,12 +155,12 @@ function DocumentCard({ doc }: { doc: DocumentListItem }) {
         </CardContent>
       </Link>
       {isUploaded ? (
-        <CardContent className="border-t border-border pt-3">
+        <CardContent className="min-w-0 border-t border-border pt-3">
           <Button
             type="button"
             variant="outline"
             size="lg"
-            className="min-h-11 w-full"
+            className="min-h-11 w-full max-w-full"
             disabled={pending}
             onClick={cancelUpload}
           >
@@ -213,12 +215,14 @@ export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
   )
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 space-y-8">
       <DocumentsRefreshPoller />
-      <section className="space-y-3">
+      <section className="min-w-0 space-y-3">
         <div className="flex items-end justify-between gap-3">
-          <h2 className="text-lg font-bold text-primary-dark">今日の分</h2>
-          <p className="text-sm tabular-nums text-muted-foreground">
+          <h2 className="min-w-0 text-lg font-bold text-primary-dark">
+            今日の分
+          </h2>
+          <p className="shrink-0 text-sm tabular-nums text-muted-foreground">
             {today.length}件
           </p>
         </div>
@@ -227,7 +231,7 @@ export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
             今日のアップロードはまだありません。
           </p>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid min-w-0 gap-3">
             {today.map((doc) => (
               <DocumentCard key={doc.id} doc={doc} />
             ))}
@@ -235,10 +239,12 @@ export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
         )}
       </section>
 
-      <section className="space-y-3">
+      <section className="min-w-0 space-y-3">
         <div className="flex items-end justify-between gap-3">
-          <h2 className="text-lg font-bold text-primary-dark">過去の分</h2>
-          <p className="text-sm tabular-nums text-muted-foreground">
+          <h2 className="min-w-0 text-lg font-bold text-primary-dark">
+            過去の分
+          </h2>
+          <p className="shrink-0 text-sm tabular-nums text-muted-foreground">
             {past.length}件
           </p>
         </div>
@@ -247,7 +253,7 @@ export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
             過去の書類はまだありません。
           </p>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid min-w-0 gap-3">
             {past.map((doc) => (
               <DocumentCard key={doc.id} doc={doc} />
             ))}

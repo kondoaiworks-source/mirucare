@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { toUserErrorMessage } from "@/lib/auth-errors"
 import {
   SIGNED_URL_EXPIRES_IN,
@@ -503,7 +503,7 @@ export async function softDeleteDocumentAction(
 
 /**
  * 種類未設定（uploaded）の取り消し専用。
- * チェック開始前の途中離脱レコードを一覧から消す。
+ * DB の SECURITY DEFINER RPC で論理削除する（RLS UPDATE の環境差を避ける）。
  */
 export async function cancelUploadedDocumentAction(
   documentId: string
@@ -512,97 +512,48 @@ export async function cancelUploadedDocumentAction(
     const ctx = await requireOrgContext()
     if ("error" in ctx) return { ok: false, error: ctx.error }
 
-    const { data: doc, error: docError } = await ctx.supabase
-      .from("documents")
-      .select("id, status")
-      .eq("id", documentId)
-      .eq("organization_id", ctx.organizationId)
-      .is("deleted_at", null)
-      .maybeSingle()
-
-    if (docError) {
-      console.error("[documents] cancel_uploaded_select", {
-        code: docError.code,
-        message: docError.message,
-      })
-      return {
-        ok: false,
-        error: toUserErrorMessage(
-          docError,
-          "書類の取得に失敗しました。ページを再読み込みして再度お試しください。"
-        ),
-      }
+    if (!documentId) {
+      return { ok: false, error: "書類が指定されていません。" }
     }
 
-    if (!doc) {
-      return {
-        ok: false,
-        error:
-          "書類が見つかりません。すでに取り消されている可能性があります。ページを再読み込みしてください。",
-      }
-    }
-
-    if (doc.status !== "uploaded") {
-      return {
-        ok: false,
-        error:
-          "種類未設定の書類のみ取り消せます。チェック開始後の書類は一覧から取り消せません。",
-      }
-    }
-
-    const deletedAt = new Date().toISOString()
-    const { error } = await ctx.supabase
-      .from("documents")
-      .update({ deleted_at: deletedAt })
-      .eq("id", documentId)
-      .eq("organization_id", ctx.organizationId)
-      .eq("status", "uploaded" satisfies DocumentStatus)
-      .is("deleted_at", null)
+    const { data: ok, error } = await ctx.supabase.rpc(
+      "cancel_uploaded_document",
+      { p_document_id: documentId }
+    )
 
     if (error) {
-      console.error("[documents] cancel_uploaded_update", {
+      console.error("[documents] cancel_uploaded_rpc", {
         code: error.code,
         message: error.message,
       })
+
+      // RPC 未適用時のフォールバック（service role）
+      if (
+        error.message?.toLowerCase().includes("could not find") ||
+        error.message?.toLowerCase().includes("function") ||
+        error.code === "PGRST202" ||
+        error.code === "42883"
+      ) {
+        return cancelUploadedDocumentViaServiceRole(
+          documentId,
+          ctx.organizationId
+        )
+      }
+
       return {
         ok: false,
         error: toUserErrorMessage(
           error,
-          "アップロードの取り消しに失敗しました。ページを再読み込みして再度お試しください。"
+          "アップロードの取り消しに失敗しました。Supabase で cancel_uploaded_document のマイグレーションを実行したかご確認ください。"
         ),
       }
     }
 
-    // SELECT ポリシーは deleted_at IS NULL のため、更新後 .select() は使わない。
-    // 見えなくなれば取り消し成功。
-    const { data: stillVisible, error: verifyError } = await ctx.supabase
-      .from("documents")
-      .select("id")
-      .eq("id", documentId)
-      .eq("organization_id", ctx.organizationId)
-      .is("deleted_at", null)
-      .maybeSingle()
-
-    if (verifyError) {
-      console.error("[documents] cancel_uploaded_verify", {
-        code: verifyError.code,
-        message: verifyError.message,
-      })
-      return {
-        ok: false,
-        error: toUserErrorMessage(
-          verifyError,
-          "取り消し結果の確認に失敗しました。ページを再読み込みしてください。"
-        ),
-      }
-    }
-
-    if (stillVisible) {
-      console.error("[documents] cancel_uploaded_still_visible")
+    if (ok !== true) {
       return {
         ok: false,
         error:
-          "取り消しを反映できませんでした。権限またはログイン状態をご確認のうえ、再度お試しください。",
+          "取り消せる書類が見つかりませんでした。種類未設定のままか、ページを再読み込みしてご確認ください。",
       }
     }
 
@@ -619,6 +570,62 @@ export async function cancelUploadedDocumentAction(
       error: toUserErrorMessage(
         error,
         "アップロードの取り消しに失敗しました。通信状況をご確認のうえ、再度お試しください。"
+      ),
+    }
+  }
+}
+
+async function cancelUploadedDocumentViaServiceRole(
+  documentId: string,
+  organizationId: string
+): Promise<ActionResult> {
+  try {
+    const admin = createServiceClient()
+    const { data: updated, error } = await admin
+      .from("documents")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", documentId)
+      .eq("organization_id", organizationId)
+      .eq("status", "uploaded" satisfies DocumentStatus)
+      .is("deleted_at", null)
+      .select("id")
+      .maybeSingle()
+
+    if (error) {
+      console.error("[documents] cancel_uploaded_service", {
+        code: error.code,
+        message: error.message,
+      })
+      return {
+        ok: false,
+        error: toUserErrorMessage(
+          error,
+          "アップロードの取り消しに失敗しました。再度お試しください。"
+        ),
+      }
+    }
+
+    if (!updated) {
+      return {
+        ok: false,
+        error:
+          "取り消せる書類が見つかりませんでした。種類未設定のままか、ページを再読み込みしてご確認ください。",
+      }
+    }
+
+    revalidatePath("/documents")
+    revalidatePath("/")
+    revalidatePath("/check/upload")
+    return { ok: true }
+  } catch (error) {
+    console.error("[documents] cancel_uploaded_service_throw", {
+      message: error instanceof Error ? error.message : "unknown",
+    })
+    return {
+      ok: false,
+      error: toUserErrorMessage(
+        error,
+        "アップロードの取り消しに失敗しました。環境変数 SUPABASE_SERVICE_ROLE_KEY をご確認ください。"
       ),
     }
   }

@@ -20,7 +20,7 @@ export function MobileTabBar({
       aria-label="モバイルメニュー"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="flex">
+      <ul className="flex w-full min-w-0 gap-0.5 px-1 pt-1">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
           const isActive =
@@ -45,24 +45,44 @@ export function MobileTabBar({
           const showBadge = showLaterBadge || showDocsBadge
 
           return (
-            <li key={item.href} className="min-w-0 flex-1">
+            <li key={item.href} className="min-w-0 flex-1 basis-0">
               <Link
                 href={item.href}
                 className={cn(
-                  "relative flex min-h-14 flex-col items-center justify-center gap-0.5 px-0.5 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  "relative flex min-h-14 w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 py-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                  isActive
+                    ? "bg-primary/15 font-bold text-primary"
+                    : "font-medium text-muted-foreground hover:bg-muted/60"
                 )}
                 aria-current={isActive ? "page" : undefined}
                 aria-label={
-                  showBadge ? `${item.label}（${badgeCount}件）` : undefined
+                  showBadge ? `${item.label}（${badgeCount}件）` : item.label
                 }
               >
-                <span className="relative">
-                  <Icon className="size-5" aria-hidden />
+                {/* 選択中の目印（上の線） */}
+                {isActive ? (
+                  <span
+                    className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-primary"
+                    aria-hidden
+                  />
+                ) : null}
+                <span
+                  className={cn(
+                    "relative inline-flex rounded-md p-1",
+                    isActive && "bg-primary/10"
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "size-5 shrink-0",
+                      isActive && "stroke-[2.25]"
+                    )}
+                    aria-hidden
+                  />
                   {showBadge ? (
                     <span
                       className={cn(
-                        "absolute -right-2.5 -top-1.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold tabular-nums leading-none",
+                        "absolute -right-2 -top-1.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold tabular-nums leading-none",
                         showLaterBadge
                           ? "bg-warning text-warning-foreground"
                           : "bg-primary text-primary-foreground"
@@ -72,7 +92,9 @@ export function MobileTabBar({
                     </span>
                   ) : null}
                 </span>
-                <span className="truncate">{item.shortLabel}</span>
+                <span className="w-full truncate text-center leading-tight">
+                  {item.shortLabel}
+                </span>
               </Link>
             </li>
           )

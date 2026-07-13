@@ -24,7 +24,7 @@ export function AppShell({
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader facilityName={facilityName} />
-        <main className="flex-1 overflow-y-auto bg-surface px-4 py-6 pb-24 md:px-8 md:pb-8 print:bg-white print:p-0 print:pb-0">
+        <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-surface px-4 py-6 pb-24 md:px-8 md:pb-8 print:bg-white print:p-0 print:pb-0">
           {children}
         </main>
         <div className="no-print pb-16 md:pb-0">
