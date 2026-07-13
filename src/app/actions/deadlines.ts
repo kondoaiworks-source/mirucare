@@ -17,6 +17,7 @@ import type {
   Deadline,
   DeadlineKind,
   DeadlineStatus,
+  DocumentStatus,
   Finding,
   PlanType,
 } from "@/types/database"
@@ -205,7 +206,20 @@ export async function markDeadlineDoneAction(
   return { ok: true }
 }
 
+export type DashboardIncompleteDocument = {
+  id: string
+  original_name: string
+  doc_type: string
+  status: DocumentStatus
+  created_at: string
+}
+
 export type DashboardData = {
+  /** 未完了の書類チェック（今日やることの先頭） */
+  incompleteDocuments: DashboardIncompleteDocument[]
+  /** まもなく／超過の期限アラート（書類とは別） */
+  upcomingDeadlines: Array<Deadline & { daysLeft: number }>
+  /** @deprecated upcomingDeadlines を使う */
   todayTodos: Array<Deadline & { daysLeft: number }>
   weekly: {
     uploads: number
@@ -230,41 +244,55 @@ export async function getDashboardDataAction(): Promise<
   weekAgo.setDate(weekAgo.getDate() - 7)
   const weekAgoIso = weekAgo.toISOString()
 
-  const [deadlinesRes, docsRes, findingsRes, fixedRes, recentRes] =
-    await Promise.all([
-      ctx.supabase
-        .from("deadlines")
-        .select("*")
-        .eq("organization_id", ctx.organizationId)
-        .is("deleted_at", null)
-        .neq("status", "done")
-        .order("due_date", { ascending: true })
-        .limit(20),
-      ctx.supabase
-        .from("documents")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", ctx.organizationId)
-        .is("deleted_at", null)
-        .gte("created_at", weekAgoIso),
-      ctx.supabase
-        .from("findings")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", ctx.organizationId)
-        .eq("review_status", "approved")
-        .is("deleted_at", null)
-        .gte("created_at", weekAgoIso),
-      ctx.supabase
-        .from("findings")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", ctx.organizationId)
-        .eq("review_status", "approved")
-        .eq("status", "fixed")
-        .is("deleted_at", null)
-        .gte("updated_at", weekAgoIso),
-      ctx.supabase
-        .from("findings")
-        .select(
-          `
+  const [
+    deadlinesRes,
+    incompleteDocsRes,
+    docsRes,
+    findingsRes,
+    fixedRes,
+    recentRes,
+  ] = await Promise.all([
+    ctx.supabase
+      .from("deadlines")
+      .select("*")
+      .eq("organization_id", ctx.organizationId)
+      .is("deleted_at", null)
+      .neq("status", "done")
+      .order("due_date", { ascending: true })
+      .limit(20),
+    ctx.supabase
+      .from("documents")
+      .select("id, original_name, doc_type, status, created_at")
+      .eq("organization_id", ctx.organizationId)
+      .is("deleted_at", null)
+      .neq("status", "done")
+      .order("created_at", { ascending: false })
+      .limit(3),
+    ctx.supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", ctx.organizationId)
+      .is("deleted_at", null)
+      .gte("created_at", weekAgoIso),
+    ctx.supabase
+      .from("findings")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", ctx.organizationId)
+      .eq("review_status", "approved")
+      .is("deleted_at", null)
+      .gte("created_at", weekAgoIso),
+    ctx.supabase
+      .from("findings")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", ctx.organizationId)
+      .eq("review_status", "approved")
+      .eq("status", "fixed")
+      .is("deleted_at", null)
+      .gte("updated_at", weekAgoIso),
+    ctx.supabase
+      .from("findings")
+      .select(
+        `
           *,
           documents (
             id,
@@ -272,13 +300,13 @@ export async function getDashboardDataAction(): Promise<
             doc_type
           )
         `
-        )
-        .eq("organization_id", ctx.organizationId)
-        .eq("review_status", "approved")
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(5),
-    ])
+      )
+      .eq("organization_id", ctx.organizationId)
+      .eq("review_status", "approved")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(5),
+  ])
 
   const deadlines = refreshDeadlineStatuses(
     (deadlinesRes.data ?? []) as Deadline[]
@@ -287,16 +315,22 @@ export async function getDashboardDataAction(): Promise<
     ...((deadlinesRes.data ?? []) as Deadline[]),
   ])
 
-  const todayTodos = deadlines
+  const upcomingDeadlines = deadlines
     .filter((d) => d.status !== "done")
     .map((d) => ({ ...d, daysLeft: daysUntilDue(d.due_date, today) }))
     .sort((a, b) => a.daysLeft - b.daysLeft)
     .slice(0, 3)
 
+  const incompleteDocuments = (
+    (incompleteDocsRes.data ?? []) as DashboardIncompleteDocument[]
+  ).filter((d) => d.status !== "done")
+
   return {
     ok: true,
     data: {
-      todayTodos,
+      incompleteDocuments,
+      upcomingDeadlines,
+      todayTodos: upcomingDeadlines,
       weekly: {
         uploads: docsRes.count ?? 0,
         findings: findingsRes.count ?? 0,

@@ -38,6 +38,7 @@ SQL Editor で次を **順番に** 実行します。
 7. `supabase/migrations/20260711060000_admin_review.sql`（運営レビュー）
 8. `supabase/migrations/20260711070000_stripe_billing.sql`（Stripe課金）
 9. `supabase/migrations/20260713080000_attendance_service_records.sql`（勤怠・日報・シフト）
+10. `supabase/migrations/20260713090000_helpers_employee_code_unique.sql`（職員コードユニーク）
 
 その後：
 
@@ -68,7 +69,8 @@ SQL Editor で次を **順番に** 実行します。
 4. **ステップ2**: 書類種類をカードで選ぶ（自動判定の「候補」が先頭）→「チェックを開始する」
 5. `/documents` 一覧へ遷移し、状態が「チェック中」になること（または結果画面へ）
 6. 一覧で「今日の分／過去の分」と空状態CTAを確認する
-7. 受け入れ条件の目安
+7. **種類未設定の取り消し**: ステップ1だけ済ませて離脱すると一覧に「種類未設定」が残る。カードの「このアップロードを取り消す」で一覧・ナビバッジから消えること（完了ボタンでは消えない）
+8. 受け入れ条件の目安
    - 375px幅で撮影→種類→開始がスムーズに進むこと（確認画面なしの2ステップ）
    - 大きめPDFでも進捗が見えること（画面遷移しても UploadProvider により継続）
    - Storage バケットは private。閲覧は署名付きURL（10分）のみ
@@ -136,10 +138,12 @@ SQL Editor で次を **順番に** 実行します。
 1. マイグレーション⑤（`20260711040000_deadlines.sql`）を SQL Editor で実行する（**ファイルの中身**を貼る）
 2. `/` ダッシュボードを開く
    - 最上部が「今日やること」であること
+   - **未完了の書類チェック**（種類未設定など）が期限より先に出ること（書類一覧とは連動）
+   - **まもなくの期限**は同意日などの期限アラートであり、書類件数とは別であること（ヒント文言あり）
    - 右上（スマホは上部）に「今日の分をチェックする」があること
    - 「今週のチェック状況」が大きな数字3つであること
 3. `/alerts` で期限を手動追加し、タブ（超過／7日以内／30日以内／完了）を切り替える
-4. 「対応した」で完了タブへ移ること。超過はアイコン＋「超過」ラベルであること
+4. 「対応した」で完了タブへ移り、ダッシュボードの「まもなくの期限」からも消えること。超過はアイコン＋「超過」ラベルであること
 5. （任意）メール通知
    - `.env.local` に `RESEND_API_KEY` / `RESEND_FROM_EMAIL` / `CRON_SECRET` を設定
    - `curl -X POST http://localhost:3000/api/cron/deadline-reminders -H "Authorization: Bearer $CRON_SECRET"`
@@ -229,19 +233,20 @@ SQL Editor で次を **順番に** 実行します。
 
 ## 動作確認手順（STEP 9：勤怠矛盾検知・請求CSV突合）
 
-1. マイグレーション⑨（`20260713080000_attendance_service_records.sql`）を SQL Editor で実行する  
-   （単体適用用コピー: `supabase/schema.sql`）
-2. `helpers` / `attendance` / `service_records` に自事業所のテストデータを入れる（`organization_id` = 事業所ID）
-3. [http://localhost:3000/reconcile](http://localhost:3000/reconcile) →「勤怠の矛盾を検知する」
-   - 同一ヘルパー・同一日の時間重複 → `OVERLAP`
-   - 退勤より日報終了が後 → `TIME_DISCREPANCY`
+1. マイグレーション⑨⑩（`20260713080000_…` / `20260713090000_…`）を SQL Editor で実行する
+2. [http://localhost:3000/attendance/import](http://localhost:3000/attendance/import) で介護ソフト種別を選び、サンプルCSVを取り込む
+   - `/samples/attendance-helpers.csv`
+   - `/samples/attendance-timecard.csv`
+   - `/samples/attendance-service-records.csv`（時間重複の例を含む）
+3. [http://localhost:3000/attendance](http://localhost:3000/attendance) で「矛盾を検知する」→ `OVERLAP` / `TIME_DISCREPANCY` が出ること
 4. 「請求CSVを突合する」で対象月を選び、ローカルの `.csv` をドロップ
-   - **CSVはサーバーへ送信・保存されない**（DevTools Network で確認）
+   - **請求CSVはサーバーへ送信・保存されない**（DevTools Network で確認）
    - 完全一致は緑、ズレ／日報なしは赤で警告
 5. 受け入れの目安
-   - [1] RLS により他事業所の日報が見えないこと
-   - [2] 請求CSV用の Storage / テーブルが存在しないこと
-   - [3] `npm run test` で突合・矛盾ロジックの単体テストが通ること
+   - [1] 介護ソフトCSV取込後に矛盾検知ができること
+   - [2] RLS により他事業所の日報が見えないこと
+   - [3] 請求CSV用の Storage / テーブルが存在しないこと
+   - [4] `npm run test` で突合・矛盾・取込パーサの単体テストが通ること
 
 ```bash
 npm install papaparse react-dropzone
@@ -263,6 +268,7 @@ npm install -D @types/papaparse
 | `/check/demo/[scenario]` | 結果画面デモ（success / parse_error / empty） |
 | `/later` | あとで確認リスト |
 | `/reconcile` | 突合・矛盾検知ハブ |
+| `/attendance/import` | 介護ソフトCSV取込（ヘルパー・勤怠・日報・シフト） |
 | `/attendance` | 勤怠の矛盾検知 |
 | `/billing-reconcile` | 請求CSV突合（ブラウザ完結） |
 | `/alerts` | 期限アラート |

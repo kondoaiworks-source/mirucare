@@ -4,7 +4,14 @@
 
 export const DEADLINE_UI = {
   todayTitle: "今日やること",
-  todayEmpty: "今日の期限対応はありません",
+  todayEmpty: "今日のチェックや期限対応はありません",
+  todayDocsTitle: "未完了の書類チェック",
+  upcomingDeadlinesTitle: "まもなくの期限",
+  upcomingDeadlinesHint:
+    "同意日・更新期限などの期限アラートです（書類チェック一覧とは別です）。対応が終わったらアラート画面で「対応した」を押してください。",
+  uploadedTodo: "種類未設定：種類を選んでチェックを続ける",
+  checkingTodo: "チェック中：結果を確認する",
+  reviewedTodo: "確認待ち：指摘への対応を続ける",
   daysLeft: (n: number) => (n === 0 ? "本日" : `残り${n}日`),
   daysOverdue: (n: number) => `${n}日超過`,
   weeklyTitle: "今週のチェック状況",
@@ -34,6 +41,7 @@ export const DEADLINE_UI = {
   statusOk: "予定",
   statusDone: "対応済み",
 } as const
+
 
 export const DEADLINE_KIND_OPTIONS = [
   "同意日",

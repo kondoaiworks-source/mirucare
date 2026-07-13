@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useTransition, type MouseEvent } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Loader2, Upload, Check, Clock } from "lucide-react"
+import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/features/empty-state"
+import { cancelUploadedDocumentAction } from "@/app/actions/documents"
 import {
   formatFileSize,
   DOC_TYPE_OPTIONS,
@@ -78,17 +80,41 @@ function StatusBadge({ doc }: { doc: DocumentListItem }) {
 }
 
 function DocumentCard({ doc }: { doc: DocumentListItem }) {
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
   const typeMeta = DOC_TYPE_OPTIONS.find((o) => o.value === doc.doc_type)
   const Icon = typeMeta?.icon
   const href =
     doc.status === "uploaded" ? "/check/upload" : `/check/${doc.id}`
+  const isUploaded = doc.status === "uploaded"
+
+  function cancelUpload(e: MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (
+      !window.confirm(
+        "このアップロードを取り消しますか？一覧から消え、種類の選択前の状態に戻ります。"
+      )
+    ) {
+      return
+    }
+    startTransition(async () => {
+      const result = await cancelUploadedDocumentAction(doc.id)
+      if (!result.ok) {
+        toast.error(result.error ?? "取り消しに失敗しました")
+        return
+      }
+      toast.success("アップロードを取り消しました")
+      router.refresh()
+    })
+  }
 
   return (
-    <Link
-      href={href}
-      className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <Card className="rounded-lg shadow-subtle transition-colors hover:bg-muted/40">
+    <Card className="rounded-lg shadow-subtle transition-colors hover:bg-muted/40">
+      <Link
+        href={href}
+        className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
@@ -102,7 +128,7 @@ function DocumentCard({ doc }: { doc: DocumentListItem }) {
                   {doc.original_name}
                 </CardTitle>
                 <CardDescription className="mt-1 text-sm">
-                  {doc.doc_type}
+                  {isUploaded ? "種類未設定" : doc.doc_type}
                   {doc.file_size ? ` · ${formatFileSize(doc.file_size)}` : null}
                 </CardDescription>
               </div>
@@ -110,7 +136,7 @@ function DocumentCard({ doc }: { doc: DocumentListItem }) {
             <StatusBadge doc={doc} />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-3">
           <p className="text-sm text-muted-foreground">
             {new Date(doc.created_at).toLocaleString("ja-JP", {
               month: "short",
@@ -119,9 +145,35 @@ function DocumentCard({ doc }: { doc: DocumentListItem }) {
               minute: "2-digit",
             })}
           </p>
+          {isUploaded ? (
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              種類を選んでチェックを続けるか、下のボタンで取り消しできます。
+            </p>
+          ) : null}
         </CardContent>
-      </Card>
-    </Link>
+      </Link>
+      {isUploaded ? (
+        <CardContent className="border-t border-border pt-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="min-h-11 w-full"
+            disabled={pending}
+            onClick={cancelUpload}
+          >
+            {pending ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                取り消し中…
+              </>
+            ) : (
+              "このアップロードを取り消す"
+            )}
+          </Button>
+        </CardContent>
+      ) : null}
+    </Card>
   )
 }
 

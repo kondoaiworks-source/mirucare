@@ -6,6 +6,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock,
+  FileCheck2,
 } from "lucide-react"
 import {
   Card,
@@ -18,7 +19,10 @@ import { Button } from "@/components/ui/button"
 import { RiskBadge, type RiskLevel } from "@/components/features/risk-badge"
 import { DEADLINE_UI, toPrivacySubject } from "@/lib/deadlines"
 import { annotateTerms } from "@/lib/copy/check-ui"
-import type { DashboardData } from "@/app/actions/deadlines"
+import type {
+  DashboardData,
+  DashboardIncompleteDocument,
+} from "@/app/actions/deadlines"
 import type { FindingSeverity } from "@/types/database"
 import { cn } from "@/lib/utils"
 
@@ -59,7 +63,39 @@ function DaysBadge({ daysLeft }: { daysLeft: number }) {
   )
 }
 
+function documentTodoCopy(doc: DashboardIncompleteDocument): {
+  label: string
+  href: string
+  cta: string
+} {
+  if (doc.status === "uploaded") {
+    return {
+      label: DEADLINE_UI.uploadedTodo,
+      href: "/check/upload",
+      cta: "種類を選ぶ",
+    }
+  }
+  if (doc.status === "checking") {
+    return {
+      label: DEADLINE_UI.checkingTodo,
+      href: `/check/${doc.id}`,
+      cta: "結果を見る",
+    }
+  }
+  return {
+    label: DEADLINE_UI.reviewedTodo,
+    href: `/check/${doc.id}`,
+    cta: "続ける",
+  }
+}
+
 export function DashboardView({ data }: { data: DashboardData }) {
+  const incompleteDocuments = data.incompleteDocuments ?? []
+  const upcomingDeadlines =
+    data.upcomingDeadlines ?? data.todayTodos ?? []
+  const hasTodayWork =
+    incompleteDocuments.length > 0 || upcomingDeadlines.length > 0
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -68,7 +104,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
             ダッシュボード
           </h1>
           <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-            今日の期限と、今週のチェック状況を確認できます。
+            未完了の書類チェックと、まもなくの期限を確認できます。
           </p>
         </div>
         <Button asChild size="lg" className="w-full shrink-0 sm:w-auto">
@@ -76,84 +112,134 @@ export function DashboardView({ data }: { data: DashboardData }) {
         </Button>
       </div>
 
-      {/* 1. 今日やること — 最初に目に入る */}
+      {/* 1. 今日やること — 未完了書類を優先 */}
       <section className="space-y-3" aria-labelledby="today-todos">
-        <h2
-          id="today-todos"
-          className="text-lg font-bold text-primary-dark"
-        >
+        <h2 id="today-todos" className="text-lg font-bold text-primary-dark">
           {DEADLINE_UI.todayTitle}
         </h2>
 
-        {data.todayTodos.length === 0 ? (
+        {!hasTodayWork ? (
           <Card className="rounded-lg shadow-subtle">
             <CardContent className="flex items-center gap-3 py-6 text-base leading-relaxed text-muted-foreground">
-              <CheckCircle2 className="size-6 shrink-0 text-primary" aria-hidden />
+              <CheckCircle2
+                className="size-6 shrink-0 text-primary"
+                aria-hidden
+              />
               {DEADLINE_UI.todayEmpty}
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-3">
-            {data.todayTodos.map((item) => {
-              const daysLabel =
-                item.daysLeft < 0
-                  ? DEADLINE_UI.daysOverdue(Math.abs(item.daysLeft))
-                  : DEADLINE_UI.daysLeft(item.daysLeft)
-              const bigNumber =
-                item.daysLeft < 0
-                  ? Math.abs(item.daysLeft)
-                  : item.daysLeft
-              return (
-              <Card key={item.id} className="rounded-lg shadow-subtle">
-                <CardContent className="flex items-center gap-4 py-4">
-                  <div className="min-w-[6rem] text-center">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      {item.daysLeft < 0 ? "超過" : item.daysLeft === 0 ? "本日" : "残り"}
-                    </p>
-                    <p
-                      className={cn(
-                        "mt-1 text-4xl font-bold tabular-nums leading-none",
-                        item.daysLeft < 0 ? "text-danger" : "text-primary-dark"
-                      )}
-                    >
-                      {item.daysLeft === 0 ? "—" : bigNumber}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {item.daysLeft === 0 ? "" : "日"}
-                    </p>
-                    <p className="sr-only">{daysLabel}</p>
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <DaysBadge daysLeft={item.daysLeft} />
-                      <span className="text-sm text-muted-foreground">
-                        {item.kind}
-                      </span>
-                    </div>
-                    <p className="truncate text-base font-semibold text-primary-dark">
-                      {toPrivacySubject(item.subject)}
-                    </p>
-                    <p className="text-sm tabular-nums text-muted-foreground">
-                      期限 {item.due_date}
-                    </p>
-                  </div>
-                  <Button asChild variant="outline" className="shrink-0">
-                    <Link href="/alerts">詳細</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-              )
-            })}
+          <div className="space-y-6">
+            {incompleteDocuments.length > 0 ? (
+              <div className="space-y-3">
+                <h3 className="text-base font-semibold text-primary-dark">
+                  {DEADLINE_UI.todayDocsTitle}
+                </h3>
+                <div className="grid gap-3">
+                  {incompleteDocuments.map((doc) => {
+                    const todo = documentTodoCopy(doc)
+                    return (
+                      <Card key={doc.id} className="rounded-lg shadow-subtle">
+                        <CardContent className="flex items-center gap-4 py-4">
+                          <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <FileCheck2 className="size-6" aria-hidden />
+                          </span>
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <p className="text-sm font-medium text-warning">
+                              {todo.label}
+                            </p>
+                            <p className="truncate text-base font-semibold text-primary-dark">
+                              {doc.original_name}
+                            </p>
+                          </div>
+                          <Button asChild variant="outline" className="shrink-0">
+                            <Link href={todo.href}>{todo.cta}</Link>
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {upcomingDeadlines.length > 0 ? (
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-base font-semibold text-primary-dark">
+                    {DEADLINE_UI.upcomingDeadlinesTitle}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    {DEADLINE_UI.upcomingDeadlinesHint}
+                  </p>
+                </div>
+                <div className="grid gap-3">
+                  {upcomingDeadlines.map((item) => {
+                    const daysLabel =
+                      item.daysLeft < 0
+                        ? DEADLINE_UI.daysOverdue(Math.abs(item.daysLeft))
+                        : DEADLINE_UI.daysLeft(item.daysLeft)
+                    const bigNumber =
+                      item.daysLeft < 0
+                        ? Math.abs(item.daysLeft)
+                        : item.daysLeft
+                    return (
+                      <Card key={item.id} className="rounded-lg shadow-subtle">
+                        <CardContent className="flex items-center gap-4 py-4">
+                          <div className="min-w-[6rem] text-center">
+                            <p className="text-sm font-medium text-muted-foreground">
+                              {item.daysLeft < 0
+                                ? "超過"
+                                : item.daysLeft === 0
+                                  ? "本日"
+                                  : "残り"}
+                            </p>
+                            <p
+                              className={cn(
+                                "mt-1 text-4xl font-bold tabular-nums leading-none",
+                                item.daysLeft < 0
+                                  ? "text-danger"
+                                  : "text-primary-dark"
+                              )}
+                            >
+                              {item.daysLeft === 0 ? "—" : bigNumber}
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {item.daysLeft === 0 ? "" : "日"}
+                            </p>
+                            <p className="sr-only">{daysLabel}</p>
+                          </div>
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <DaysBadge daysLeft={item.daysLeft} />
+                              <span className="text-sm text-muted-foreground">
+                                {item.kind}
+                              </span>
+                            </div>
+                            <p className="truncate text-base font-semibold text-primary-dark">
+                              {toPrivacySubject(item.subject)}
+                            </p>
+                            <p className="text-sm tabular-nums text-muted-foreground">
+                              期限 {item.due_date}
+                            </p>
+                          </div>
+                          <Button asChild variant="outline" className="shrink-0">
+                            <Link href="/alerts">詳細</Link>
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
       </section>
 
       {/* 2. 今週のチェック状況 */}
       <section className="space-y-3" aria-labelledby="weekly-stats">
-        <h2
-          id="weekly-stats"
-          className="text-lg font-bold text-primary-dark"
-        >
+        <h2 id="weekly-stats" className="text-lg font-bold text-primary-dark">
           {DEADLINE_UI.weeklyTitle}
         </h2>
         <div className="grid grid-cols-3 gap-3">

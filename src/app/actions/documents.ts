@@ -500,3 +500,126 @@ export async function softDeleteDocumentAction(
   }
   return { ok: true }
 }
+
+/**
+ * 種類未設定（uploaded）の取り消し専用。
+ * チェック開始前の途中離脱レコードを一覧から消す。
+ */
+export async function cancelUploadedDocumentAction(
+  documentId: string
+): Promise<ActionResult> {
+  try {
+    const ctx = await requireOrgContext()
+    if ("error" in ctx) return { ok: false, error: ctx.error }
+
+    const { data: doc, error: docError } = await ctx.supabase
+      .from("documents")
+      .select("id, status")
+      .eq("id", documentId)
+      .eq("organization_id", ctx.organizationId)
+      .is("deleted_at", null)
+      .maybeSingle()
+
+    if (docError) {
+      console.error("[documents] cancel_uploaded_select", {
+        code: docError.code,
+        message: docError.message,
+      })
+      return {
+        ok: false,
+        error: toUserErrorMessage(
+          docError,
+          "書類の取得に失敗しました。ページを再読み込みして再度お試しください。"
+        ),
+      }
+    }
+
+    if (!doc) {
+      return {
+        ok: false,
+        error:
+          "書類が見つかりません。すでに取り消されている可能性があります。ページを再読み込みしてください。",
+      }
+    }
+
+    if (doc.status !== "uploaded") {
+      return {
+        ok: false,
+        error:
+          "種類未設定の書類のみ取り消せます。チェック開始後の書類は一覧から取り消せません。",
+      }
+    }
+
+    const deletedAt = new Date().toISOString()
+    const { error } = await ctx.supabase
+      .from("documents")
+      .update({ deleted_at: deletedAt })
+      .eq("id", documentId)
+      .eq("organization_id", ctx.organizationId)
+      .eq("status", "uploaded" satisfies DocumentStatus)
+      .is("deleted_at", null)
+
+    if (error) {
+      console.error("[documents] cancel_uploaded_update", {
+        code: error.code,
+        message: error.message,
+      })
+      return {
+        ok: false,
+        error: toUserErrorMessage(
+          error,
+          "アップロードの取り消しに失敗しました。ページを再読み込みして再度お試しください。"
+        ),
+      }
+    }
+
+    // SELECT ポリシーは deleted_at IS NULL のため、更新後 .select() は使わない。
+    // 見えなくなれば取り消し成功。
+    const { data: stillVisible, error: verifyError } = await ctx.supabase
+      .from("documents")
+      .select("id")
+      .eq("id", documentId)
+      .eq("organization_id", ctx.organizationId)
+      .is("deleted_at", null)
+      .maybeSingle()
+
+    if (verifyError) {
+      console.error("[documents] cancel_uploaded_verify", {
+        code: verifyError.code,
+        message: verifyError.message,
+      })
+      return {
+        ok: false,
+        error: toUserErrorMessage(
+          verifyError,
+          "取り消し結果の確認に失敗しました。ページを再読み込みしてください。"
+        ),
+      }
+    }
+
+    if (stillVisible) {
+      console.error("[documents] cancel_uploaded_still_visible")
+      return {
+        ok: false,
+        error:
+          "取り消しを反映できませんでした。権限またはログイン状態をご確認のうえ、再度お試しください。",
+      }
+    }
+
+    revalidatePath("/documents")
+    revalidatePath("/")
+    revalidatePath("/check/upload")
+    return { ok: true }
+  } catch (error) {
+    console.error("[documents] cancel_uploaded_throw", {
+      message: error instanceof Error ? error.message : "unknown",
+    })
+    return {
+      ok: false,
+      error: toUserErrorMessage(
+        error,
+        "アップロードの取り消しに失敗しました。通信状況をご確認のうえ、再度お試しください。"
+      ),
+    }
+  }
+}

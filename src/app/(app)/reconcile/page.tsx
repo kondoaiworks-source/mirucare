@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { ClipboardList, FileSpreadsheet } from "lucide-react"
+import { ClipboardList, FileSpreadsheet, Upload } from "lucide-react"
 import {
   Card,
   CardDescription,
@@ -18,11 +18,26 @@ export default function ReconcileHubPage() {
       <div>
         <h1 className="text-2xl font-bold text-primary-dark">突合・矛盾検知</h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          勤怠の矛盾確認と、請求CSVの1分単位突合（端末内処理）を行えます。
+          介護ソフトからのデータ取込、勤怠の矛盾確認、請求CSVの1分単位突合ができます。
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/attendance/import"
+          className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:col-span-2"
+        >
+          <Card className="h-full rounded-lg shadow-sm transition-colors hover:border-primary/40">
+            <CardHeader>
+              <Upload className="mb-2 size-8 text-primary" aria-hidden />
+              <CardTitle className="text-lg">勤怠・日報を取り込む</CardTitle>
+              <CardDescription className="text-base leading-relaxed">
+                介護ソフトから書き出したCSV（ヘルパー・タイムカード・日報・シフト）を事業所データに取り込みます。
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
         <Link
           href="/attendance"
           className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

@@ -1,12 +1,14 @@
 "use client"
 
 import { useMemo, useState, useTransition } from "react"
+import Link from "next/link"
 import {
   AlertTriangle,
   CheckCircle2,
   Clock,
   Loader2,
   RefreshCw,
+  Upload,
 } from "lucide-react"
 import { toast } from "sonner"
 import { detectAttendanceContradictionsAction } from "@/app/actions/attendance-billing"
@@ -94,6 +96,12 @@ export function AttendanceContradictionView({ initialItems = [] }: Props) {
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
           シフト・タイムカード・サービス提供記録（日報）を突き合わせ、時間の重複や退勤時刻とのズレの可能性を確認します。
         </p>
+        <Button asChild variant="outline" size="lg" className="mt-4 min-h-11">
+          <Link href="/attendance/import">
+            <Upload className="size-4" aria-hidden />
+            介護ソフトのCSVから取り込む
+          </Link>
+        </Button>
       </div>
 
       <Alert className="rounded-lg">
@@ -179,7 +187,12 @@ export function AttendanceContradictionView({ initialItems = [] }: Props) {
         <EmptyState
           icon={CheckCircle2}
           title="表示する矛盾はありません"
-          description="期間を指定して「矛盾を検知する」を実行してください。データが未登録の場合は、日報・タイムカードの登録後にお試しください。"
+          description="期間を指定して「矛盾を検知する」を実行してください。データが未登録の場合は、先に介護ソフトのCSVから取り込んでください。"
+          action={
+            <Button asChild size="lg">
+              <Link href="/attendance/import">データを取り込む</Link>
+            </Button>
+          }
         />
       ) : (
         <Card className="rounded-lg shadow-sm">
