@@ -37,6 +37,7 @@ SQL Editor で次を **順番に** 実行します。
 6. `supabase/migrations/20260711050000_reports.sql`（月次レポート）
 7. `supabase/migrations/20260711060000_admin_review.sql`（運営レビュー）
 8. `supabase/migrations/20260711070000_stripe_billing.sql`（Stripe課金）
+9. `supabase/migrations/20260713080000_attendance_service_records.sql`（勤怠・日報・シフト）
 
 その後：
 
@@ -226,6 +227,27 @@ SQL Editor で次を **順番に** 実行します。
    UPDATE public.organizations SET plan = 'light' WHERE id = '<事業所ID>';
    ```
 
+## 動作確認手順（STEP 9：勤怠矛盾検知・請求CSV突合）
+
+1. マイグレーション⑨（`20260713080000_attendance_service_records.sql`）を SQL Editor で実行する  
+   （単体適用用コピー: `supabase/schema.sql`）
+2. `helpers` / `attendance` / `service_records` に自事業所のテストデータを入れる（`organization_id` = 事業所ID）
+3. [http://localhost:3000/reconcile](http://localhost:3000/reconcile) →「勤怠の矛盾を検知する」
+   - 同一ヘルパー・同一日の時間重複 → `OVERLAP`
+   - 退勤より日報終了が後 → `TIME_DISCREPANCY`
+4. 「請求CSVを突合する」で対象月を選び、ローカルの `.csv` をドロップ
+   - **CSVはサーバーへ送信・保存されない**（DevTools Network で確認）
+   - 完全一致は緑、ズレ／日報なしは赤で警告
+5. 受け入れの目安
+   - [1] RLS により他事業所の日報が見えないこと
+   - [2] 請求CSV用の Storage / テーブルが存在しないこと
+   - [3] `npm run test` で突合・矛盾ロジックの単体テストが通ること
+
+```bash
+npm install papaparse react-dropzone
+npm install -D @types/papaparse
+```
+
 ## 主なルート
 
 | パス | 内容 |
@@ -240,6 +262,9 @@ SQL Editor で次を **順番に** 実行します。
 | `/check/[documentId]` | チェック結果 |
 | `/check/demo/[scenario]` | 結果画面デモ（success / parse_error / empty） |
 | `/later` | あとで確認リスト |
+| `/reconcile` | 突合・矛盾検知ハブ |
+| `/attendance` | 勤怠の矛盾検知 |
+| `/billing-reconcile` | 請求CSV突合（ブラウザ完結） |
 | `/alerts` | 期限アラート |
 | `/reports` | 月次レポート（プレミアム：原因分析・PDF） |
 | `/pricing` | 料金プラン（公開） |
@@ -255,6 +280,7 @@ npm run dev         # 開発サーバー
 npm run build       # 本番ビルド
 npm run start       # 本番起動
 npm run lint        # ESLint
+npm run test        # 単体テスト（矛盾検知・請求突合）
 npm run test:rls     # RLS事業所分離テスト
 npm run test:check   # AIチェック モック／パーステスト
 npm run test:review  # 人間レビュー公開制御テスト

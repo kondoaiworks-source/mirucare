@@ -160,3 +160,62 @@ export type Report = {
 export type ProfileWithOrganization = Profile & {
   organizations: Organization | null
 }
+
+/** 訪問介護員など（organization_id = 事業所ID / facility_id 相当） */
+export type Helper = {
+  id: string
+  organization_id: string
+  display_name: string
+  employee_code: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+export type Shift = {
+  id: string
+  organization_id: string
+  helper_id: string
+  work_date: string
+  start_at: string
+  end_at: string
+  note: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+export type Attendance = {
+  id: string
+  organization_id: string
+  helper_id: string
+  work_date: string
+  clock_in_at: string
+  clock_out_at: string
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+export type ServiceRecord = {
+  id: string
+  organization_id: string
+  helper_id: string
+  client_label: string
+  service_date: string
+  start_at: string
+  end_at: string
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+export type AttendanceErrorType = "OVERLAP" | "TIME_DISCREPANCY"
+
+export type AttendanceContradiction = {
+  helper_id: string
+  helper_name: string
+  date: string
+  error_type: AttendanceErrorType
+  message: string
+}

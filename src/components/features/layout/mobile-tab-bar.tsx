@@ -29,7 +29,11 @@ export function MobileTabBar({
               : item.href === "/documents"
                 ? pathname.startsWith("/documents") ||
                   pathname.startsWith("/check")
-                : pathname.startsWith(item.href)
+                : item.href === "/reconcile"
+                  ? pathname.startsWith("/reconcile") ||
+                    pathname.startsWith("/attendance") ||
+                    pathname.startsWith("/billing-reconcile")
+                  : pathname.startsWith(item.href)
           const showLaterBadge = item.href === "/later" && laterCount > 0
           const showDocsBadge =
             item.href === "/documents" && incompleteDocumentsCount > 0

@@ -4,6 +4,7 @@ import {
   Clock,
   Bell,
   BarChart3,
+  GitCompareArrows,
   Settings,
   type LucideIcon,
 } from "lucide-react"
@@ -33,6 +34,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "あとで確認",
     shortLabel: "あとで",
     icon: Clock,
+  },
+  {
+    href: "/reconcile",
+    label: "突合・矛盾検知",
+    shortLabel: "突合",
+    icon: GitCompareArrows,
   },
   {
     href: "/alerts",
