@@ -100,7 +100,7 @@ export function UploadWizard() {
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col pb-28">
+    <div className="mx-auto flex max-w-2xl flex-col pb-52 md:pb-28">
       <div className="mb-6">
         <p className="text-sm font-medium text-muted-foreground">
           書類チェック {step}/{STEPS.length}
@@ -177,10 +177,12 @@ export function UploadWizard() {
         </section>
       ) : null}
 
-      {/* 片手操作：下部固定CTA */}
+      {/*
+        片手操作：下部固定CTA。
+        モバイルはタブバー（z-40・bottom-0）の上に載せ、隠れないようにする。
+      */}
       <div
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background px-4 py-3 md:left-60"
-        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-50 border-t border-border bg-background px-4 py-3 md:bottom-0 md:left-60 md:z-30 md:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
       >
         <div className="mx-auto flex max-w-2xl flex-col gap-2">
           {step === 1 ? (
