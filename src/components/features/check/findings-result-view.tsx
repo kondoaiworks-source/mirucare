@@ -84,6 +84,7 @@ function FindingCard({
   finding: Finding
   onLocalUpdate: (updated: Finding, allAddressed: boolean) => void
 }) {
+  const router = useRouter()
   const [basisOpen, setBasisOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   const isDone = isFindingAddressed(finding.status)
@@ -108,7 +109,7 @@ function FindingCard({
           action: {
             label: "あとで確認を見る",
             onClick: () => {
-              window.location.href = "/later"
+              router.push("/later")
             },
           },
         })

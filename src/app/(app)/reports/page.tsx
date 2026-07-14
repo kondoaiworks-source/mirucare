@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { getCurrentProfile } from "@/app/actions/auth"
 import { getMonthlyReportAction } from "@/app/actions/reports"
 import { ReportsView } from "@/components/features/reports/reports-view"
+import { ReportsSkeleton } from "@/components/features/skeletons/page-skeletons"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { recentMonthKeys } from "@/lib/reports"
@@ -14,7 +16,15 @@ type PageProps = {
   searchParams: Promise<{ month?: string }> | { month?: string }
 }
 
-export default async function ReportsPage({ searchParams }: PageProps) {
+export default function ReportsPage({ searchParams }: PageProps) {
+  return (
+    <Suspense fallback={<ReportsSkeleton />}>
+      <ReportsContent searchParams={searchParams} />
+    </Suspense>
+  )
+}
+
+async function ReportsContent({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams)
   const defaultMonth = recentMonthKeys(1)[0] ?? "2026-07"
   const monthKey =
@@ -49,7 +59,5 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     )
   }
 
-  return (
-    <ReportsView data={result.data} facilityName={org?.name} />
-  )
+  return <ReportsView data={result.data} facilityName={org?.name} />
 }

@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { DashboardView } from "@/components/features/dashboard/dashboard-view"
+import { DashboardSkeleton } from "@/components/features/skeletons/page-skeletons"
 import { getDashboardDataAction } from "@/app/actions/deadlines"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
@@ -10,7 +12,15 @@ export const metadata: Metadata = {
   title: "ダッシュボード",
 }
 
-export default async function DashboardPage() {
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
+  )
+}
+
+async function DashboardContent() {
   const result = await getDashboardDataAction()
 
   if (!result.ok || !result.data) {

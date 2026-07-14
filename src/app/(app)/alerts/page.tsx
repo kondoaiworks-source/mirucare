@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import Link from "next/link"
 import { AlertsView } from "@/components/features/alerts/alerts-view"
+import { AlertsSkeleton } from "@/components/features/skeletons/page-skeletons"
 import { listDeadlinesAction } from "@/app/actions/deadlines"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -12,7 +14,15 @@ export const metadata: Metadata = {
   title: "アラート",
 }
 
-export default async function AlertsPage() {
+export default function AlertsPage() {
+  return (
+    <Suspense fallback={<AlertsSkeleton />}>
+      <AlertsContent />
+    </Suspense>
+  )
+}
+
+async function AlertsContent() {
   const result = await listDeadlinesAction()
 
   if (!result.ok) {

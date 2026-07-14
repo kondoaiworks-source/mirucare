@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -6,6 +7,7 @@ import { CheckRunner } from "@/components/features/check/check-runner"
 import { FindingsResultView } from "@/components/features/check/findings-result-view"
 import { ApproveFindingsButton } from "@/components/features/check/approve-findings-button"
 import { ZeroFindingsComplete } from "@/components/features/check/zero-findings-complete"
+import { CheckResultSkeleton } from "@/components/features/skeletons/page-skeletons"
 import { getDocumentWithFindingsAction } from "@/app/actions/findings"
 import { getCurrentProfile } from "@/app/actions/auth"
 import { CHECK_UI } from "@/lib/copy/check-ui"
@@ -20,8 +22,16 @@ type PageProps = {
   params: { documentId: string }
 }
 
-export default async function CheckResultPage({ params }: PageProps) {
-  const result = await getDocumentWithFindingsAction(params.documentId)
+export default function CheckResultPage({ params }: PageProps) {
+  return (
+    <Suspense fallback={<CheckResultSkeleton />}>
+      <CheckResultContent documentId={params.documentId} />
+    </Suspense>
+  )
+}
+
+async function CheckResultContent({ documentId }: { documentId: string }) {
+  const result = await getDocumentWithFindingsAction(documentId)
 
   if (!result.ok || !result.data) {
     return (

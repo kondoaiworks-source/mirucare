@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import Link from "next/link"
 import { getCurrentProfile } from "@/app/actions/auth"
 import { isCurrentUserOperator } from "@/lib/operator"
@@ -8,6 +9,7 @@ import {
 } from "@/components/features/settings/invite-form"
 import { SkipReviewToggle } from "@/components/features/settings/skip-review-toggle"
 import { BillingPortalButton } from "@/components/features/billing/billing-buttons"
+import { SettingsSkeleton } from "@/components/features/skeletons/page-skeletons"
 import {
   Card,
   CardContent,
@@ -28,7 +30,15 @@ type PageProps = {
   searchParams: Promise<{ billing?: string }> | { billing?: string }
 }
 
-export default async function SettingsPage({ searchParams }: PageProps) {
+export default function SettingsPage({ searchParams }: PageProps) {
+  return (
+    <Suspense fallback={<SettingsSkeleton />}>
+      <SettingsContent searchParams={searchParams} />
+    </Suspense>
+  )
+}
+
+async function SettingsContent({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams)
   const [profile, isOperator] = await Promise.all([
     getCurrentProfile(),
