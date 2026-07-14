@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -23,17 +23,51 @@ const STEPS = [
   { id: 2, label: "種類を選んで開始" },
 ] as const
 
-export function UploadWizard() {
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+type UploadWizardProps = {
+  resumeDocumentId?: string
+}
+
+export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
   const router = useRouter()
-  const { items, isUploading, setDocType, clearAll } = useUploadManager()
+  const { items, isUploading, setDocType, clearAll, hydrateUploadedDocument } =
+    useUploadManager()
   const [step, setStep] = useState(1)
   const [error, setError] = useState<string | null>(null)
+  const [resuming, setResuming] = useState(Boolean(resumeDocumentId))
   const [pending, startTransition] = useTransition()
+  const resumeAttempted = useRef(false)
 
   const doneItems = useMemo(
     () => items.filter((i) => i.status === "done" && i.documentId),
     [items]
   )
+
+  useEffect(() => {
+    if (!resumeDocumentId || resumeAttempted.current) return
+    resumeAttempted.current = true
+
+    if (!UUID_RE.test(resumeDocumentId)) {
+      setResuming(false)
+      setError("書類IDが不正です。一覧から再度お試しください。")
+      return
+    }
+
+    setResuming(true)
+    setError(null)
+    void (async () => {
+      const result = await hydrateUploadedDocument(resumeDocumentId)
+      setResuming(false)
+      if (!result.ok) {
+        setError(result.error)
+        setStep(1)
+        return
+      }
+      setStep(2)
+    })()
+  }, [resumeDocumentId, hydrateUploadedDocument])
 
   const progress = (step / STEPS.length) * 100
 
@@ -133,7 +167,13 @@ export function UploadWizard() {
         </Alert>
       ) : null}
 
-      {step === 1 ? (
+      {resuming ? (
+        <p className="text-base text-muted-foreground" role="status">
+          種類未設定の書類を読み込んでいます…
+        </p>
+      ) : null}
+
+      {step === 1 && !resuming ? (
         <section className="space-y-6">
           <div>
             <h1 className="text-2xl font-bold text-primary-dark">
@@ -148,7 +188,7 @@ export function UploadWizard() {
         </section>
       ) : null}
 
-      {step === 2 ? (
+      {step === 2 && !resuming ? (
         <section className="space-y-6">
           <div>
             <h1 className="text-2xl font-bold text-primary-dark">
@@ -181,9 +221,7 @@ export function UploadWizard() {
         片手操作：下部固定CTA。
         モバイルはタブバー（z-40・bottom-0）の上に載せ、隠れないようにする。
       */}
-      <div
-        className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-50 border-t border-border bg-background px-4 py-3 md:bottom-0 md:left-60 md:z-30 md:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
-      >
+      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-50 border-t border-border bg-background px-4 py-3 md:bottom-0 md:left-60 md:z-30 md:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
         <div className="mx-auto flex max-w-2xl flex-col gap-2">
           {step === 1 ? (
             <Button
@@ -191,7 +229,7 @@ export function UploadWizard() {
               size="lg"
               className="w-full"
               onClick={goToTypeStep}
-              disabled={isUploading}
+              disabled={isUploading || resuming}
             >
               {isUploading ? "アップロード中…" : "種類の選択へ進む"}
             </Button>
@@ -202,7 +240,7 @@ export function UploadWizard() {
                 type="button"
                 size="lg"
                 className="w-full"
-                disabled={pending}
+                disabled={pending || resuming || doneItems.length === 0}
                 onClick={startCheck}
               >
                 {pending ? "開始しています…" : "チェックを開始する"}
@@ -211,7 +249,7 @@ export function UploadWizard() {
                 type="button"
                 variant="ghost"
                 className="w-full"
-                disabled={pending}
+                disabled={pending || resuming}
                 onClick={() => setStep(1)}
               >
                 戻る

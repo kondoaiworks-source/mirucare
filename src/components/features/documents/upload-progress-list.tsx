@@ -25,7 +25,7 @@ export function UploadProgressList() {
                 {item.file.name}
               </p>
               <p className="text-sm text-muted-foreground">
-                {formatFileSize(item.file.size)}
+                {formatFileSize(item.displaySize ?? item.file.size)}
                 {item.status === "uploading" ? ` · ${item.progress}%` : null}
                 {item.status === "converting" ? " · HEICを変換中…" : null}
                 {item.status === "registering" ? " · 登録中…" : null}

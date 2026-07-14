@@ -209,6 +209,45 @@ export async function updateDocumentTypeAction(input: {
 }
 
 /**
+ * 種類未設定（uploaded）の書類を1件取得。ウィザード再開用。
+ */
+export async function getUploadedDocumentAction(
+  documentId: string
+): Promise<ActionResult<{ document: Document }>> {
+  if (!documentId) {
+    return {
+      ok: false,
+      error: "書類IDが不正です。一覧から再度お試しください。",
+    }
+  }
+
+  const ctx = await requireOrgContext()
+  if ("error" in ctx) return { ok: false, error: ctx.error }
+
+  const { data, error } = await ctx.supabase
+    .from("documents")
+    .select("*")
+    .eq("id", documentId)
+    .eq("organization_id", ctx.organizationId)
+    .eq("status", "uploaded" satisfies DocumentStatus)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (error) {
+    return { ok: false, error: toUserErrorMessage(error) }
+  }
+  if (!data) {
+    return {
+      ok: false,
+      error:
+        "種類未設定の書類が見つかりませんでした。一覧から再度お試しください。",
+    }
+  }
+
+  return { ok: true, data: { document: data as Document } }
+}
+
+/**
  * チェック開始 → status=checking
  * 実際の AI 実行はクライアントから /api/check を呼ぶ（Cookie 付き）。
  */

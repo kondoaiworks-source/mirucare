@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   title: "書類をアップロード",
 }
 
-export default function CheckUploadPage() {
-  return <UploadWizard />
+type PageProps = {
+  searchParams: { documentId?: string }
+}
+
+export default function CheckUploadPage({ searchParams }: PageProps) {
+  return <UploadWizard resumeDocumentId={searchParams.documentId} />
 }

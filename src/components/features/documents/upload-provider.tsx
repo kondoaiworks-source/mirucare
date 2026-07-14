@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from "react"
 import {
+  cancelUploadedDocumentAction,
+  getUploadedDocumentAction,
   startDocumentCheckAction,
   updateDocumentTypeAction,
 } from "@/app/actions/documents"
@@ -31,6 +33,8 @@ export type UploadItemStatus =
 export type UploadItem = {
   localId: string
   file: File
+  /** 表示用サイズ（再開時は File が空のためこちらを優先） */
+  displaySize?: number | null
   documentId?: string
   filePath?: string
   progress: number
@@ -40,6 +44,8 @@ export type UploadItem = {
   docType: DocType
 }
 
+type HydrateResult = { ok: true; localId: string } | { ok: false; error: string }
+
 type UploadContextValue = {
   items: UploadItem[]
   isUploading: boolean
@@ -47,6 +53,7 @@ type UploadContextValue = {
   removeItem: (localId: string) => void
   retryItem: (localId: string) => void
   setDocType: (localId: string, docType: DocType) => void
+  hydrateUploadedDocument: (documentId: string) => Promise<HydrateResult>
   clearFinished: () => void
   clearAll: () => void
 }
@@ -250,16 +257,35 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   )
 
   const removeItem = useCallback((localId: string) => {
+    const item = itemsRef.current.find((i) => i.localId === localId)
     setItems((prev) => prev.filter((i) => i.localId !== localId))
+    // ローカルから外すだけでは DB に uploaded が残り「種類未設定」が増える
+    if (item?.documentId) {
+      void cancelUploadedDocumentAction(item.documentId)
+    }
   }, [])
 
   const retryItem = useCallback(
     (localId: string) => {
       const item = itemsRef.current.find((i) => i.localId === localId)
       if (!item) return
-      void processItem(localId, item.file)
+
+      const previousDocumentId = item.documentId
+      updateItem(localId, {
+        documentId: undefined,
+        filePath: undefined,
+        error: undefined,
+        progress: 0,
+      })
+
+      void (async () => {
+        if (previousDocumentId) {
+          await cancelUploadedDocumentAction(previousDocumentId)
+        }
+        await processItem(localId, item.file)
+      })()
     },
-    [processItem]
+    [processItem, updateItem]
   )
 
   const setDocType = useCallback((localId: string, docType: DocType) => {
@@ -269,6 +295,50 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       )
     )
   }, [])
+
+  const hydrateUploadedDocument = useCallback(
+    async (documentId: string): Promise<HydrateResult> => {
+      const existing = itemsRef.current.find((i) => i.documentId === documentId)
+      if (existing) {
+        return { ok: true, localId: existing.localId }
+      }
+
+      const result = await getUploadedDocumentAction(documentId)
+      if (!result.ok || !result.data) {
+        return {
+          ok: false,
+          error:
+            result.error ??
+            "種類未設定の書類を読み込めませんでした。一覧から再度お試しください。",
+        }
+      }
+
+      const doc = result.data.document
+      const suggested = guessDocType(doc.original_name)
+      const localId = crypto.randomUUID()
+      const stub = new File([], doc.original_name, {
+        type: doc.mime_type ?? "",
+      })
+
+      setItems((prev) => [
+        ...prev,
+        {
+          localId,
+          file: stub,
+          displaySize: doc.file_size,
+          documentId: doc.id,
+          filePath: doc.file_path,
+          progress: 100,
+          status: "done",
+          suggestedDocType: suggested,
+          docType: doc.doc_type,
+        },
+      ])
+
+      return { ok: true, localId }
+    },
+    []
+  )
 
   const clearFinished = useCallback(() => {
     setItems((prev) => prev.filter((i) => i.status !== "done"))
@@ -290,6 +360,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       removeItem,
       retryItem,
       setDocType,
+      hydrateUploadedDocument,
       clearFinished,
       clearAll,
     }),
@@ -300,6 +371,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       removeItem,
       retryItem,
       setDocType,
+      hydrateUploadedDocument,
       clearFinished,
       clearAll,
     ]
