@@ -20,6 +20,7 @@ import type {
   DocumentStatus,
   Finding,
   PlanType,
+  AppAnnouncement,
 } from "@/types/database"
 
 export type ActionResult<T = undefined> = {
@@ -231,6 +232,8 @@ export type DashboardData = {
       documents: { id: string; original_name: string; doc_type: string } | null
     }
   >
+  /** アプリ内お知らせ（最新3件） */
+  announcements: AppAnnouncement[]
 }
 
 export async function getDashboardDataAction(): Promise<
@@ -251,6 +254,7 @@ export async function getDashboardDataAction(): Promise<
     findingsRes,
     fixedRes,
     recentRes,
+    announcementsRes,
   ] = await Promise.all([
     ctx.supabase
       .from("deadlines")
@@ -306,6 +310,11 @@ export async function getDashboardDataAction(): Promise<
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(5),
+    ctx.supabase
+      .from("app_announcements")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(3),
   ])
 
   const deadlines = refreshDeadlineStatuses(
@@ -337,6 +346,9 @@ export async function getDashboardDataAction(): Promise<
         fixed: fixedRes.count ?? 0,
       },
       recentFindings: (recentRes.data ?? []) as DashboardData["recentFindings"],
+      announcements: announcementsRes.error
+        ? []
+        : ((announcementsRes.data ?? []) as AppAnnouncement[]),
     },
   }
 }

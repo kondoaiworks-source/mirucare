@@ -223,6 +223,11 @@ export type AttendanceContradiction = {
 /** 行政マニュアル等のナレッジ台帳（Dify 連携前提） */
 export type JurisdictionLevel = "国" | "都道府県" | "市区町村"
 export type KnowledgeDocumentStatus = "active" | "archived"
+export type KnowledgeSyncStatus =
+  | "ok"
+  | "unchanged"
+  | "failed"
+  | "suspicious"
 
 export type KnowledgeDocument = {
   id: string
@@ -232,6 +237,41 @@ export type KnowledgeDocument = {
   applicable_year: number
   dify_document_id: string | null
   status: KnowledgeDocumentStatus
+  source_url?: string | null
+  content_hash?: string | null
+  content_bytes?: number | null
+  last_checked_at?: string | null
+  last_sync_status?: KnowledgeSyncStatus | null
+  last_error?: string | null
   created_at: string
   updated_at: string
+}
+
+export type KnowledgeSyncAlertKind = "failed" | "suspicious"
+export type KnowledgeSyncAlertStatus = "open" | "resolved"
+
+export type KnowledgeSyncAlert = {
+  id: string
+  knowledge_document_id: string | null
+  kind: KnowledgeSyncAlertKind
+  message: string
+  status: KnowledgeSyncAlertStatus
+  created_at: string
+  resolved_at: string | null
+  resolved_by: string | null
+  knowledge_documents?: Pick<
+    KnowledgeDocument,
+    "id" | "title" | "region_name" | "jurisdiction_level"
+  > | null
+}
+
+export type AppAnnouncementKind = "knowledge_update" | "general"
+
+export type AppAnnouncement = {
+  id: string
+  title: string
+  body: string
+  kind: AppAnnouncementKind
+  knowledge_document_id: string | null
+  created_at: string
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition, type FormEven
 import { useDropzone } from "react-dropzone"
 import {
   Archive,
+  AlertTriangle,
   FileText,
   Loader2,
   RefreshCw,
@@ -38,9 +39,18 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import {
+  archiveKnowledgeDocumentAction,
+  listKnowledgeDocumentsAction,
+  listOpenKnowledgeSyncAlertsAction,
+  registerKnowledgeDocumentAction,
+  resolveKnowledgeSyncAlertAction,
+  runKnowledgeSyncNowAction,
+} from "@/app/actions/knowledge-documents"
 import type {
   JurisdictionLevel,
   KnowledgeDocument,
+  KnowledgeSyncAlert,
 } from "@/types/database"
 
 const JURISDICTION_OPTIONS: {
@@ -65,79 +75,37 @@ function defaultFiscalYear() {
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1
-  // 日本の介護保険年度は4月始まり
   return month >= 4 ? year : year - 1
 }
 
-async function fetchKnowledgeDocuments(): Promise<KnowledgeDocument[]> {
-  const res = await fetch("/api/admin/knowledge-documents", {
-    method: "GET",
-    cache: "no-store",
-  })
-  const json = (await res.json()) as {
-    ok?: boolean
-    data?: { documents?: KnowledgeDocument[] }
-    error?: string
+function syncStatusLabel(status: KnowledgeDocument["last_sync_status"]) {
+  switch (status) {
+    case "ok":
+      return "更新反映"
+    case "unchanged":
+      return "変更なし"
+    case "failed":
+      return "失敗の可能性"
+    case "suspicious":
+      return "要確認"
+    default:
+      return "未チェック"
   }
-  if (!res.ok || !json.ok) {
-    throw new Error(json.error ?? "一覧を取得できませんでした。")
-  }
-  return json.data?.documents ?? []
 }
 
-async function registerKnowledgeDocument(input: {
-  file: File
-  title: string
-  jurisdictionLevel: JurisdictionLevel
-  regionName: string
-  applicableYear: number
-}): Promise<KnowledgeDocument> {
-  const form = new FormData()
-  form.append("file", input.file)
-  form.append("title", input.title)
-  form.append("jurisdictionLevel", input.jurisdictionLevel)
-  form.append("regionName", input.regionName)
-  form.append("applicableYear", String(input.applicableYear))
-
-  // 本番: Dify Knowledge API へアップロード後、dify_document_id を保存
-  console.log("[knowledge-documents] register → /api/admin/knowledge-documents", {
-    title: input.title,
-    jurisdictionLevel: input.jurisdictionLevel,
-    regionName: input.regionName || null,
-    applicableYear: input.applicableYear,
-    fileName: input.file.name,
-  })
-
-  const res = await fetch("/api/admin/knowledge-documents", {
-    method: "POST",
-    body: form,
-  })
-  const json = (await res.json()) as {
-    ok?: boolean
-    data?: { document?: KnowledgeDocument }
-    error?: string
+async function fileToBase64(file: File): Promise<string> {
+  const buf = await file.arrayBuffer()
+  const bytes = new Uint8Array(buf)
+  let binary = ""
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]!)
   }
-  if (!res.ok || !json.ok || !json.data?.document) {
-    throw new Error(json.error ?? "Difyへの登録に失敗しました。")
-  }
-  return json.data.document
-}
-
-async function archiveKnowledgeDocument(id: string): Promise<void> {
-  console.log("[knowledge-documents] archive", id)
-  const res = await fetch(`/api/admin/knowledge-documents/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: "archived" }),
-  })
-  const json = (await res.json()) as { ok?: boolean; error?: string }
-  if (!res.ok || !json.ok) {
-    throw new Error(json.error ?? "アーカイブに失敗しました。")
-  }
+  return btoa(binary)
 }
 
 export function KnowledgeDocumentsAdmin() {
   const [rows, setRows] = useState<KnowledgeDocument[]>([])
+  const [alerts, setAlerts] = useState<KnowledgeSyncAlert[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loadingList, setLoadingList] = useState(true)
   const [pending, startTransition] = useTransition()
@@ -147,6 +115,7 @@ export function KnowledgeDocumentsAdmin() {
     useState<JurisdictionLevel>("都道府県")
   const [regionName, setRegionName] = useState("")
   const [applicableYear, setApplicableYear] = useState(defaultFiscalYear)
+  const [sourceUrl, setSourceUrl] = useState("")
   const [file, setFile] = useState<File | null>(null)
 
   const needsRegion = jurisdictionLevel !== "国"
@@ -155,14 +124,24 @@ export function KnowledgeDocumentsAdmin() {
     setLoadingList(true)
     setLoadError(null)
     try {
-      const documents = await fetchKnowledgeDocuments()
-      setRows(documents)
-    } catch (error) {
-      setLoadError(
-        error instanceof Error
-          ? error.message
-          : "一覧を取得できませんでした。"
-      )
+      const [docs, openAlerts] = await Promise.all([
+        listKnowledgeDocumentsAction(),
+        listOpenKnowledgeSyncAlertsAction(),
+      ])
+      if (!docs.ok) {
+        setLoadError(
+          docs.error ??
+            "一覧を取得できませんでした。マイグレーション適用をご確認ください。"
+        )
+        setRows([])
+      } else {
+        setRows(docs.data?.documents ?? [])
+      }
+      if (openAlerts.ok) {
+        setAlerts(openAlerts.data?.alerts ?? [])
+      }
+    } catch {
+      setLoadError("一覧を取得できませんでした。")
     } finally {
       setLoadingList(false)
     }
@@ -175,8 +154,15 @@ export function KnowledgeDocumentsAdmin() {
   const onDrop = useCallback((accepted: File[]) => {
     const next = accepted[0]
     if (!next) return
-    if (next.type !== "application/pdf" && !next.name.toLowerCase().endsWith(".pdf")) {
+    if (
+      next.type !== "application/pdf" &&
+      !next.name.toLowerCase().endsWith(".pdf")
+    ) {
       toast.error("PDFファイルを選択してください。")
+      return
+    }
+    if (next.size > 12 * 1024 * 1024) {
+      toast.error("PDFは12MB以下にしてください。")
       return
     }
     setFile(next)
@@ -187,7 +173,7 @@ export function KnowledgeDocumentsAdmin() {
     onDrop,
     accept: { "application/pdf": [".pdf"] },
     multiple: false,
-    maxSize: 40 * 1024 * 1024,
+    maxSize: 12 * 1024 * 1024,
   })
 
   const sortedRows = useMemo(
@@ -206,13 +192,16 @@ export function KnowledgeDocumentsAdmin() {
     setJurisdictionLevel("都道府県")
     setRegionName("")
     setApplicableYear(defaultFiscalYear())
+    setSourceUrl("")
     setFile(null)
   }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!file) {
-      toast.error("PDFファイルを選択してください。")
+    if (!file && !sourceUrl.trim()) {
+      toast.error(
+        "PDFファイルを選ぶか、監視用のPDF直リンク（source_url）を入力してください。"
+      )
       return
     }
     if (!title.trim()) {
@@ -225,33 +214,30 @@ export function KnowledgeDocumentsAdmin() {
       )
       return
     }
-    if (
-      !Number.isInteger(applicableYear) ||
-      applicableYear < 2000 ||
-      applicableYear > 2100
-    ) {
-      toast.error("適用年度は2000〜2100の整数で入力してください。")
-      return
-    }
 
     startTransition(async () => {
       try {
-        const document = await registerKnowledgeDocument({
-          file,
+        const fileBase64 = file ? await fileToBase64(file) : undefined
+        const result = await registerKnowledgeDocumentAction({
           title: title.trim(),
           jurisdictionLevel,
           regionName: needsRegion ? regionName.trim() : "",
           applicableYear,
+          sourceUrl: sourceUrl.trim() || undefined,
+          fileBase64,
+          fileName: file?.name,
         })
-        setRows((prev) => [document, ...prev])
-        toast.success("Difyへ登録しました（モック）。台帳に追加しました。")
-        resetForm()
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "登録に失敗しました。通信状況をご確認ください。"
+        if (!result.ok || !result.data) {
+          toast.error(result.error ?? "登録に失敗しました。")
+          return
+        }
+        toast.success(
+          "台帳に登録しました。監視URLがある場合は同期も試しています。"
         )
+        resetForm()
+        await refreshList()
+      } catch {
+        toast.error("登録に失敗しました。通信状況をご確認ください。")
       }
     })
   }
@@ -260,33 +246,63 @@ export function KnowledgeDocumentsAdmin() {
     if (doc.status === "archived") return
     if (
       !window.confirm(
-        `「${doc.title}」をアーカイブ（無効化）しますか？チェックに使われなくなります。`
+        `「${doc.title}」をアーカイブ（無効化）しますか？自動収集の対象外になります。`
       )
     ) {
       return
     }
     startTransition(async () => {
-      try {
-        await archiveKnowledgeDocument(doc.id)
-        setRows((prev) =>
-          prev.map((row) =>
-            row.id === doc.id
-              ? {
-                  ...row,
-                  status: "archived",
-                  updated_at: new Date().toISOString(),
-                }
-              : row
-          )
-        )
-        toast.success("アーカイブしました。")
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "アーカイブに失敗しました。"
-        )
+      const result = await archiveKnowledgeDocumentAction(doc.id)
+      if (!result.ok) {
+        toast.error(result.error ?? "アーカイブに失敗しました。")
+        return
       }
+      toast.success("アーカイブしました。")
+      await refreshList()
+    })
+  }
+
+  function onResolveAlert(alertId: string) {
+    startTransition(async () => {
+      const result = await resolveKnowledgeSyncAlertAction(alertId)
+      if (!result.ok) {
+        toast.error(result.error ?? "対応済みにできませんでした。")
+        return
+      }
+      toast.success("対応済みにしました。")
+      await refreshList()
+    })
+  }
+
+  function onSyncOne(documentId: string) {
+    startTransition(async () => {
+      const result = await runKnowledgeSyncNowAction(documentId)
+      if (!result.ok) {
+        toast.error(result.error ?? "同期に失敗しました。")
+        return
+      }
+      const r = result.data?.results[0]
+      toast.message(
+        r?.message ??
+          (r?.status === "unchanged"
+            ? "変更はありませんでした。"
+            : "同期が完了しました。")
+      )
+      await refreshList()
+    })
+  }
+
+  function onSyncAll() {
+    startTransition(async () => {
+      const result = await runKnowledgeSyncNowAction()
+      if (!result.ok) {
+        toast.error(result.error ?? "一括同期に失敗しました。")
+        return
+      }
+      toast.success(
+        `同期しました（${result.data?.results.length ?? 0}件をチェック）。`
+      )
+      await refreshList()
     })
   }
 
@@ -297,15 +313,66 @@ export function KnowledgeDocumentsAdmin() {
           行政マニュアル管理
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          自治体のローカルルール（PDF）を登録し、Difyのナレッジとして紐づけます。本画面は運営オペレータ専用です。
+          PDFの登録と、公式PDF直リンクの定期監視（1日1回）を行います。取得失敗や疑いがある場合は下の「要対応」に出ます。
         </p>
       </div>
+
+      {alerts.length > 0 ? (
+        <Card className="rounded-lg border-warning/40 shadow-subtle">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg text-warning">
+              <AlertTriangle className="size-5" aria-hidden />
+              要対応（自動収集）
+            </CardTitle>
+            <CardDescription className="text-base leading-relaxed">
+              自動取得に失敗した可能性、または内容に疑いがあるため、人が確認してください。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {alerts.map((a) => {
+              const doc = Array.isArray(a.knowledge_documents)
+                ? a.knowledge_documents[0]
+                : a.knowledge_documents
+              return (
+                <div
+                  key={a.id}
+                  className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-start sm:justify-between"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-semibold text-foreground">
+                      {doc?.title ?? "（マニュアル不明）"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {a.kind === "failed" ? "取得失敗の可能性" : "要確認"}
+                      {" · "}
+                      {new Date(a.created_at).toLocaleString("ja-JP")}
+                    </p>
+                    <p className="text-base leading-relaxed text-foreground">
+                      {a.message}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="shrink-0"
+                    disabled={pending}
+                    onClick={() => onResolveAlert(a.id)}
+                  >
+                    対応済みにする
+                  </Button>
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="rounded-lg shadow-subtle">
         <CardHeader>
           <CardTitle className="text-lg">新規登録</CardTitle>
           <CardDescription className="text-base leading-relaxed">
-            PDFをアップし、管轄・地域・適用年度を入力して「Difyへ登録」してください。
+            PDFをアップするか、監視用の直リンクを登録してください。直リンクがあると毎日自動で差分を確認します。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -327,21 +394,23 @@ export function KnowledgeDocumentsAdmin() {
               {file ? (
                 <>
                   <p className="flex items-center gap-2 text-base font-semibold text-foreground">
-                    <FileText className="size-5 shrink-0 text-primary" aria-hidden />
+                    <FileText
+                      className="size-5 shrink-0 text-primary"
+                      aria-hidden
+                    />
                     <span className="break-all">{file.name}</span>
                   </p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {(file.size / (1024 * 1024)).toFixed(1)} MB ·
-                    別のPDFに差し替える場合はここにドロップ
+                    {(file.size / (1024 * 1024)).toFixed(1)} MB
                   </p>
                 </>
               ) : (
                 <>
                   <p className="text-base font-semibold text-foreground">
-                    ここにPDFを置く／タップして選択
+                    ここにPDFを置く／タップして選択（任意）
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    行政マニュアル・実地指導資料など（PDF／最大40MB）
+                    直リンクのみの登録も可能です（最大12MB）
                   </p>
                 </>
               )}
@@ -358,6 +427,23 @@ export function KnowledgeDocumentsAdmin() {
                   placeholder="例：横浜市 運営指導マニュアル（訪問介護）"
                   required
                 />
+              </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="kd-source">
+                  監視用PDF直リンク（source_url）
+                </Label>
+                <Input
+                  id="kd-source"
+                  type="url"
+                  className="h-11 min-h-11 text-base"
+                  value={sourceUrl}
+                  onChange={(e) => setSourceUrl(e.target.value)}
+                  placeholder="https://example.go.jp/.../manual.pdf"
+                />
+                <p className="text-sm text-muted-foreground">
+                  公式サイトのPDFへの直URL。定期チェック（毎日）の対象になります。
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -386,15 +472,7 @@ export function KnowledgeDocumentsAdmin() {
               <div className="space-y-2">
                 <Label htmlFor="kd-region">
                   地域名
-                  {needsRegion ? (
-                    <span className="font-normal text-muted-foreground">
-                      （必須）
-                    </span>
-                  ) : (
-                    <span className="font-normal text-muted-foreground">
-                      （国は不要）
-                    </span>
-                  )}
+                  {needsRegion ? "（必須）" : "（国は不要）"}
                 </Label>
                 <Input
                   id="kd-region"
@@ -423,9 +501,6 @@ export function KnowledgeDocumentsAdmin() {
                   max={2100}
                   required
                 />
-                <p className="text-sm text-muted-foreground">
-                  介護保険の年度（4月始まり）を整数で入力します。
-                </p>
               </div>
             </div>
 
@@ -441,7 +516,7 @@ export function KnowledgeDocumentsAdmin() {
                   登録中…
                 </>
               ) : (
-                "Difyへ登録"
+                "登録する（Dify連携は段階導入）"
               )}
             </Button>
           </form>
@@ -453,23 +528,36 @@ export function KnowledgeDocumentsAdmin() {
           <div>
             <h2 className="text-lg font-bold text-primary-dark">登録済み台帳</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Supabaseの knowledge_documents を表示する想定です（現在はモックAPI）。
+              同期結果と監視URLを確認できます。
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            onClick={() => void refreshList()}
-            disabled={loadingList || pending}
-          >
-            {loadingList ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              <RefreshCw className="size-4" aria-hidden />
-            )}
-            再読み込み
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={() => void refreshList()}
+              disabled={loadingList || pending}
+            >
+              {loadingList ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <RefreshCw className="size-4" aria-hidden />
+              )}
+              再読み込み
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              onClick={onSyncAll}
+              disabled={pending}
+            >
+              {pending ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : null}
+              今すぐ一括同期
+            </Button>
+          </div>
         </div>
 
         {loadError ? (
@@ -484,11 +572,10 @@ export function KnowledgeDocumentsAdmin() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[12rem]">マニュアル名</TableHead>
+                  <TableHead className="min-w-[10rem]">マニュアル名</TableHead>
                   <TableHead>管轄</TableHead>
-                  <TableHead>地域</TableHead>
                   <TableHead className="tabular-nums">年度</TableHead>
-                  <TableHead>Dify ID</TableHead>
+                  <TableHead>同期</TableHead>
                   <TableHead>状態</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
@@ -497,7 +584,7 @@ export function KnowledgeDocumentsAdmin() {
                 {loadingList && sortedRows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={6}
                       className="py-10 text-center text-muted-foreground"
                     >
                       読み込み中…
@@ -507,25 +594,46 @@ export function KnowledgeDocumentsAdmin() {
                 {!loadingList && sortedRows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={6}
                       className="py-10 text-center text-muted-foreground"
                     >
-                      まだ登録がありません。上のフォームからPDFを登録してください。
+                      まだ登録がありません。
                     </TableCell>
                   </TableRow>
                 ) : null}
                 {sortedRows.map((doc) => (
                   <TableRow key={doc.id}>
-                    <TableCell className="max-w-[16rem] break-words font-medium">
-                      {doc.title}
+                    <TableCell className="max-w-[14rem]">
+                      <p className="break-words font-medium">{doc.title}</p>
+                      {doc.source_url ? (
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {doc.source_url}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          監視URLなし
+                        </p>
+                      )}
+                      {doc.last_error ? (
+                        <p className="mt-1 text-xs leading-relaxed text-warning">
+                          {doc.last_error}
+                        </p>
+                      ) : null}
                     </TableCell>
-                    <TableCell>{doc.jurisdiction_level}</TableCell>
-                    <TableCell>{doc.region_name ?? "—"}</TableCell>
+                    <TableCell>
+                      {doc.jurisdiction_level}
+                      {doc.region_name ? ` / ${doc.region_name}` : ""}
+                    </TableCell>
                     <TableCell className="tabular-nums font-semibold">
                       {doc.applicable_year}
                     </TableCell>
-                    <TableCell className="max-w-[10rem] truncate font-mono text-xs text-muted-foreground">
-                      {doc.dify_document_id ?? "—"}
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className="rounded-lg border border-border"
+                      >
+                        {syncStatusLabel(doc.last_sync_status)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {doc.status === "active" ? (
@@ -541,19 +649,31 @@ export function KnowledgeDocumentsAdmin() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="space-y-2 text-right">
+                      {doc.source_url && doc.status === "active" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="min-h-11 w-full sm:w-auto"
+                          disabled={pending}
+                          onClick={() => onSyncOne(doc.id)}
+                        >
+                          今すぐ同期
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="min-h-11"
+                        className="min-h-11 w-full sm:w-auto"
                         disabled={pending || doc.status === "archived"}
                         onClick={() => onArchive(doc)}
                       >
                         <Archive className="size-4" aria-hidden />
                         {doc.status === "archived"
                           ? "無効済み"
-                          : "アーカイブ（無効化）"}
+                          : "アーカイブ"}
                       </Button>
                     </TableCell>
                   </TableRow>

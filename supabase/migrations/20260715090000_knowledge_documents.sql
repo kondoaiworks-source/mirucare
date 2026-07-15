@@ -71,6 +71,16 @@ CREATE TRIGGER knowledge_documents_set_updated_at
 
 ALTER TABLE public.knowledge_documents ENABLE ROW LEVEL SECURITY;
 
+-- 再実行しても落ちないよう既存ポリシーを削除してから作成
+DROP POLICY IF EXISTS knowledge_documents_select_authenticated
+  ON public.knowledge_documents;
+DROP POLICY IF EXISTS knowledge_documents_insert_operator
+  ON public.knowledge_documents;
+DROP POLICY IF EXISTS knowledge_documents_update_operator
+  ON public.knowledge_documents;
+DROP POLICY IF EXISTS knowledge_documents_delete_operator
+  ON public.knowledge_documents;
+
 -- ログインユーザーは台帳を参照可（チェックエンジン／設定画面の将来拡張用）
 CREATE POLICY knowledge_documents_select_authenticated
   ON public.knowledge_documents

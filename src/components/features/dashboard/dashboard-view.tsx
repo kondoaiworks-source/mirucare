@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   FileCheck2,
+  Megaphone,
 } from "lucide-react"
 import {
   Card,
@@ -93,6 +94,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
   const incompleteDocuments = data.incompleteDocuments ?? []
   const upcomingDeadlines =
     data.upcomingDeadlines ?? data.todayTodos ?? []
+  const announcements = data.announcements ?? []
   const hasTodayWork =
     incompleteDocuments.length > 0 || upcomingDeadlines.length > 0
 
@@ -111,6 +113,44 @@ export function DashboardView({ data }: { data: DashboardData }) {
           <Link href="/check/upload">{DEADLINE_UI.ctaCheck}</Link>
         </Button>
       </div>
+
+      {announcements.length > 0 ? (
+        <section className="space-y-3" aria-labelledby="app-announcements">
+          <h2
+            id="app-announcements"
+            className="flex items-center gap-2 text-lg font-bold text-primary-dark"
+          >
+            <Megaphone className="size-5 text-primary" aria-hidden />
+            お知らせ
+          </h2>
+          <ul className="space-y-3">
+            {announcements.slice(0, 3).map((a) => (
+              <li key={a.id}>
+                <Card className="rounded-lg shadow-subtle">
+                  <CardHeader className="gap-1 pb-2">
+                    <CardTitle className="text-base font-bold text-primary-dark">
+                      {a.title}
+                    </CardTitle>
+                    <CardDescription className="text-sm tabular-nums">
+                      {new Date(a.created_at).toLocaleString("ja-JP", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-base leading-relaxed text-muted-foreground">
+                      {a.body}
+                    </p>
+                  </CardContent>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {/* 1. 今日やること — 未完了書類を優先 */}
       <section className="space-y-3" aria-labelledby="today-todos">

@@ -1,76 +1,71 @@
 import { NextResponse } from "next/server"
-import type { KnowledgeDocument } from "@/types/database"
+import { requireOperator } from "@/lib/operator"
+import {
+  listKnowledgeDocumentsAction,
+  registerKnowledgeDocumentAction,
+} from "@/app/actions/knowledge-documents"
+import type { JurisdictionLevel } from "@/types/database"
 
 /**
- * ナレッジ台帳 API（基盤モック）。
- * 本番では requireOperator + Supabase CRUD + Dify Knowledge API に差し替える。
+ * 互換用 REST。管理画面は server actions を優先利用。
  */
-
-const MOCK_ROWS: KnowledgeDocument[] = [
-  {
-    id: "00000000-0000-4000-8000-000000000001",
-    title: "指定居宅サービス等の事業の人員、設備及び運営に関する基準（抜粋）",
-    jurisdiction_level: "国",
-    region_name: null,
-    applicable_year: 2026,
-    dify_document_id: "dify-doc-national-2026",
-    status: "active",
-    created_at: "2026-04-01T00:00:00.000Z",
-    updated_at: "2026-04-01T00:00:00.000Z",
-  },
-  {
-    id: "00000000-0000-4000-8000-000000000002",
-    title: "神奈川県 実地指導マニュアル（訪問介護）",
-    jurisdiction_level: "都道府県",
-    region_name: "神奈川県",
-    applicable_year: 2026,
-    dify_document_id: "dify-doc-kanagawa-2026",
-    status: "active",
-    created_at: "2026-04-15T00:00:00.000Z",
-    updated_at: "2026-04-15T00:00:00.000Z",
-  },
-]
-
 export async function GET() {
-  console.log("[api/admin/knowledge-documents] GET list (mock)")
-  return NextResponse.json({ ok: true, data: { documents: MOCK_ROWS } })
+  const op = await requireOperator()
+  if ("error" in op) {
+    return NextResponse.json({ ok: false, error: op.error }, { status: 403 })
+  }
+  const result = await listKnowledgeDocumentsAction()
+  if (!result.ok) {
+    return NextResponse.json(
+      { ok: false, error: result.error },
+      { status: 500 }
+    )
+  }
+  return NextResponse.json({ ok: true, data: result.data })
 }
 
 export async function POST(request: Request) {
+  const op = await requireOperator()
+  if ("error" in op) {
+    return NextResponse.json({ ok: false, error: op.error }, { status: 403 })
+  }
+
   const form = await request.formData()
   const title = String(form.get("title") ?? "")
-  const jurisdictionLevel = String(form.get("jurisdictionLevel") ?? "")
+  const jurisdictionLevel = String(
+    form.get("jurisdictionLevel") ?? "国"
+  ) as JurisdictionLevel
   const regionName = String(form.get("regionName") ?? "")
   const applicableYear = Number(form.get("applicableYear"))
+  const sourceUrl = String(form.get("sourceUrl") ?? "")
   const file = form.get("file")
 
-  console.log("[api/admin/knowledge-documents] POST register → Dify (mock)", {
-    title,
-    jurisdictionLevel,
-    regionName: regionName || null,
-    applicableYear,
-    fileName: file instanceof File ? file.name : null,
-    fileSize: file instanceof File ? file.size : null,
-  })
+  let fileBase64: string | undefined
+  if (file instanceof File && file.size > 0) {
+    const buf = Buffer.from(await file.arrayBuffer())
+    fileBase64 = buf.toString("base64")
+  }
 
-  const now = new Date().toISOString()
-  const document: KnowledgeDocument = {
-    id: crypto.randomUUID(),
-    title: title || "無題マニュアル",
-    jurisdiction_level:
+  const result = await registerKnowledgeDocumentAction({
+    title,
+    jurisdictionLevel:
       jurisdictionLevel === "都道府県" || jurisdictionLevel === "市区町村"
         ? jurisdictionLevel
         : "国",
-    region_name:
-      jurisdictionLevel === "国" ? null : regionName.trim() || null,
-    applicable_year: Number.isFinite(applicableYear)
+    regionName,
+    applicableYear: Number.isFinite(applicableYear)
       ? applicableYear
       : new Date().getFullYear(),
-    dify_document_id: `dify-mock-${Date.now()}`,
-    status: "active",
-    created_at: now,
-    updated_at: now,
-  }
+    sourceUrl: sourceUrl || undefined,
+    fileBase64,
+    fileName: file instanceof File ? file.name : undefined,
+  })
 
-  return NextResponse.json({ ok: true, data: { document } })
+  if (!result.ok) {
+    return NextResponse.json(
+      { ok: false, error: result.error },
+      { status: 400 }
+    )
+  }
+  return NextResponse.json({ ok: true, data: result.data })
 }
