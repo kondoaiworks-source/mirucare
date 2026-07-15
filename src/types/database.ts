@@ -219,3 +219,19 @@ export type AttendanceContradiction = {
   error_type: AttendanceErrorType
   message: string
 }
+
+/** 行政マニュアル等のナレッジ台帳（Dify 連携前提） */
+export type JurisdictionLevel = "国" | "都道府県" | "市区町村"
+export type KnowledgeDocumentStatus = "active" | "archived"
+
+export type KnowledgeDocument = {
+  id: string
+  title: string
+  jurisdiction_level: JurisdictionLevel
+  region_name: string | null
+  applicable_year: number
+  dify_document_id: string | null
+  status: KnowledgeDocumentStatus
+  created_at: string
+  updated_at: string
+}

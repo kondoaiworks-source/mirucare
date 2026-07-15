@@ -43,6 +43,9 @@ export default async function AdminReviewPage() {
     <div className="space-y-4">
       <div className="no-print flex justify-end gap-2">
         <Button asChild variant="outline">
+          <Link href="/admin/documents">行政マニュアル管理</Link>
+        </Button>
+        <Button asChild variant="outline">
           <Link href="/admin/reports">月次レポート管理</Link>
         </Button>
       </div>

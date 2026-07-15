@@ -190,9 +190,12 @@ async function SettingsContent({ searchParams }: PageProps) {
               AI指摘の承認・却下と、フィードバック対応メモ（運営のみ）。
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Button asChild size="lg">
               <Link href="/admin">レビューコンソールを開く</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/admin/documents">行政マニュアル管理</Link>
             </Button>
           </CardContent>
         </Card>

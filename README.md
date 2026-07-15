@@ -265,6 +265,17 @@ npm install -D @types/papaparse
 5. チェック結果から「あとで確認」トーストの「あとで確認を見る」を押すと、フルリロードせずソフト遷移すること（`window.location` ではない）
 6. ネットワークを Slow 3G にしても、遷移フィードバック（loading / Skeleton）が即座に出ること
 
+## 動作確認手順（行政マニュアル／ナレッジ台帳）
+
+1. Supabase SQL Editor で `supabase/migrations/20260715090000_knowledge_documents.sql` を実行する
+2. 運営オペレータ（`profiles.is_operator = true` または `OPERATOR_EMAILS`）でログインする
+3. [http://localhost:3000/admin/documents](http://localhost:3000/admin/documents) を開く（非オペレータは `/` へリダイレクト）
+4. PDFをドロップし、タイトル・管轄・地域・適用年度を入力 →「Difyへ登録」
+   - ブラウザの Network で `POST /api/admin/knowledge-documents` が飛ぶこと（現状モック）
+   - サーバーログに登録内容が `console.log` されること
+5. 台帳テーブルに行が追加され、「アーカイブ（無効化）」で状態が変わること
+6. 設定画面の運営カードから「行政マニュアル管理」リンクで遷移できること
+
 ## 主なルート
 
 | パス | 内容 |
@@ -287,6 +298,7 @@ npm install -D @types/papaparse
 | `/reports` | 月次レポート（プレミアム：原因分析・PDF） |
 | `/pricing` | 料金プラン（公開） |
 | `/admin` | 運営レビューコンソール（運営のみ） |
+| `/admin/documents` | 行政マニュアル（ナレッジ）台帳・Dify登録（運営のみ） |
 | `/admin/reports` | 月次レポート管理（管理者のみ） |
 | `/settings` | 設定・招待・ログアウト |
 | `/styleguide` | デザインシステム確認用 |
