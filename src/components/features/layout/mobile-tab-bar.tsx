@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { NAV_ITEMS } from "./nav-items"
+import { MOBILE_TAB_ITEMS } from "./nav-items"
 
 export function MobileTabBar({
   laterCount = 0,
@@ -21,7 +21,7 @@ export function MobileTabBar({
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="flex w-full min-w-0 gap-0.5 px-1 pt-1">
-        {NAV_ITEMS.map((item) => {
+        {MOBILE_TAB_ITEMS.map((item) => {
           const Icon = item.icon
           const isActive =
             item.href === "/"

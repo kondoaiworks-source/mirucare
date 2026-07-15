@@ -20,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { AlertCircle, CheckCircle2, Copy } from "lucide-react"
+import { AlertCircle, CheckCircle2, Copy, UserPlus } from "lucide-react"
 import type { UserRole } from "@/types/database"
 
 type InviteFormProps = {
@@ -38,7 +38,12 @@ export function InviteForm({ isAdmin }: InviteFormProps) {
     return (
       <Card className="rounded-lg shadow-subtle">
         <CardHeader>
-          <CardTitle className="text-lg">同僚を招待する</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <UserPlus className="size-5" aria-hidden />
+            </span>
+            同僚を招待する
+          </CardTitle>
           <CardDescription className="text-base leading-relaxed">
             招待できるのは管理者のみです。管理者の方にご依頼ください。
           </CardDescription>
@@ -50,7 +55,12 @@ export function InviteForm({ isAdmin }: InviteFormProps) {
   return (
     <Card className="rounded-lg shadow-subtle">
       <CardHeader>
-        <CardTitle className="text-lg">同僚を招待する</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <UserPlus className="size-5" aria-hidden />
+          </span>
+          同僚を招待する
+        </CardTitle>
         <CardDescription className="text-base leading-relaxed">
           メールアドレスを入力すると、招待リンクを発行できます（招待制）。
         </CardDescription>

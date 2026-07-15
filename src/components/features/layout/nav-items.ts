@@ -16,6 +16,7 @@ export type NavItem = {
   icon: LucideIcon
 }
 
+/** PCサイドバー用（全項目） */
 export const NAV_ITEMS: NavItem[] = [
   {
     href: "/",
@@ -60,6 +61,16 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Settings,
   },
 ]
+
+/** モバイル下部タブ（押しやすさのため5項目） */
+export const MOBILE_TAB_ITEMS: NavItem[] = NAV_ITEMS.filter(
+  (item) => item.href !== "/reports" && item.href !== "/settings"
+)
+
+/** ヘッダーハンバーガーメニュー（モバイル） */
+export const HEADER_MENU_ITEMS: NavItem[] = NAV_ITEMS.filter(
+  (item) => item.href === "/reports" || item.href === "/settings"
+)
 
 /** デモ用のログイン事業所名（Auth連携後に差し替え） */
 export const DEMO_FACILITY_NAME = "みらい訪問介護ステーション"
