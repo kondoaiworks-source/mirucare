@@ -17,6 +17,10 @@ import {
   reconcileBillingWithRecords,
   type BillingReconcileResult,
 } from "@/lib/billing/reconcile"
+import {
+  detectImportKind,
+  importKindLabel,
+} from "@/lib/attendance/csv-parse"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -56,7 +60,16 @@ export function BillingReconcileView() {
   const [fileName, setFileName] = useState<string | null>(null)
   const [parseWarnings, setParseWarnings] = useState<string[]>([])
   const [results, setResults] = useState<BillingReconcileResult[] | null>(null)
+  // 別種CSV（請求ではない可能性）を検知したときのメッセージ
+  const [csvIssue, setCsvIssue] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
+
+  function resetFile() {
+    setFileName(null)
+    setResults(null)
+    setParseWarnings([])
+    setCsvIssue(null)
+  }
 
   const counts = useMemo(() => {
     if (!results) return { exact: 0, bad: 0, total: 0 }
@@ -73,6 +86,7 @@ export function BillingReconcileView() {
       setFileName(file.name)
       setResults(null)
       setParseWarnings([])
+      setCsvIssue(null)
 
       Papa.parse<string[]>(file, {
         header: false,
@@ -88,8 +102,19 @@ export function BillingReconcileView() {
           setParseWarnings(warnings)
 
           if (rows.length === 0) {
+            // 勤怠・シフト・ヘルパー一覧など、請求以外のCSVの可能性を推定
+            const detected = detectImportKind(matrix[0] ?? [])
+            const looksAttendance =
+              detected === "attendance" ||
+              detected === "shifts" ||
+              detected === "helpers"
+            setCsvIssue(
+              looksAttendance && detected
+                ? `この画面は請求CSVの照合用ですが、「${importKindLabel(detected)}」の可能性があるファイルが選ばれています。正しい請求CSVをご確認ください。`
+                : "請求CSVから照合できる行を読み取れませんでした。列名（利用者・日付・サービス提供時間）や、正しい請求CSVかをご確認ください。"
+            )
             toast.error(
-              "CSVから請求行を読み取れませんでした。列名をご確認ください。"
+              "請求CSVを読み取れませんでした。ファイルをご確認ください。"
             )
             return
           }
@@ -234,6 +259,34 @@ export function BillingReconcileView() {
               </p>
             ) : null}
           </div>
+
+          {csvIssue ? (
+            <Alert className="rounded-lg border-warning/40 bg-warning/10">
+              <AlertTriangle className="text-warning" />
+              <AlertTitle>請求CSVをご確認ください</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p className="text-base leading-relaxed">{csvIssue}</p>
+                {fileName ? (
+                  <p className="text-sm">
+                    <span className="font-medium text-foreground">
+                      対象ファイル：
+                    </span>
+                    <span className="break-words [overflow-wrap:anywhere]">
+                      {fileName}
+                    </span>
+                  </p>
+                ) : null}
+                <Button
+                  type="button"
+                  size="lg"
+                  className="min-h-11 w-full sm:w-auto"
+                  onClick={resetFile}
+                >
+                  CSVを入れ直す
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
           {parseWarnings.length > 0 ? (
             <Alert variant="destructive" className="rounded-lg">

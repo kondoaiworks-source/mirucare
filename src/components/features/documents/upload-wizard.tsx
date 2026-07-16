@@ -2,12 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Sparkles } from "lucide-react"
+import { AlertCircle, AlertTriangle, Check, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
-import { DOC_TYPE_OPTIONS } from "@/lib/documents"
+import {
+  DAILY_CHECK_PURPOSES,
+  dailyCheckPurposeTitle,
+  findDocTypeMismatches,
+  docTypeLabel,
+} from "@/lib/documents"
 import {
   startDocumentCheckAction,
   updateDocumentTypeAction,
@@ -19,8 +23,8 @@ import { useUploadManager } from "./upload-provider"
 import type { DocType } from "@/types/database"
 
 const STEPS = [
-  { id: 1, label: "アップ" },
-  { id: 2, label: "種類を選んで開始" },
+  { id: 1, label: "何をチェックするか選ぶ" },
+  { id: 2, label: "アップして開始" },
 ] as const
 
 const UUID_RE =
@@ -30,13 +34,22 @@ type UploadWizardProps = {
   resumeDocumentId?: string
 }
 
+type Mismatch = { name: string; suggested: DocType }
+
 export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
   const router = useRouter()
-  const { items, isUploading, setDocType, clearAll, hydrateUploadedDocument } =
-    useUploadManager()
+  const {
+    items,
+    isUploading,
+    selectedDocType,
+    setSelectedDocType,
+    clearAll,
+    hydrateUploadedDocument,
+  } = useUploadManager()
   const [step, setStep] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [resuming, setResuming] = useState(Boolean(resumeDocumentId))
+  const [mismatches, setMismatches] = useState<Mismatch[] | null>(null)
   const [pending, startTransition] = useTransition()
   const resumeAttempted = useRef(false)
 
@@ -65,17 +78,24 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
         setStep(1)
         return
       }
+      // 保存済みの書類。種類を確認してからアップ画面へ。
       setStep(2)
     })()
   }, [resumeDocumentId, hydrateUploadedDocument])
 
   const progress = (step / STEPS.length) * 100
 
-  function goToTypeStep() {
+  function choosePurpose(docType: DocType) {
+    setError(null)
+    setSelectedDocType(docType)
+    setStep(2)
+  }
+
+  function attemptStart() {
     setError(null)
     if (isUploading) {
       setError(
-        "まだアップロード中のファイルがあります。完了してから次へ進んでください。"
+        "まだアップロード中のファイルがあります。完了してから開始してください。"
       )
       return
     }
@@ -85,17 +105,33 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
       )
       return
     }
-    setStep(2)
+
+    const found = findDocTypeMismatches(
+      doneItems.map((i) => ({
+        name: i.file.name,
+        suggested: i.suggestedDocType,
+      })),
+      selectedDocType
+    )
+
+    if (found.length > 0) {
+      setMismatches(found)
+      return
+    }
+
+    doStart()
   }
 
-  function startCheck() {
+  function doStart() {
+    setMismatches(null)
     setError(null)
     startTransition(async () => {
       for (const item of doneItems) {
         if (!item.documentId) continue
+        // アップ前に選んだ種類を全ファイルに保存する
         const typeResult = await updateDocumentTypeAction({
           documentId: item.documentId,
-          docType: item.docType,
+          docType: selectedDocType,
         })
         if (!typeResult.ok) {
           setError(typeResult.error ?? "書類種類の保存に失敗しました。")
@@ -133,11 +169,13 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
     })
   }
 
+  const purposeTitle = dailyCheckPurposeTitle(selectedDocType)
+
   return (
     <div className="mx-auto flex max-w-2xl flex-col pb-52 md:pb-28">
       <div className="mb-6">
         <p className="text-sm font-medium text-muted-foreground">
-          書類チェック {step}/{STEPS.length}
+          日次チェック {step}/{STEPS.length}
         </p>
         <Progress value={progress} className="mt-2 h-2" aria-label="進捗" />
         <ol className="mt-3 flex gap-2 text-sm">
@@ -177,14 +215,13 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
         <section className="space-y-6">
           <div>
             <h1 className="text-2xl font-bold text-primary-dark">
-              今日の書類をアップロード
+              何をチェックしますか？
             </h1>
             <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-              夕方の3分でOK。介護ソフトのCSV/PDFや、紙の写真をまとめてアップできます。
+              まずチェックしたい書類の種類を1つ選びます。次の画面で、その種類の書類だけをまとめてアップロードしてください。
             </p>
           </div>
-          <UploadDropzone />
-          <UploadProgressList />
+          <PurposeCards selected={selectedDocType} onSelect={choosePurpose} />
         </section>
       ) : null}
 
@@ -192,104 +229,173 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
         <section className="space-y-6">
           <div>
             <h1 className="text-2xl font-bold text-primary-dark">
-              書類の種類を選ぶ
+              『{docTypeLabel(selectedDocType)}』をアップロード
             </h1>
             <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-              自動判定の候補を先頭に出しています。選んだらそのままチェックを開始できます（
+              {purposeTitle}。同じ種類の書類だけをまとめてアップロードしてください（
               {doneItems.length}件）。
             </p>
           </div>
 
-          <ul className="space-y-6">
-            {doneItems.map((item) => (
-              <li key={item.localId} className="space-y-3">
-                <p className="truncate text-base font-semibold text-foreground">
-                  {item.file.name}
-                </p>
-                <DocTypeCards
-                  selected={item.docType}
-                  suggested={item.suggestedDocType}
-                  onSelect={(docType) => setDocType(item.localId, docType)}
-                />
-              </li>
-            ))}
-          </ul>
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3">
+            <span className="min-w-0 text-base font-semibold text-foreground">
+              チェックする種類：{docTypeLabel(selectedDocType)}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="shrink-0"
+              onClick={() => {
+                setError(null)
+                setStep(1)
+              }}
+            >
+              <Pencil className="size-4" aria-hidden />
+              種類を変える
+            </Button>
+          </div>
+
+          <UploadDropzone />
+          <UploadProgressList />
         </section>
+      ) : null}
+
+      {/*
+        別種の可能性の確認。
+        断定せず「〜の可能性があります」と伝え、そのまま進むか入れ直すかを選ぶ。
+      */}
+      {mismatches && mismatches.length > 0 ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mismatch-title"
+        >
+          <div className="w-full max-w-md rounded-lg border border-border bg-background p-5 shadow-lg">
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning">
+                <AlertTriangle className="size-5" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <h2
+                  id="mismatch-title"
+                  className="text-lg font-bold text-primary-dark"
+                >
+                  別の種類の書類が含まれる可能性があります
+                </h2>
+                <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+                  「{docTypeLabel(selectedDocType)}」を選んでいますが、次のファイルは
+                  別の種類の可能性があります。このまま「
+                  {docTypeLabel(selectedDocType)}」としてチェックしますか？
+                </p>
+              </div>
+            </div>
+
+            <ul className="mt-4 max-h-40 space-y-2 overflow-y-auto rounded-lg border border-border bg-surface p-3">
+              {mismatches.map((m) => (
+                <li
+                  key={m.name}
+                  className="flex items-start gap-2 text-sm leading-relaxed"
+                >
+                  <AlertTriangle
+                    className="mt-0.5 size-4 shrink-0 text-warning"
+                    aria-hidden
+                  />
+                  <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                    <span className="font-medium text-foreground">{m.name}</span>
+                    <span className="block text-muted-foreground">
+                      「{docTypeLabel(m.suggested)}」の可能性があります
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-5 flex flex-col gap-2">
+              <Button
+                type="button"
+                size="lg"
+                className="w-full"
+                disabled={pending}
+                onClick={doStart}
+              >
+                <Check className="size-4" aria-hidden />
+                このまま「{docTypeLabel(selectedDocType)}」でチェックする
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="w-full"
+                disabled={pending}
+                onClick={() => setMismatches(null)}
+              >
+                ファイルを入れ直す
+              </Button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {/*
         片手操作：下部固定CTA。
         モバイルはタブバー（z-40・bottom-0）の上に載せ、隠れないようにする。
       */}
-      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-50 border-t border-border bg-background px-4 py-3 md:bottom-0 md:left-60 md:z-30 md:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
-        <div className="mx-auto flex max-w-2xl flex-col gap-2">
-          {step === 1 ? (
+      {step === 2 && !resuming ? (
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-50 border-t border-border bg-background px-4 py-3 md:bottom-0 md:left-60 md:z-30 md:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+          <div className="mx-auto flex max-w-2xl flex-col gap-2">
             <Button
               type="button"
               size="lg"
               className="w-full"
-              onClick={goToTypeStep}
-              disabled={isUploading || resuming}
+              disabled={pending || resuming || isUploading || doneItems.length === 0}
+              onClick={attemptStart}
             >
-              {isUploading ? "アップロード中…" : "種類の選択へ進む"}
+              {pending
+                ? "開始しています…"
+                : isUploading
+                  ? "アップロード中…"
+                  : "日次チェックを開始する"}
             </Button>
-          ) : null}
-          {step === 2 ? (
-            <>
-              <Button
-                type="button"
-                size="lg"
-                className="w-full"
-                disabled={pending || resuming || doneItems.length === 0}
-                onClick={startCheck}
-              >
-                {pending ? "開始しています…" : "チェックを開始する"}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                disabled={pending || resuming}
-                onClick={() => setStep(1)}
-              >
-                戻る
-              </Button>
-            </>
-          ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              disabled={pending || resuming}
+              onClick={() => {
+                setError(null)
+                setStep(1)
+              }}
+            >
+              種類の選択に戻る
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   )
 }
 
-function DocTypeCards({
+function PurposeCards({
   selected,
-  suggested,
   onSelect,
 }: {
   selected: DocType
-  suggested: DocType
   onSelect: (docType: DocType) => void
 }) {
-  const ordered = useMemo(() => {
-    const suggestedOption = DOC_TYPE_OPTIONS.find((o) => o.value === suggested)
-    const rest = DOC_TYPE_OPTIONS.filter((o) => o.value !== suggested)
-    return suggestedOption ? [suggestedOption, ...rest] : DOC_TYPE_OPTIONS
-  }, [suggested])
-
   return (
-    <div className="grid gap-2">
-      {ordered.map((option, index) => {
+    <div className="grid gap-3">
+      {DAILY_CHECK_PURPOSES.map((option) => {
         const Icon = option.icon
         const isSelected = selected === option.value
-        const isSuggested = index === 0 && option.value === suggested
         return (
           <button
             key={option.value}
             type="button"
             onClick={() => onSelect(option.value)}
             className={cn(
-              "flex min-h-[64px] items-start gap-3 rounded-lg border bg-background p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "flex min-h-[72px] items-start gap-3 rounded-lg border bg-background p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               isSelected
                 ? "border-primary bg-primary/5 ring-1 ring-primary"
                 : "border-border hover:bg-muted/60"
@@ -307,14 +413,8 @@ function DocTypeCards({
               <Icon className="size-5" aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2">
-                <span className="text-base font-semibold">{option.title}</span>
-                {isSuggested ? (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                    <Sparkles className="size-3" aria-hidden />
-                    候補
-                  </span>
-                ) : null}
+              <span className="block text-base font-semibold text-foreground">
+                {option.title}
               </span>
               <span className="mt-0.5 block text-sm text-muted-foreground">
                 {option.description}

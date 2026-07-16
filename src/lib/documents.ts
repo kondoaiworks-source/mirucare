@@ -67,6 +67,61 @@ export const DOC_TYPE_OPTIONS: {
 ]
 
 /**
+ * 日次チェックの「何をチェックしますか？」用の目的別選択肢。
+ * アップロード前に1つ選び、選んだ種類を全ファイルの doc_type とする。
+ */
+export const DAILY_CHECK_PURPOSES: {
+  value: DocType
+  title: string
+  description: string
+  icon: LucideIcon
+}[] = [
+  {
+    value: "提供記録",
+    title: "日報・提供記録をチェック",
+    description: "サービス提供記録・実施記録・日報など",
+    icon: FileText,
+  },
+  {
+    value: "ケアプラン",
+    title: "ケアプランをチェック",
+    description: "居宅サービス計画・訪問介護計画など",
+    icon: ClipboardList,
+  },
+  {
+    value: "勤務表",
+    title: "勤務表をチェック",
+    description: "シフト表・出勤簿など",
+    icon: CalendarDays,
+  },
+  {
+    value: "請求データ",
+    title: "請求データをチェック",
+    description: "国保連請求・明細CSVなど",
+    icon: Receipt,
+  },
+  {
+    value: "その他",
+    title: "その他の書類をチェック",
+    description: "同意書・写真など上記以外",
+    icon: Files,
+  },
+]
+
+/** doc_type に対応する短いラベル（本文表示用） */
+export function docTypeLabel(docType: DocType): string {
+  return DOC_TYPE_OPTIONS.find((o) => o.value === docType)?.title ?? docType
+}
+
+/** 目的別カードのタイトル（例：日報・提供記録をチェック） */
+export function dailyCheckPurposeTitle(docType: DocType): string {
+  return (
+    DAILY_CHECK_PURPOSES.find((p) => p.value === docType)?.title ??
+    `${docTypeLabel(docType)}をチェック`
+  )
+}
+
+/**
  * ファイル名から書類種類を推定（自動判定候補）
  */
 export function guessDocType(fileName: string): DocType {
@@ -105,6 +160,19 @@ export function guessDocType(fileName: string): DocType {
     return "請求データ"
   }
   return "その他"
+}
+
+/**
+ * 選んだ種類と、ファイル名からの推定種類が食い違う可能性のあるファイルを返す。
+ * 断定を避けるため、推定が「その他」のもの（＝推定できなかった）は対象外とする。
+ */
+export function findDocTypeMismatches(
+  files: { name: string; suggested: DocType }[],
+  selected: DocType
+): { name: string; suggested: DocType }[] {
+  return files.filter(
+    (f) => f.suggested !== "その他" && f.suggested !== selected
+  )
 }
 
 export function isHeicFile(file: File): boolean {

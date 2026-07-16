@@ -119,15 +119,53 @@ function previewRows(parsed: ParsedAttendanceImport): {
   }
 }
 
-export function AttendanceImportView() {
+type AttendanceImportViewProps = {
+  /** 月次の用途別入口から渡す。指定時はデータ種類を固定し、別種CSVは入れ直しを促す。 */
+  lockedKind?: AttendanceImportKind
+}
+
+const LOCKED_KIND_COPY: Record<
+  "service_records" | "attendance",
+  { title: string; description: string }
+> = {
+  service_records: {
+    title: "日報CSVを取り込む",
+    description:
+      "サービス提供記録（日報）のCSVを取り込みます。請求CSVと照合する基準データになります。",
+  },
+  attendance: {
+    title: "勤怠・タイムカードCSVを取り込む",
+    description:
+      "出勤・退勤のタイムカードCSVを取り込みます。日報との時間ズレ確認に使います。",
+  },
+}
+
+export function AttendanceImportView({
+  lockedKind,
+}: AttendanceImportViewProps = {}) {
   const [preset, setPreset] = useState<CareSoftPresetId>("generic")
   const [kindChoice, setKindChoice] = useState<AttendanceImportKind | "auto">(
-    "auto"
+    lockedKind ?? "auto"
   )
   const [fileName, setFileName] = useState<string | null>(null)
   const [parsed, setParsed] = useState<ParsedAttendanceImport | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
+  const [detectedKind, setDetectedKind] = useState<AttendanceImportKind | null>(
+    null
+  )
   const [pending, startTransition] = useTransition()
+
+  const kindMismatch =
+    lockedKind != null &&
+    detectedKind != null &&
+    detectedKind !== lockedKind
+
+  function resetFile() {
+    setFileName(null)
+    setParsed(null)
+    setParseError(null)
+    setDetectedKind(null)
+  }
 
   const preview = useMemo(
     () => (parsed ? previewRows(parsed) : null),
@@ -139,6 +177,7 @@ export function AttendanceImportView() {
       setFileName(file.name)
       setParsed(null)
       setParseError(null)
+      setDetectedKind(null)
 
       Papa.parse<string[]>(file, {
         header: false,
@@ -148,8 +187,9 @@ export function AttendanceImportView() {
           const headers = matrix[0] ?? []
           const forcedKind =
             kindChoice === "auto" ? null : kindChoice
-          const detected =
-            forcedKind ?? detectImportKind(headers, preset)
+          // ファイル名・列名からの推定種類（別種CSV確認に使う）
+          const detected = detectImportKind(headers, preset)
+          setDetectedKind(detected)
 
           const outcome = parseAttendanceImportMatrix(matrix, {
             kind: forcedKind,
@@ -234,15 +274,22 @@ export function AttendanceImportView() {
     })
   }
 
+  const heading = lockedKind
+    ? LOCKED_KIND_COPY[lockedKind as "service_records" | "attendance"]
+    : {
+        title: "勤怠・日報データを取り込む",
+        description:
+          "介護ソフトから書き出したCSVを取り込みます。連携方式は「CSV書き出し → 本画面で取込」です（API直結は今後対応予定）。",
+      }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-primary-dark">
-          勤怠・日報データを取り込む
+          {heading.title}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          介護ソフトから書き出したCSVを取り込みます。連携方式は「CSV書き出し →
-          本画面で取込」です（API直結は今後対応予定）。
+          {heading.description}
         </p>
       </div>
 
@@ -292,23 +339,34 @@ export function AttendanceImportView() {
 
             <div className="space-y-2">
               <Label htmlFor="import-kind">データの種類</Label>
-              <Select
-                value={kindChoice}
-                onValueChange={(v) =>
-                  setKindChoice(v as AttendanceImportKind | "auto")
-                }
-              >
-                <SelectTrigger id="import-kind" className="min-h-11">
-                  <SelectValue placeholder="選択してください" />
-                </SelectTrigger>
-                <SelectContent>
-                  {KIND_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {lockedKind ? (
+                <div className="flex min-h-11 items-center rounded-lg border border-border bg-surface px-3 text-base font-medium text-foreground">
+                  {importKindLabel(lockedKind)}
+                </div>
+              ) : (
+                <Select
+                  value={kindChoice}
+                  onValueChange={(v) =>
+                    setKindChoice(v as AttendanceImportKind | "auto")
+                  }
+                >
+                  <SelectTrigger id="import-kind" className="min-h-11">
+                    <SelectValue placeholder="選択してください" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {KIND_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {lockedKind ? (
+                <p className="text-sm text-muted-foreground">
+                  この画面は「{importKindLabel(lockedKind)}」専用です。別の種類のCSVは、月次確認のトップから正しい入口をお選びください。
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -350,6 +408,40 @@ export function AttendanceImportView() {
               <AlertTriangle />
               <AlertTitle>読み取りできませんでした</AlertTitle>
               <AlertDescription>{parseError}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {kindMismatch ? (
+            <Alert className="rounded-lg border-warning/40 bg-warning/10">
+              <AlertTriangle className="text-warning" />
+              <AlertTitle>別の種類のCSVの可能性があります</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p className="text-base leading-relaxed">
+                  この画面は「{importKindLabel(lockedKind!)}」の取込画面ですが、
+                  {detectedKind
+                    ? `「${importKindLabel(detectedKind)}」`
+                    : "別の種類"}
+                  の可能性があるファイルが選ばれています。正しいCSVかご確認ください。
+                </p>
+                {fileName ? (
+                  <p className="text-sm">
+                    <span className="font-medium text-foreground">
+                      対象ファイル：
+                    </span>
+                    <span className="break-words [overflow-wrap:anywhere]">
+                      {fileName}
+                    </span>
+                  </p>
+                ) : null}
+                <Button
+                  type="button"
+                  size="lg"
+                  className="min-h-11 w-full sm:w-auto"
+                  onClick={resetFile}
+                >
+                  CSVを入れ直す
+                </Button>
+              </AlertDescription>
             </Alert>
           ) : null}
         </CardContent>
@@ -431,27 +523,63 @@ export function AttendanceImportView() {
             )}
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button
-                size="lg"
-                className="min-h-11"
-                disabled={pending || parsed.rows.length === 0}
-                onClick={commitImport}
-              >
-                {pending ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                    取り込み中…
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="size-4" aria-hidden />
-                    事業所データに取り込む
-                  </>
-                )}
-              </Button>
-              <Button asChild size="lg" variant="outline" className="min-h-11">
-                <Link href="/attendance">矛盾検知へ進む</Link>
-              </Button>
+              {kindMismatch ? (
+                <>
+                  <Button
+                    size="lg"
+                    className="min-h-11"
+                    onClick={resetFile}
+                  >
+                    CSVを入れ直す
+                  </Button>
+                  {/* 例外的な導線。目立たせすぎない。 */}
+                  <Button
+                    size="lg"
+                    variant="ghost"
+                    className="min-h-11 text-muted-foreground"
+                    disabled={pending || parsed.rows.length === 0}
+                    onClick={commitImport}
+                  >
+                    {pending ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                        取り込み中…
+                      </>
+                    ) : (
+                      "内容を確認してこのまま取り込む"
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    size="lg"
+                    className="min-h-11"
+                    disabled={pending || parsed.rows.length === 0}
+                    onClick={commitImport}
+                  >
+                    {pending ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                        取り込み中…
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="size-4" aria-hidden />
+                        事業所データに取り込む
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className="min-h-11"
+                  >
+                    <Link href="/attendance">矛盾検知へ進む</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
