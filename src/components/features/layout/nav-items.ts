@@ -26,7 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/documents",
-    label: "日次",
+    label: "日次作業",
     shortLabel: "日次",
     icon: FileCheck2,
   },
@@ -38,7 +38,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/reconcile",
-    label: "月次",
+    label: "月次作業",
     shortLabel: "月次",
     icon: GitCompareArrows,
   },

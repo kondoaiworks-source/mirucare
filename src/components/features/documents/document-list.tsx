@@ -1,9 +1,16 @@
 "use client"
 
-import { useEffect, useTransition, type MouseEvent } from "react"
+import { useEffect, useMemo, useState, useTransition, type MouseEvent } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Loader2, Upload, Check, Clock } from "lucide-react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Upload,
+  Check,
+  Clock,
+} from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -193,6 +200,8 @@ function DocumentCard({ doc }: { doc: DocumentListItem }) {
   )
 }
 
+const PAST_PAGE_SIZE = 15
+
 function DocumentsRefreshPoller() {
   const router = useRouter()
   useEffect(() => {
@@ -205,6 +214,27 @@ function DocumentsRefreshPoller() {
 }
 
 export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
+  const [pastPage, setPastPage] = useState(1)
+
+  const { today, past } = useMemo(() => {
+    const todayStart = startOfToday()
+    return {
+      today: sortDocumentListItems(
+        documents.filter((d) => new Date(d.created_at) >= todayStart)
+      ),
+      past: sortDocumentListItems(
+        documents.filter((d) => new Date(d.created_at) < todayStart)
+      ),
+    }
+  }, [documents])
+
+  const totalPages = Math.max(1, Math.ceil(past.length / PAST_PAGE_SIZE))
+
+  // 件数変動でページが範囲外になったら補正する
+  useEffect(() => {
+    setPastPage((p) => Math.min(Math.max(1, p), totalPages))
+  }, [totalPages])
+
   if (documents.length === 0) {
     return (
       <EmptyState
@@ -220,13 +250,10 @@ export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
     )
   }
 
-  const todayStart = startOfToday()
-  const today = sortDocumentListItems(
-    documents.filter((d) => new Date(d.created_at) >= todayStart)
-  )
-  const past = sortDocumentListItems(
-    documents.filter((d) => new Date(d.created_at) < todayStart)
-  )
+  const pastStart = (pastPage - 1) * PAST_PAGE_SIZE
+  const pastPageItems = past.slice(pastStart, pastStart + PAST_PAGE_SIZE)
+  const pastRangeStart = past.length === 0 ? 0 : pastStart + 1
+  const pastRangeEnd = Math.min(pastStart + PAST_PAGE_SIZE, past.length)
 
   return (
     <div className="min-w-0 space-y-8">
@@ -267,11 +294,52 @@ export function DocumentList({ documents }: { documents: DocumentListItem[] }) {
             過去の書類はまだありません。
           </p>
         ) : (
-          <div className="grid min-w-0 gap-3">
-            {past.map((doc) => (
-              <DocumentCard key={doc.id} doc={doc} />
-            ))}
-          </div>
+          <>
+            <div className="grid min-w-0 gap-3">
+              {pastPageItems.map((doc) => (
+                <DocumentCard key={doc.id} doc={doc} />
+              ))}
+            </div>
+
+            {totalPages > 1 ? (
+              <nav
+                className="flex items-center justify-between gap-3 pt-1"
+                aria-label="過去の分のページ送り"
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="min-h-11"
+                  disabled={pastPage <= 1}
+                  onClick={() => setPastPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="size-4" aria-hidden />
+                  前へ
+                </Button>
+                <p
+                  className="text-sm tabular-nums text-muted-foreground"
+                  aria-live="polite"
+                >
+                  {pastRangeStart}–{pastRangeEnd} / {past.length}件（{pastPage}/
+                  {totalPages}ページ）
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="min-h-11"
+                  disabled={pastPage >= totalPages}
+                  onClick={() =>
+                    setPastPage((p) => Math.min(totalPages, p + 1))
+                  }
+                >
+                  次へ
+                  <ChevronRight className="size-4" aria-hidden />
+                </Button>
+              </nav>
+            ) : null}
+          </>
         )}
       </section>
     </div>
