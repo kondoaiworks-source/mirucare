@@ -272,6 +272,9 @@ async function SettingsContent({ searchParams }: PageProps) {
                 <Button asChild size="lg" variant="outline">
                   <Link href="/admin/documents">行政マニュアル管理</Link>
                 </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link href="/admin/document-changes">マニュアル変更の承認</Link>
+                </Button>
               </CardContent>
             </Card>
           </section>

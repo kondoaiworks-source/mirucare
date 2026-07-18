@@ -2,16 +2,16 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { requireOperator } from "@/lib/operator"
-import { KnowledgeDocumentsAdmin } from "@/components/features/admin/knowledge-documents-admin"
+import { DocumentChangesAdmin } from "@/components/features/admin/document-changes-admin"
 import { countPendingChangeDraftsAction } from "@/app/actions/knowledge-change-drafts"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
 export const metadata: Metadata = {
-  title: "行政マニュアル管理",
+  title: "マニュアル変更の承認",
 }
 
-export default async function AdminKnowledgeDocumentsPage() {
+export default async function AdminDocumentChangesPage() {
   const op = await requireOperator()
   if ("error" in op) {
     redirect("/")
@@ -23,27 +23,22 @@ export default async function AdminKnowledgeDocumentsPage() {
   return (
     <div className="space-y-4">
       <div className="no-print flex flex-wrap items-center justify-end gap-2">
-        <Button asChild variant="outline" className="relative min-h-11">
-          <Link href="/admin/document-changes">
-            変更承認
-            {count > 0 ? (
-              <Badge
-                variant="destructive"
-                className="ml-2 h-6 rounded-lg px-2 text-xs tabular-nums"
-              >
-                {count}
-              </Badge>
-            ) : null}
-          </Link>
+        {count > 0 ? (
+          <Badge
+            variant="destructive"
+            className="h-8 rounded-lg px-3 text-sm tabular-nums"
+          >
+            承認待ち {count}件
+          </Badge>
+        ) : null}
+        <Button asChild variant="outline">
+          <Link href="/admin/documents">行政マニュアル管理</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/admin">レビューコンソール</Link>
         </Button>
-        <Button asChild variant="outline">
-          <Link href="/admin/reports">月次レポート管理</Link>
-        </Button>
       </div>
-      <KnowledgeDocumentsAdmin />
+      <DocumentChangesAdmin />
     </div>
   )
 }

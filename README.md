@@ -323,6 +323,11 @@ npm install -D @types/papaparse
        -H "Authorization: Bearer $CRON_SECRET"
      ```
 8. 設定画面の運営カードから「行政マニュアル管理」へ遷移できること
+9. 変更承認: [http://localhost:3000/admin/document-changes](http://localhost:3000/admin/document-changes)
+   - ハッシュ変更後に承認待ちが表示されること
+   - 「要精査」案件は理由10文字以上がないと承認できないこと
+   - 承認後にダッシュボード「お知らせ」が増えること
+   - `/admin/documents` ヘッダーの「変更承認」バッジ件数が減ること
 
 ## 動作確認手順（ログインロックアウト）
 

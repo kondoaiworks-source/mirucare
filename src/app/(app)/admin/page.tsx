@@ -46,6 +46,9 @@ export default async function AdminReviewPage() {
           <Link href="/admin/documents">行政マニュアル管理</Link>
         </Button>
         <Button asChild variant="outline">
+          <Link href="/admin/document-changes">マニュアル変更の承認</Link>
+        </Button>
+        <Button asChild variant="outline">
           <Link href="/admin/reports">月次レポート管理</Link>
         </Button>
       </div>
