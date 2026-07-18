@@ -60,7 +60,16 @@ export async function lookupLoginLockout(
     console.error("[login-lockout] lookup_failed", {
       message: error.message.slice(0, 120),
     })
-    throw new Error("ログイン状態の確認に失敗しました。しばらくしてから再度お試しください。")
+    // マイグレーション未適用時はロック判定をスキップ（ログイン自体は許可）
+    if (
+      error.message.includes("Could not find the function") ||
+      error.message.includes("schema cache")
+    ) {
+      return null
+    }
+    throw new Error(
+      "ログイン状態の確認に失敗しました。しばらくしてから再度お試しください。"
+    )
   }
 
   const row = Array.isArray(data) ? data[0] : data

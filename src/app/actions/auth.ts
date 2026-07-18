@@ -98,7 +98,14 @@ export async function signInAction(formData: FormData): Promise<ActionResult> {
     try {
       lockRow = await lookupLoginLockout(normalizedEmail, service)
     } catch (lookupError) {
-      return { ok: false, error: toUserErrorMessage(lookupError) }
+      // RPC未適用などでルックアップ失敗しても Auth ログイン自体は止めない
+      console.error("[auth] lockout_lookup_skipped", {
+        message:
+          lookupError instanceof Error
+            ? lookupError.message.slice(0, 120)
+            : "unknown",
+      })
+      lockRow = null
     }
 
     // 登録済みかつロック中 → Auth を呼ばず拒否（正解PWでも）
