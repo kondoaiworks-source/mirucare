@@ -305,8 +305,9 @@ npm install -D @types/papaparse
    - **PDF直リンク（file）**: 監視用PDF直リンク、またはPDFアップロード
    - **新着一覧（index）**: 一覧ページURL + 記事1件を指すCSSセレクタ（必須）
 5. 「今すぐ同期」または「今すぐ一括同期」で取得を試す
-   - file: 成功して内容が変わった場合 → ダッシュボード「お知らせ」
+   - file: 成功して内容が変わった場合 → 承認待ちドラフト作成（施設向けお知らせは承認後）
    - file: 同期成功時に Storage `knowledge-snapshots` へ抽出テキストが保存されること（Supabase Storage で確認）
+   - Gemini 未設定時も「AI整理なし」の pending ドラフトが `knowledge_document_change_drafts` に残ること
    - index: 初回はベースライン登録のみ（お知らせなし）。2回目以降の新着でお知らせ
    - 抽出0件（index）: 「要対応」にセレクタ破損として出ること
    - 失敗・疑い: 「要対応」。`OPERATOR_EMAILS` へ Resend メール（キー設定時）

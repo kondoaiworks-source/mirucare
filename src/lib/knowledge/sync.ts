@@ -5,6 +5,7 @@ import { buildKnowledgeSyncAlertEmail } from "@/lib/email/knowledge-sync-alert"
 import { conditionalFetch } from "@/lib/knowledge/http"
 import { extractWatchRows } from "@/lib/knowledge/index-extract"
 import { trySaveKnowledgePdfSnapshot } from "@/lib/knowledge/snapshots"
+import { tryCreateChangeDraftOnHashChange } from "@/lib/knowledge/diff-draft"
 import type {
   KnowledgeDocument,
   KnowledgeSyncAlertKind,
@@ -217,13 +218,49 @@ async function syncFileDocument(
   }
 
   // 初回ハッシュ確定 or 内容変更: 変更後テキストをスナップショット保存
-  await trySaveKnowledgePdfSnapshot({
+  const previousHash = doc.content_hash?.trim() || null
+  const saved = await trySaveKnowledgePdfSnapshot({
     service,
     knowledgeDocumentId: doc.id,
     contentHash: hash,
     pdfBuffer,
     sourceUrlAtCapture: sourceUrl,
   })
+
+  // ハッシュが変わった場合のみ差分ドラフト（初回ベースラインは作らない）
+  if (previousHash && previousHash !== hash) {
+    if (saved) {
+      await tryCreateChangeDraftOnHashChange({
+        service,
+        doc,
+        previousContentHash: previousHash,
+        afterSnapshot: saved.snapshot,
+      })
+    } else {
+      // スナップショット失敗でも見落とし防止のため AI整理なしドラフトを残す
+      console.error("[knowledge-sync] draft_without_snapshot", {
+        documentId: doc.id,
+      })
+      try {
+        await service.from("knowledge_document_change_drafts").insert({
+          knowledge_document_id: doc.id,
+          before_snapshot_id: null,
+          after_snapshot_id: null,
+          ai_summary:
+            "内容の更新を検知しましたが、テキストスナップショットの保存に失敗した可能性があります。原文URLをご確認ください。",
+          changes: [],
+          quote_verified_ratio: null,
+          ai_organized: false,
+          status: "pending",
+        })
+      } catch (err) {
+        console.error("[knowledge-sync] fallback_draft_failed", {
+          documentId: doc.id,
+          error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
+        })
+      }
+    }
+  }
 
   const difyId = `dify-sync-${hash.slice(0, 12)}`
   await service
@@ -241,23 +278,17 @@ async function syncFileDocument(
     })
     .eq("id", doc.id)
 
-  const regionLabel = doc.region_name ? `${doc.region_name}の` : ""
-  const annTitle = `${regionLabel || (doc.jurisdiction_level === "国" ? "国の" : "")}行政マニュアルを更新しました`
-  const annBody = `「${doc.title}」（${doc.applicable_year}年度）の内容に更新があった可能性があります。チェック時の参照基準が変わっている場合がありますので、ご確認ください。`
-
-  await service.from("app_announcements").insert({
-    title: annTitle,
-    body: annBody,
-    kind: "knowledge_update",
-    knowledge_document_id: doc.id,
-  })
+  // 施設向けお知らせは人間承認後に作成する（commit 4）。
+  // 監視台帳の content_hash 更新と運営向け差分ドラフトのみここで行う。
 
   return {
     documentId: doc.id,
     title: doc.title,
     status: "ok",
     changed: true,
-    message: "内容の更新を反映し、お知らせを作成しました。",
+    message: previousHash
+      ? "内容の更新を検知し、承認待ちドラフトを作成しました。"
+      : "初回内容を反映し、テキストスナップショットを保存しました。",
   }
 }
 
