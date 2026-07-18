@@ -131,6 +131,7 @@ export function KnowledgeDocumentsAdmin() {
   const [sourceUrl, setSourceUrl] = useState("")
   const [watchKind, setWatchKind] = useState<KnowledgeWatchKind>("file")
   const [cssSelector, setCssSelector] = useState("")
+  const [notifyEmails, setNotifyEmails] = useState("")
   const [file, setFile] = useState<File | null>(null)
 
   const needsRegion = jurisdictionLevel !== "国"
@@ -211,6 +212,7 @@ export function KnowledgeDocumentsAdmin() {
     setSourceUrl("")
     setWatchKind("file")
     setCssSelector("")
+    setNotifyEmails("")
     setFile(null)
   }
 
@@ -254,6 +256,7 @@ export function KnowledgeDocumentsAdmin() {
           sourceUrl: sourceUrl.trim() || undefined,
           watchKind,
           cssSelector: isIndexWatch ? cssSelector.trim() : undefined,
+          notifyEmails: notifyEmails.trim() || undefined,
           fileBase64,
           fileName: file?.name,
         })
@@ -532,6 +535,24 @@ export function KnowledgeDocumentsAdmin() {
                   </p>
                 </div>
               ) : null}
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="kd-notify">
+                  通知メールアドレス（任意・カンマ区切り）
+                </Label>
+                <Input
+                  id="kd-notify"
+                  type="text"
+                  inputMode="email"
+                  className="h-11 min-h-11 text-base"
+                  value={notifyEmails}
+                  onChange={(e) => setNotifyEmails(e.target.value)}
+                  placeholder="例：ops@example.com, lead@example.com"
+                />
+                <p className="text-sm text-muted-foreground">
+                  内容変更を検知したときの通知先です。未入力のときは運営用メール（OPERATOR_EMAILS）へ送ります。
+                </p>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="kd-jurisdiction">管轄レベル</Label>

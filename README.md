@@ -329,6 +329,9 @@ npm install -D @types/papaparse
    - 承認後にダッシュボード「お知らせ」が増えること
    - `/admin/documents` ヘッダーの「変更承認」バッジ件数が減ること
 
+本番投入時の環境変数・Storage・確認手順の詳細は  
+[docs/OPERATIONS_STEP3.md](docs/OPERATIONS_STEP3.md) を参照してください。
+
 ## 動作確認手順（ログインロックアウト）
 
 1. Supabase SQL Editor で `supabase/migrations/20260719070000_login_lockout.sql` を実行する

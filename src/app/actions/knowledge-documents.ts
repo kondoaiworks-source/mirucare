@@ -128,6 +128,8 @@ export async function registerKnowledgeDocumentAction(input: {
   sourceUrl?: string
   watchKind?: KnowledgeWatchKind
   cssSelector?: string
+  /** 変更検知通知先（カンマ区切り・任意） */
+  notifyEmails?: string
   /** PDFをアップロードした場合のバイナリ（任意） */
   fileBase64?: string
   fileName?: string
@@ -181,6 +183,19 @@ export async function registerKnowledgeDocumentAction(input: {
     }
   }
 
+  const notifyEmails = input.notifyEmails?.trim() || null
+  if (notifyEmails) {
+    const parts = notifyEmails.split(",").map((e) => e.trim()).filter(Boolean)
+    const invalid = parts.find((e) => !e.includes("@"))
+    if (invalid) {
+      return {
+        ok: false,
+        error:
+          "通知メールアドレスの形式をご確認ください（カンマ区切りで入力）。",
+      }
+    }
+  }
+
   if (sourceUrl) {
     try {
       const u = new URL(sourceUrl)
@@ -223,6 +238,7 @@ export async function registerKnowledgeDocumentAction(input: {
       source_url: sourceUrl,
       watch_kind: watchKind,
       css_selector: watchKind === "index" ? cssSelector : null,
+      notify_emails: notifyEmails,
       content_hash: contentHash,
       content_bytes: contentBytes,
       dify_document_id: contentHash
