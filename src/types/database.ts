@@ -252,8 +252,41 @@ export type KnowledgeDocument = {
   etag?: string | null
   last_modified?: string | null
   last_ok_at?: string | null
+  /** 変更検知通知先（カンマ区切り）。未設定時は OPERATOR_EMAILS */
+  notify_emails?: string | null
   created_at: string
   updated_at: string
+}
+
+/** PDF抽出テキストのスナップショット（本文は Storage） */
+export type KnowledgeDocumentSnapshot = {
+  id: string
+  knowledge_document_id: string
+  content_hash: string
+  storage_path: string
+  text_bytes: number
+  is_truncated: boolean
+  captured_at: string
+  source_url_at_capture: string | null
+}
+
+export type KnowledgeChangeDraftStatus = "pending" | "approved" | "rejected"
+
+export type KnowledgeDocumentChangeDraft = {
+  id: string
+  knowledge_document_id: string
+  before_snapshot_id: string | null
+  after_snapshot_id: string | null
+  ai_summary: string | null
+  changes: unknown
+  quote_verified_ratio: number | null
+  ai_organized: boolean
+  status: KnowledgeChangeDraftStatus
+  reviewer_user_id: string | null
+  reviewed_at: string | null
+  review_reason: string | null
+  notified_at: string | null
+  created_at: string
 }
 
 export type KnowledgeWatchItem = {

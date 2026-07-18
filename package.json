@@ -12,6 +12,7 @@
     "test:check": "tsx scripts/test-check-mock.ts",
     "test:review": "tsx --env-file=.env.local scripts/test-findings-review.ts",
     "test:lockout": "tsx --env-file=.env.local scripts/test-login-lockout.ts",
+    "backfill:knowledge-snapshots": "tsx --env-file=.env.local scripts/backfill-knowledge-snapshots.ts",
     "unlock-user": "tsx --env-file=.env.local scripts/unlock-user.ts"
   },
   "dependencies": {

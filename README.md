@@ -298,6 +298,7 @@ npm install -D @types/papaparse
    - `supabase/migrations/20260715090000_knowledge_documents.sql`
    - `supabase/migrations/20260715220000_knowledge_sync_announcements.sql`
    - `supabase/migrations/20260719060000_knowledge_watch_index.sql`（一覧監視・ETag・item_key）
+   - `supabase/migrations/20260719080000_knowledge_change_drafts.sql`（スナップショット・差分ドラフト・通知先）
 2. 運営オペレータ（`profiles.is_operator = true` または `OPERATOR_EMAILS`）でログインする
 3. [http://localhost:3000/admin/documents](http://localhost:3000/admin/documents) を開く
 4. マニュアルを登録する
@@ -305,17 +306,22 @@ npm install -D @types/papaparse
    - **新着一覧（index）**: 一覧ページURL + 記事1件を指すCSSセレクタ（必須）
 5. 「今すぐ同期」または「今すぐ一括同期」で取得を試す
    - file: 成功して内容が変わった場合 → ダッシュボード「お知らせ」
+   - file: 同期成功時に Storage `knowledge-snapshots` へ抽出テキストが保存されること（Supabase Storage で確認）
    - index: 初回はベースライン登録のみ（お知らせなし）。2回目以降の新着でお知らせ
    - 抽出0件（index）: 「要対応」にセレクタ破損として出ること
    - 失敗・疑い: 「要対応」。`OPERATOR_EMAILS` へ Resend メール（キー設定時）
-6. 定期実行（本番）: Vercel Cron `0 15 * * *`（UTC＝毎日0:00 JST頃）→ `/api/cron/knowledge-sync`
+6. 既存登録マニュアルの初回スナップショット（遡及）:
+   ```bash
+   npm run backfill:knowledge-snapshots
+   ```
+7. 定期実行（本番）: Vercel Cron `0 15 * * *`（UTC＝毎日0:00 JST頃）→ `/api/cron/knowledge-sync`
    - **本番に `CRON_SECRET` が無いと毎回 401 で同期されません**（要設定）
    - ローカル確認例:
      ```bash
      curl -X POST http://localhost:3000/api/cron/knowledge-sync \
        -H "Authorization: Bearer $CRON_SECRET"
      ```
-7. 設定画面の運営カードから「行政マニュアル管理」へ遷移できること
+8. 設定画面の運営カードから「行政マニュアル管理」へ遷移できること
 
 ## 動作確認手順（ログインロックアウト）
 
@@ -342,6 +348,7 @@ npm install -D @types/papaparse
 - User-Agent に連絡先を付与（`KNOWLEDGE_SYNC_CONTACT_EMAIL` または `KNOWLEDGE_SYNC_USER_AGENT`）
 - 1対象の失敗は他対象を止めない（アラート記録して continue）
 - index の抽出0件は「新着なし」ではなくセレクタ破損
+- file 監視: PDFテキストを `knowledge-snapshots`（private）へ保存（ソフト上限2MBで切り詰め）
 ## 主なルート
 
 | パス | 内容 |

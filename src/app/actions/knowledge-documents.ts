@@ -8,6 +8,7 @@ import {
   syncAllKnowledgeDocuments,
   syncKnowledgeDocument,
 } from "@/lib/knowledge/sync"
+import { trySaveKnowledgePdfSnapshot } from "@/lib/knowledge/snapshots"
 import type {
   AppAnnouncement,
   JurisdictionLevel,
@@ -245,6 +246,17 @@ export async function registerKnowledgeDocumentAction(input: {
   }
 
   const document = data as KnowledgeDocument
+
+  // PDFアップロード時は初回スナップショット（変更前ベースライン）を保存
+  if (input.fileBase64 && contentHash) {
+    await trySaveKnowledgePdfSnapshot({
+      service: op.service,
+      knowledgeDocumentId: document.id,
+      contentHash,
+      pdfBuffer: Buffer.from(input.fileBase64, "base64"),
+      sourceUrlAtCapture: sourceUrl,
+    })
+  }
 
   // source_url があれば直後に1回同期を試す
   if (sourceUrl) {

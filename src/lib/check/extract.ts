@@ -109,6 +109,21 @@ async function extractScanPdfAsImage(
   }
 }
 
+/**
+ * PDF本文テキストのみ抽出（スキャン画像化なし）。
+ * ナレッジ差分用スナップショットで使用。
+ */
+export async function extractPdfPlainText(buffer: Buffer): Promise<string> {
+  const { PDFParse } = await import("pdf-parse")
+  const parser = new PDFParse({ data: buffer })
+  try {
+    const data = await parser.getText()
+    return (data.text ?? "").trim()
+  } finally {
+    await parser.destroy().catch(() => undefined)
+  }
+}
+
 export async function extractDocumentContent(
   buffer: Buffer,
   mimeType: string | null,

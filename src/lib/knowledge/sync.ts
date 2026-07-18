@@ -4,6 +4,7 @@ import { sendResendEmail } from "@/lib/email/deadline-reminder"
 import { buildKnowledgeSyncAlertEmail } from "@/lib/email/knowledge-sync-alert"
 import { conditionalFetch } from "@/lib/knowledge/http"
 import { extractWatchRows } from "@/lib/knowledge/index-extract"
+import { trySaveKnowledgePdfSnapshot } from "@/lib/knowledge/snapshots"
 import type {
   KnowledgeDocument,
   KnowledgeSyncAlertKind,
@@ -183,7 +184,18 @@ async function syncFileDocument(
     last_modified: fetched.lastModified,
   }
 
+  const pdfBuffer = Buffer.from(buf)
+
   if (doc.content_hash && doc.content_hash === hash) {
+    // ハッシュ一致でもスナップショット欠落時は補完（既存台帳の初回取得など）
+    await trySaveKnowledgePdfSnapshot({
+      service,
+      knowledgeDocumentId: doc.id,
+      contentHash: hash,
+      pdfBuffer,
+      sourceUrlAtCapture: sourceUrl,
+    })
+
     await service
       .from("knowledge_documents")
       .update({
@@ -203,6 +215,15 @@ async function syncFileDocument(
       changed: false,
     }
   }
+
+  // 初回ハッシュ確定 or 内容変更: 変更後テキストをスナップショット保存
+  await trySaveKnowledgePdfSnapshot({
+    service,
+    knowledgeDocumentId: doc.id,
+    contentHash: hash,
+    pdfBuffer,
+    sourceUrlAtCapture: sourceUrl,
+  })
 
   const difyId = `dify-sync-${hash.slice(0, 12)}`
   await service
