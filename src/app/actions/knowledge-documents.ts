@@ -13,6 +13,7 @@ import type {
   JurisdictionLevel,
   KnowledgeDocument,
   KnowledgeSyncAlert,
+  KnowledgeWatchKind,
 } from "@/types/database"
 
 export type ActionResult<T = undefined> = {
@@ -124,6 +125,8 @@ export async function registerKnowledgeDocumentAction(input: {
   regionName: string
   applicableYear: number
   sourceUrl?: string
+  watchKind?: KnowledgeWatchKind
+  cssSelector?: string
   /** PDFをアップロードした場合のバイナリ（任意） */
   fileBase64?: string
   fileName?: string
@@ -157,7 +160,26 @@ export async function registerKnowledgeDocumentAction(input: {
     }
   }
 
+  const watchKind: KnowledgeWatchKind =
+    input.watchKind === "index" ? "index" : "file"
+  const cssSelector = input.cssSelector?.trim() || null
+
+  if (watchKind === "index" && !cssSelector) {
+    return {
+      ok: false,
+      error:
+        "一覧監視（index）では、記事1件を指すCSSセレクタを入力してください。",
+    }
+  }
+
   const sourceUrl = input.sourceUrl?.trim() || null
+  if (watchKind === "index" && !sourceUrl) {
+    return {
+      ok: false,
+      error: "一覧監視では監視用のページURL（source_url）が必須です。",
+    }
+  }
+
   if (sourceUrl) {
     try {
       const u = new URL(sourceUrl)
@@ -165,13 +187,26 @@ export async function registerKnowledgeDocumentAction(input: {
         return { ok: false, error: "source_url は http(s) のURLにしてください。" }
       }
     } catch {
-      return { ok: false, error: "監視用PDFのURL形式をご確認ください。" }
+      return {
+        ok: false,
+        error:
+          watchKind === "index"
+            ? "監視用ページURLの形式をご確認ください。"
+            : "監視用PDFのURL形式をご確認ください。",
+      }
     }
   }
 
   let contentHash: string | null = null
   let contentBytes: number | null = null
   if (input.fileBase64) {
+    if (watchKind === "index") {
+      return {
+        ok: false,
+        error:
+          "一覧監視（index）ではPDFアップロードは使わず、ページURLとセレクタを登録してください。",
+      }
+    }
     const buf = Buffer.from(input.fileBase64, "base64")
     contentBytes = buf.byteLength
     contentHash = createHash("sha256").update(buf).digest("hex")
@@ -185,6 +220,8 @@ export async function registerKnowledgeDocumentAction(input: {
       region_name: regionName,
       applicable_year: input.applicableYear,
       source_url: sourceUrl,
+      watch_kind: watchKind,
+      css_selector: watchKind === "index" ? cssSelector : null,
       content_hash: contentHash,
       content_bytes: contentBytes,
       dify_document_id: contentHash

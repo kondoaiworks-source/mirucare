@@ -2,8 +2,11 @@ import { createHash } from "crypto"
 import { createServiceClient } from "@/lib/supabase/server"
 import { sendResendEmail } from "@/lib/email/deadline-reminder"
 import { buildKnowledgeSyncAlertEmail } from "@/lib/email/knowledge-sync-alert"
+import { conditionalFetch } from "@/lib/knowledge/http"
+import { extractWatchRows } from "@/lib/knowledge/index-extract"
 import type {
   KnowledgeDocument,
+  KnowledgeSyncAlertKind,
   KnowledgeSyncStatus,
 } from "@/types/database"
 
@@ -13,13 +16,15 @@ export type SyncOneResult = {
   status: KnowledgeSyncStatus
   message?: string
   changed?: boolean
+  newItemCount?: number
 }
 
-const FETCH_TIMEOUT_MS = 45_000
 /** 前回比でサイズがこの倍率を超えたら疑い */
 const SIZE_RATIO_SUSPICIOUS = 3
 /** 絶対バイト数がこの値未満なら異常の可能性 */
 const MIN_PDF_BYTES = 500
+
+type ServiceClient = ReturnType<typeof createServiceClient>
 
 function sha256(buf: ArrayBuffer): string {
   return createHash("sha256").update(Buffer.from(buf)).digest("hex")
@@ -43,9 +48,8 @@ function operatorEmails(): string[] {
 
 async function notifyOperators(opts: {
   title: string
-  kind: "failed" | "suspicious"
+  kind: KnowledgeSyncAlertKind
   message: string
-  documentId: string
 }) {
   const appUrl = (
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
@@ -57,22 +61,28 @@ async function notifyOperators(opts: {
     appUrl,
   })
   for (const to of operatorEmails()) {
-    await sendResendEmail({
+    const result = await sendResendEmail({
       to,
       subject: mail.subject,
       text: mail.text,
       html: mail.html,
     })
+    if (!result.ok) {
+      console.error("[knowledge-sync] email_failed", {
+        kind: opts.kind,
+        error: result.error?.slice(0, 120),
+      })
+    }
   }
 }
 
 /**
- * 1件の knowledge_documents を source_url から同期する（service role）。
- * Dify 実APIはモック更新（dify_document_id を刷新）まで。
+ * 1件の knowledge_documents を監視同期する（service role）。
+ * watch_kind=file: PDFハッシュ比較 / index: 一覧行の item_key 差分
  */
 export async function syncKnowledgeDocument(
   doc: KnowledgeDocument,
-  service: ReturnType<typeof createServiceClient> = createServiceClient()
+  service: ServiceClient = createServiceClient()
 ): Promise<SyncOneResult> {
   const sourceUrl = doc.source_url?.trim()
   if (!sourceUrl) {
@@ -80,50 +90,61 @@ export async function syncKnowledgeDocument(
       documentId: doc.id,
       title: doc.title,
       status: "failed",
-      message: "監視用のPDF直リンク（source_url）が未設定です。",
+      message: "監視用のURL（source_url）が未設定です。",
     }
   }
 
+  const watchKind = doc.watch_kind ?? "file"
+  if (watchKind === "index") {
+    return syncIndexDocument(doc, sourceUrl, service)
+  }
+  return syncFileDocument(doc, sourceUrl, service)
+}
+
+async function syncFileDocument(
+  doc: KnowledgeDocument,
+  sourceUrl: string,
+  service: ServiceClient
+): Promise<SyncOneResult> {
   const now = new Date().toISOString()
-  let response: Response
-  try {
-    response = await fetch(sourceUrl, {
-      method: "GET",
-      redirect: "follow",
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      headers: {
-        Accept: "application/pdf,*/*",
-        "User-Agent": "MiruCare-KnowledgeSync/1.0",
-      },
-    })
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? `取得に失敗しました（${error.name}）。通信状況またはURLをご確認ください。`
-        : "取得に失敗しました。URLをご確認ください。"
-    await markFailed(service, doc, now, message)
+  const fetched = await conditionalFetch(sourceUrl, {
+    etag: doc.etag,
+    lastModified: doc.last_modified,
+    accept: "application/pdf,*/*",
+  })
+
+  if (fetched.kind === "not_modified") {
+    await service
+      .from("knowledge_documents")
+      .update({
+        last_checked_at: now,
+        last_ok_at: now,
+        last_sync_status: "unchanged",
+        last_error: null,
+      })
+      .eq("id", doc.id)
+    return {
+      documentId: doc.id,
+      title: doc.title,
+      status: "unchanged",
+      changed: false,
+      message: "変更なし（304 Not Modified）。",
+    }
+  }
+
+  if (fetched.kind === "error") {
+    await markFailed(service, doc, now, fetched.message)
     return {
       documentId: doc.id,
       title: doc.title,
       status: "failed",
-      message,
+      message: fetched.message,
     }
   }
 
-  if (!response.ok) {
-    const message = `取得に失敗した可能性があります（HTTP ${response.status}）。URLをご確認ください。`
-    await markFailed(service, doc, now, message)
-    return {
-      documentId: doc.id,
-      title: doc.title,
-      status: "failed",
-      message,
-    }
-  }
-
-  const buf = await response.arrayBuffer()
+  const buf = await fetched.response.arrayBuffer()
   const bytes = new Uint8Array(buf)
-  const contentType = response.headers.get("content-type")
+  const contentType = fetched.response.headers.get("content-type")
   const byteLength = bytes.byteLength
 
   if (byteLength < MIN_PDF_BYTES || !looksLikePdf(bytes, contentType)) {
@@ -157,14 +178,21 @@ export async function syncKnowledgeDocument(
     }
   }
 
+  const cacheFields = {
+    etag: fetched.etag,
+    last_modified: fetched.lastModified,
+  }
+
   if (doc.content_hash && doc.content_hash === hash) {
     await service
       .from("knowledge_documents")
       .update({
         last_checked_at: now,
+        last_ok_at: now,
         last_sync_status: "unchanged",
         last_error: null,
         content_bytes: byteLength,
+        ...cacheFields,
       })
       .eq("id", doc.id)
 
@@ -176,7 +204,6 @@ export async function syncKnowledgeDocument(
     }
   }
 
-  // 変更あり：台帳更新＋お知らせ（Dify はモックID刷新）
   const difyId = `dify-sync-${hash.slice(0, 12)}`
   await service
     .from("knowledge_documents")
@@ -184,10 +211,12 @@ export async function syncKnowledgeDocument(
       content_hash: hash,
       content_bytes: byteLength,
       last_checked_at: now,
+      last_ok_at: now,
       last_sync_status: "ok",
       last_error: null,
       dify_document_id: difyId,
       updated_at: now,
+      ...cacheFields,
     })
     .eq("id", doc.id)
 
@@ -211,8 +240,184 @@ export async function syncKnowledgeDocument(
   }
 }
 
+async function syncIndexDocument(
+  doc: KnowledgeDocument,
+  sourceUrl: string,
+  service: ServiceClient
+): Promise<SyncOneResult> {
+  const now = new Date().toISOString()
+  const selector = doc.css_selector?.trim()
+  if (!selector) {
+    const message =
+      "一覧監視（index）には CSSセレクタが必要です。登録内容をご確認ください。"
+    await markFailed(service, doc, now, message)
+    return {
+      documentId: doc.id,
+      title: doc.title,
+      status: "failed",
+      message,
+    }
+  }
+
+  const fetched = await conditionalFetch(sourceUrl, {
+    etag: doc.etag,
+    lastModified: doc.last_modified,
+    accept: "text/html,application/xhtml+xml,*/*",
+  })
+
+  if (fetched.kind === "not_modified") {
+    await service
+      .from("knowledge_documents")
+      .update({
+        last_checked_at: now,
+        last_ok_at: now,
+        last_sync_status: "unchanged",
+        last_error: null,
+      })
+      .eq("id", doc.id)
+    return {
+      documentId: doc.id,
+      title: doc.title,
+      status: "unchanged",
+      changed: false,
+      message: "変更なし（304 Not Modified）。",
+    }
+  }
+
+  if (fetched.kind === "error") {
+    await markFailed(service, doc, now, fetched.message)
+    return {
+      documentId: doc.id,
+      title: doc.title,
+      status: "failed",
+      message: fetched.message,
+    }
+  }
+
+  const html = await fetched.response.text()
+  const rows = extractWatchRows(html, selector, sourceUrl)
+
+  // 不変条件: 抽出0件は「新着なし」ではなくセレクタ破損
+  if (rows.length === 0) {
+    const message = `抽出0件です。サイト改修の可能性があります。セレクタをご確認ください: ${selector}`
+    await markSelectorBroken(service, doc, now, message)
+    return {
+      documentId: doc.id,
+      title: doc.title,
+      status: "selector_broken",
+      message,
+    }
+  }
+
+  const { data: knownRows, error: knownError } = await service
+    .from("knowledge_watch_items")
+    .select("item_key")
+    .eq("knowledge_document_id", doc.id)
+
+  if (knownError) {
+    const message = `既知記事の取得に失敗しました: ${knownError.message}`
+    await markFailed(service, doc, now, message)
+    return {
+      documentId: doc.id,
+      title: doc.title,
+      status: "failed",
+      message,
+    }
+  }
+
+  const known = new Set((knownRows ?? []).map((r) => r.item_key as string))
+  const isBaseline = known.size === 0
+  const newcomers = rows.filter((r) => !known.has(r.item_key))
+
+  if (newcomers.length > 0) {
+    const { error: insertError } = await service
+      .from("knowledge_watch_items")
+      .upsert(
+        newcomers.map((r) => ({
+          knowledge_document_id: doc.id,
+          item_key: r.item_key,
+          title: r.title.slice(0, 500),
+          href: r.href.slice(0, 2000),
+          first_seen_at: now,
+        })),
+        { onConflict: "knowledge_document_id,item_key", ignoreDuplicates: true }
+      )
+
+    if (insertError) {
+      const message = `記事キーの保存に失敗しました: ${insertError.message}`
+      await markFailed(service, doc, now, message)
+      return {
+        documentId: doc.id,
+        title: doc.title,
+        status: "failed",
+        message,
+      }
+    }
+  }
+
+  // 初回はベースライン投入のみ（大量お知らせを避ける）
+  if (!isBaseline && newcomers.length > 0) {
+    const preview = newcomers
+      .slice(0, 3)
+      .map((r) => r.title)
+      .join(" / ")
+    const more =
+      newcomers.length > 3 ? ` ほか${newcomers.length - 3}件` : ""
+    await service.from("app_announcements").insert({
+      title: `「${doc.title}」に新着が検知された可能性があります`,
+      body: `新着 ${newcomers.length}件の可能性があります（${preview}${more}）。内容をご確認ください。`,
+      kind: "knowledge_update",
+      knowledge_document_id: doc.id,
+    })
+  }
+
+  await service
+    .from("knowledge_documents")
+    .update({
+      last_checked_at: now,
+      last_ok_at: now,
+      last_sync_status:
+        !isBaseline && newcomers.length > 0 ? "ok" : "unchanged",
+      last_error: null,
+      etag: fetched.etag,
+      last_modified: fetched.lastModified,
+      updated_at: now,
+    })
+    .eq("id", doc.id)
+
+  if (isBaseline) {
+    return {
+      documentId: doc.id,
+      title: doc.title,
+      status: "unchanged",
+      changed: false,
+      newItemCount: newcomers.length,
+      message: `初回ベースラインとして ${newcomers.length}件の記事キーを登録しました（お知らせは作成していません）。`,
+    }
+  }
+
+  if (newcomers.length === 0) {
+    return {
+      documentId: doc.id,
+      title: doc.title,
+      status: "unchanged",
+      changed: false,
+      newItemCount: 0,
+    }
+  }
+
+  return {
+    documentId: doc.id,
+    title: doc.title,
+    status: "ok",
+    changed: true,
+    newItemCount: newcomers.length,
+    message: `新着 ${newcomers.length}件を検知し、お知らせを作成しました。`,
+  }
+}
+
 async function markFailed(
-  service: ReturnType<typeof createServiceClient>,
+  service: ServiceClient,
   doc: KnowledgeDocument,
   now: string,
   message: string
@@ -228,7 +433,7 @@ async function markFailed(
 
   await service.from("knowledge_sync_alerts").insert({
     knowledge_document_id: doc.id,
-    kind: "failed",
+    kind: "failed" satisfies KnowledgeSyncAlertKind,
     message,
     status: "open",
   })
@@ -237,12 +442,11 @@ async function markFailed(
     title: doc.title,
     kind: "failed",
     message,
-    documentId: doc.id,
   })
 }
 
 async function markSuspicious(
-  service: ReturnType<typeof createServiceClient>,
+  service: ServiceClient,
   doc: KnowledgeDocument,
   now: string,
   message: string
@@ -267,11 +471,42 @@ async function markSuspicious(
     title: doc.title,
     kind: "suspicious",
     message,
-    documentId: doc.id,
   })
 }
 
-/** active かつ source_url がある全件を同期 */
+async function markSelectorBroken(
+  service: ServiceClient,
+  doc: KnowledgeDocument,
+  now: string,
+  message: string
+) {
+  await service
+    .from("knowledge_documents")
+    .update({
+      last_checked_at: now,
+      last_sync_status: "selector_broken",
+      last_error: message,
+    })
+    .eq("id", doc.id)
+
+  await service.from("knowledge_sync_alerts").insert({
+    knowledge_document_id: doc.id,
+    kind: "selector_broken",
+    message,
+    status: "open",
+  })
+
+  await notifyOperators({
+    title: doc.title,
+    kind: "selector_broken",
+    message,
+  })
+}
+
+/**
+ * active かつ source_url がある全件を同期。
+ * 1件の失敗は他件を止めない。
+ */
 export async function syncAllKnowledgeDocuments(): Promise<{
   results: SyncOneResult[]
   checked: number
@@ -290,8 +525,38 @@ export async function syncAllKnowledgeDocuments(): Promise<{
   const docs = (data ?? []) as KnowledgeDocument[]
   const withUrl = docs.filter((d) => d.source_url?.trim())
   const results: SyncOneResult[] = []
+
   for (const doc of withUrl) {
-    results.push(await syncKnowledgeDocument(doc, service))
+    try {
+      results.push(await syncKnowledgeDocument(doc, service))
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? `予期しないエラー: ${err.message.slice(0, 200)}`
+          : "予期しないエラーが発生しました。"
+      console.error("[knowledge-sync] continue_after_error", {
+        documentId: doc.id,
+        message: message.slice(0, 200),
+      })
+      try {
+        await markFailed(service, doc, new Date().toISOString(), message)
+      } catch (markErr) {
+        console.error("[knowledge-sync] mark_failed_also_failed", {
+          documentId: doc.id,
+          error:
+            markErr instanceof Error
+              ? markErr.message.slice(0, 120)
+              : "unknown",
+        })
+      }
+      results.push({
+        documentId: doc.id,
+        title: doc.title,
+        status: "failed",
+        message,
+      })
+    }
   }
+
   return { results, checked: withUrl.length }
 }

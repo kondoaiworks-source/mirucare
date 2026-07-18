@@ -51,6 +51,7 @@ import type {
   JurisdictionLevel,
   KnowledgeDocument,
   KnowledgeSyncAlert,
+  KnowledgeWatchKind,
 } from "@/types/database"
 
 const JURISDICTION_OPTIONS: {
@@ -88,9 +89,21 @@ function syncStatusLabel(status: KnowledgeDocument["last_sync_status"]) {
       return "失敗の可能性"
     case "suspicious":
       return "要確認"
+    case "selector_broken":
+      return "セレクタ破損"
     default:
       return "未チェック"
   }
+}
+
+function watchKindLabel(kind: KnowledgeDocument["watch_kind"]) {
+  return kind === "index" ? "一覧監視" : "PDF直リンク"
+}
+
+function alertKindLabel(kind: KnowledgeSyncAlert["kind"]) {
+  if (kind === "failed") return "取得失敗"
+  if (kind === "suspicious") return "内容疑い"
+  return "セレクタ破損"
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -116,9 +129,12 @@ export function KnowledgeDocumentsAdmin() {
   const [regionName, setRegionName] = useState("")
   const [applicableYear, setApplicableYear] = useState(defaultFiscalYear)
   const [sourceUrl, setSourceUrl] = useState("")
+  const [watchKind, setWatchKind] = useState<KnowledgeWatchKind>("file")
+  const [cssSelector, setCssSelector] = useState("")
   const [file, setFile] = useState<File | null>(null)
 
   const needsRegion = jurisdictionLevel !== "国"
+  const isIndexWatch = watchKind === "index"
 
   const refreshList = useCallback(async () => {
     setLoadingList(true)
@@ -193,12 +209,23 @@ export function KnowledgeDocumentsAdmin() {
     setRegionName("")
     setApplicableYear(defaultFiscalYear())
     setSourceUrl("")
+    setWatchKind("file")
+    setCssSelector("")
     setFile(null)
   }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!file && !sourceUrl.trim()) {
+    if (isIndexWatch) {
+      if (!sourceUrl.trim()) {
+        toast.error("一覧監視ではページURLを入力してください。")
+        return
+      }
+      if (!cssSelector.trim()) {
+        toast.error("一覧監視ではCSSセレクタを入力してください。")
+        return
+      }
+    } else if (!file && !sourceUrl.trim()) {
       toast.error(
         "PDFファイルを選ぶか、監視用のPDF直リンク（source_url）を入力してください。"
       )
@@ -217,13 +244,16 @@ export function KnowledgeDocumentsAdmin() {
 
     startTransition(async () => {
       try {
-        const fileBase64 = file ? await fileToBase64(file) : undefined
+        const fileBase64 =
+          !isIndexWatch && file ? await fileToBase64(file) : undefined
         const result = await registerKnowledgeDocumentAction({
           title: title.trim(),
           jurisdictionLevel,
           regionName: needsRegion ? regionName.trim() : "",
           applicableYear,
           sourceUrl: sourceUrl.trim() || undefined,
+          watchKind,
+          cssSelector: isIndexWatch ? cssSelector.trim() : undefined,
           fileBase64,
           fileName: file?.name,
         })
@@ -313,7 +343,7 @@ export function KnowledgeDocumentsAdmin() {
           行政マニュアル管理
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          PDFの登録と、公式PDF直リンクの定期監視（1日1回）を行います。取得失敗や疑いがある場合は下の「要対応」に出ます。
+          PDF直リンクの内容監視、または新着一覧ページの行単位監視（1日1回）を行います。取得失敗・疑い・セレクタ破損は下の「要対応」に出ます。
         </p>
       </div>
 
@@ -325,7 +355,7 @@ export function KnowledgeDocumentsAdmin() {
               要対応（自動収集）
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              自動取得に失敗した可能性、または内容に疑いがあるため、人が確認してください。
+              自動取得の失敗・内容の疑い・セレクタ破損の可能性があるため、人が確認してください。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -343,7 +373,7 @@ export function KnowledgeDocumentsAdmin() {
                       {doc?.title ?? "（マニュアル不明）"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {a.kind === "failed" ? "取得失敗の可能性" : "要確認"}
+                      {alertKindLabel(a.kind)}
                       {" · "}
                       {new Date(a.created_at).toLocaleString("ja-JP")}
                     </p>
@@ -372,11 +402,39 @@ export function KnowledgeDocumentsAdmin() {
         <CardHeader>
           <CardTitle className="text-lg">新規登録</CardTitle>
           <CardDescription className="text-base leading-relaxed">
-            PDFをアップするか、監視用の直リンクを登録してください。直リンクがあると毎日自動で差分を確認します。
+            監視方式を選び、PDF直リンクまたは新着一覧ページを登録します。
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="kd-watch-kind">監視方式</Label>
+              <Select
+                value={watchKind}
+                onValueChange={(v) => {
+                  const next = v as KnowledgeWatchKind
+                  setWatchKind(next)
+                  if (next === "index") setFile(null)
+                }}
+              >
+                <SelectTrigger id="kd-watch-kind" className="h-11 min-h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="file">
+                    PDF直リンク（内容ハッシュ比較）
+                  </SelectItem>
+                  <SelectItem value="index">
+                    新着一覧ページ（行単位の差分検知）
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                一覧監視は記事1件を指すCSSセレクタが必要です。抽出0件はセレクタ破損として要対応に出ます。
+              </p>
+            </div>
+
+            {!isIndexWatch ? (
             <div
               {...getRootProps()}
               className={cn(
@@ -415,6 +473,7 @@ export function KnowledgeDocumentsAdmin() {
                 </>
               )}
             </div>
+            ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
@@ -431,7 +490,9 @@ export function KnowledgeDocumentsAdmin() {
 
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="kd-source">
-                  監視用PDF直リンク（source_url）
+                  {isIndexWatch
+                    ? "監視用一覧ページURL（source_url）"
+                    : "監視用PDF直リンク（source_url）"}
                 </Label>
                 <Input
                   id="kd-source"
@@ -439,12 +500,38 @@ export function KnowledgeDocumentsAdmin() {
                   className="h-11 min-h-11 text-base"
                   value={sourceUrl}
                   onChange={(e) => setSourceUrl(e.target.value)}
-                  placeholder="https://example.go.jp/.../manual.pdf"
+                  placeholder={
+                    isIndexWatch
+                      ? "https://example.go.jp/.../list.html"
+                      : "https://example.go.jp/.../manual.pdf"
+                  }
+                  required={isIndexWatch}
                 />
                 <p className="text-sm text-muted-foreground">
-                  公式サイトのPDFへの直URL。定期チェック（毎日）の対象になります。
+                  {isIndexWatch
+                    ? "新着が並ぶ一覧ページのURL。条件付きGETと行単位の差分検知の対象になります。"
+                    : "公式サイトのPDFへの直URL。定期チェック（毎日）の対象になります。"}
                 </p>
               </div>
+
+              {isIndexWatch ? (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="kd-selector">
+                    CSSセレクタ（記事1件＝1行）
+                  </Label>
+                  <Input
+                    id="kd-selector"
+                    className="h-11 min-h-11 text-base font-mono"
+                    value={cssSelector}
+                    onChange={(e) => setCssSelector(e.target.value)}
+                    placeholder="例：ul.news-list li.item"
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    ブラウザの検証ツールで、一覧の1件を囲む要素を指定してください。
+                  </p>
+                </div>
+              ) : null}
 
               <div className="space-y-2">
                 <Label htmlFor="kd-jurisdiction">管轄レベル</Label>
@@ -573,6 +660,7 @@ export function KnowledgeDocumentsAdmin() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[10rem]">マニュアル名</TableHead>
+                  <TableHead>方式</TableHead>
                   <TableHead>管轄</TableHead>
                   <TableHead className="tabular-nums">年度</TableHead>
                   <TableHead>同期</TableHead>
@@ -584,7 +672,7 @@ export function KnowledgeDocumentsAdmin() {
                 {loadingList && sortedRows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="py-10 text-center text-muted-foreground"
                     >
                       読み込み中…
@@ -594,7 +682,7 @@ export function KnowledgeDocumentsAdmin() {
                 {!loadingList && sortedRows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="py-10 text-center text-muted-foreground"
                     >
                       まだ登録がありません。
@@ -614,11 +702,19 @@ export function KnowledgeDocumentsAdmin() {
                           監視URLなし
                         </p>
                       )}
+                      {doc.watch_kind === "index" && doc.css_selector ? (
+                        <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                          {doc.css_selector}
+                        </p>
+                      ) : null}
                       {doc.last_error ? (
                         <p className="mt-1 text-xs leading-relaxed text-warning">
                           {doc.last_error}
                         </p>
                       ) : null}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm">
+                      {watchKindLabel(doc.watch_kind)}
                     </TableCell>
                     <TableCell>
                       {doc.jurisdiction_level}

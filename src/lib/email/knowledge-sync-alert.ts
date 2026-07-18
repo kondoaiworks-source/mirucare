@@ -1,16 +1,18 @@
 /**
- * ナレッジ自動収集の失敗・疑いを運営へ通知するメール。
+ * ナレッジ自動収集の失敗・疑い・セレクタ破損を運営へ通知するメール。
  */
 export function buildKnowledgeSyncAlertEmail(opts: {
   documentTitle: string
-  kind: "failed" | "suspicious"
+  kind: "failed" | "suspicious" | "selector_broken"
   message: string
   appUrl: string
 }): { subject: string; text: string; html: string } {
   const kindLabel =
     opts.kind === "failed"
       ? "自動取得に失敗した可能性"
-      : "内容に疑いがあり確認が必要"
+      : opts.kind === "suspicious"
+        ? "内容に疑いがあり確認が必要"
+        : "セレクタ破損の可能性（抽出0件）"
 
   const subject = `【監査のミカタ】行政マニュアル：${kindLabel}`
 

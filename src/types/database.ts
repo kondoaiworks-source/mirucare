@@ -223,11 +223,13 @@ export type AttendanceContradiction = {
 /** 行政マニュアル等のナレッジ台帳（Dify 連携前提） */
 export type JurisdictionLevel = "国" | "都道府県" | "市区町村"
 export type KnowledgeDocumentStatus = "active" | "archived"
+export type KnowledgeWatchKind = "file" | "index"
 export type KnowledgeSyncStatus =
   | "ok"
   | "unchanged"
   | "failed"
   | "suspicious"
+  | "selector_broken"
 
 export type KnowledgeDocument = {
   id: string
@@ -243,11 +245,28 @@ export type KnowledgeDocument = {
   last_checked_at?: string | null
   last_sync_status?: KnowledgeSyncStatus | null
   last_error?: string | null
+  watch_kind?: KnowledgeWatchKind
+  css_selector?: string | null
+  etag?: string | null
+  last_modified?: string | null
+  last_ok_at?: string | null
   created_at: string
   updated_at: string
 }
 
-export type KnowledgeSyncAlertKind = "failed" | "suspicious"
+export type KnowledgeWatchItem = {
+  id: string
+  knowledge_document_id: string
+  item_key: string
+  title: string
+  href: string
+  first_seen_at: string
+}
+
+export type KnowledgeSyncAlertKind =
+  | "failed"
+  | "suspicious"
+  | "selector_broken"
 export type KnowledgeSyncAlertStatus = "open" | "resolved"
 
 export type KnowledgeSyncAlert = {

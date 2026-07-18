@@ -38,6 +38,8 @@ export async function POST(request: Request) {
   const regionName = String(form.get("regionName") ?? "")
   const applicableYear = Number(form.get("applicableYear"))
   const sourceUrl = String(form.get("sourceUrl") ?? "")
+  const watchKindRaw = String(form.get("watchKind") ?? "file")
+  const cssSelector = String(form.get("cssSelector") ?? "")
   const file = form.get("file")
 
   let fileBase64: string | undefined
@@ -57,6 +59,8 @@ export async function POST(request: Request) {
       ? applicableYear
       : new Date().getFullYear(),
     sourceUrl: sourceUrl || undefined,
+    watchKind: watchKindRaw === "index" ? "index" : "file",
+    cssSelector: cssSelector || undefined,
     fileBase64,
     fileName: file instanceof File ? file.name : undefined,
   })

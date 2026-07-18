@@ -297,13 +297,19 @@ npm install -D @types/papaparse
 1. Supabase SQL Editor で次を順に実行する
    - `supabase/migrations/20260715090000_knowledge_documents.sql`
    - `supabase/migrations/20260715220000_knowledge_sync_announcements.sql`
+   - `supabase/migrations/20260719060000_knowledge_watch_index.sql`（一覧監視・ETag・item_key）
 2. 運営オペレータ（`profiles.is_operator = true` または `OPERATOR_EMAILS`）でログインする
 3. [http://localhost:3000/admin/documents](http://localhost:3000/admin/documents) を開く
-4. マニュアルを登録し、**監視用PDF直リンク（source_url）** を入れる（またはPDFアップロード）
+4. マニュアルを登録する
+   - **PDF直リンク（file）**: 監視用PDF直リンク、またはPDFアップロード
+   - **新着一覧（index）**: 一覧ページURL + 記事1件を指すCSSセレクタ（必須）
 5. 「今すぐ同期」または「今すぐ一括同期」で取得を試す
-   - 成功して内容が変わった場合: ダッシュボード「お知らせ」に最大3件表示
-   - 失敗・疑い: 「要対応」に出る。`OPERATOR_EMAILS` へ Resend メール（キー設定時）
+   - file: 成功して内容が変わった場合 → ダッシュボード「お知らせ」
+   - index: 初回はベースライン登録のみ（お知らせなし）。2回目以降の新着でお知らせ
+   - 抽出0件（index）: 「要対応」にセレクタ破損として出ること
+   - 失敗・疑い: 「要対応」。`OPERATOR_EMAILS` へ Resend メール（キー設定時）
 6. 定期実行（本番）: Vercel Cron `0 15 * * *`（UTC＝毎日0:00 JST頃）→ `/api/cron/knowledge-sync`
+   - **本番に `CRON_SECRET` が無いと毎回 401 で同期されません**（要設定）
    - ローカル確認例:
      ```bash
      curl -X POST http://localhost:3000/api/cron/knowledge-sync \
@@ -311,6 +317,13 @@ npm install -D @types/papaparse
      ```
 7. 設定画面の運営カードから「行政マニュアル管理」へ遷移できること
 
+### 監視の作法（実装済み）
+
+- 条件付きGET（ETag / If-Modified-Since）
+- 対象間の待機は最低5秒（`KNOWLEDGE_SYNC_INTERVAL_SEC`）
+- User-Agent に連絡先を付与（`KNOWLEDGE_SYNC_CONTACT_EMAIL` または `KNOWLEDGE_SYNC_USER_AGENT`）
+- 1対象の失敗は他対象を止めない（アラート記録して continue）
+- index の抽出0件は「新着なし」ではなくセレクタ破損
 ## 主なルート
 
 | パス | 内容 |
