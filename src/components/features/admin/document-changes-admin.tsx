@@ -251,7 +251,7 @@ export function DocumentChangesAdmin() {
                       {truncated ? (
                         <Badge
                           variant="outline"
-                          className="h-7 gap-1 rounded-lg border-accent/40 px-2.5 text-sm text-accent"
+                          className="h-7 gap-1 rounded-lg border-warning/40 px-2.5 text-sm text-warning"
                         >
                           <AlertTriangle className="size-3.5" aria-hidden />
                           全文一部未取得
@@ -276,8 +276,8 @@ export function DocumentChangesAdmin() {
                   </div>
 
                   {truncated ? (
-                    <Alert className="rounded-xl border-accent/30 bg-accent/5">
-                      <AlertTriangle className="text-accent" />
+                    <Alert className="rounded-xl border-warning/30 bg-warning/5">
+                      <AlertTriangle className="text-warning" />
                       <AlertTitle>全文一部未取得</AlertTitle>
                       <AlertDescription>
                         テキストが長いため一部のみ保存されています。判断精度に影響する可能性がありますので、原文PDFもあわせてご確認ください。

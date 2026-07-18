@@ -6,8 +6,10 @@ import { conditionalFetch } from "@/lib/knowledge/http"
 import { extractWatchRows } from "@/lib/knowledge/index-extract"
 import { trySaveKnowledgePdfSnapshot } from "@/lib/knowledge/snapshots"
 import { tryCreateChangeDraftOnHashChange } from "@/lib/knowledge/diff-draft"
+import { notifyChangeDraftCreated } from "@/lib/email/knowledge-change-draft"
 import type {
   KnowledgeDocument,
+  KnowledgeDocumentChangeDraft,
   KnowledgeSyncAlertKind,
   KnowledgeSyncStatus,
 } from "@/types/database"
@@ -229,8 +231,9 @@ async function syncFileDocument(
 
   // ハッシュが変わった場合のみ差分ドラフト（初回ベースラインは作らない）
   if (previousHash && previousHash !== hash) {
+    let draft: KnowledgeDocumentChangeDraft | null = null
     if (saved) {
-      await tryCreateChangeDraftOnHashChange({
+      draft = await tryCreateChangeDraftOnHashChange({
         service,
         doc,
         previousContentHash: previousHash,
@@ -242,17 +245,22 @@ async function syncFileDocument(
         documentId: doc.id,
       })
       try {
-        await service.from("knowledge_document_change_drafts").insert({
-          knowledge_document_id: doc.id,
-          before_snapshot_id: null,
-          after_snapshot_id: null,
-          ai_summary:
-            "内容の更新を検知しましたが、テキストスナップショットの保存に失敗した可能性があります。原文URLをご確認ください。",
-          changes: [],
-          quote_verified_ratio: null,
-          ai_organized: false,
-          status: "pending",
-        })
+        const { data: fallbackDraft } = await service
+          .from("knowledge_document_change_drafts")
+          .insert({
+            knowledge_document_id: doc.id,
+            before_snapshot_id: null,
+            after_snapshot_id: null,
+            ai_summary:
+              "内容の更新を検知しましたが、テキストスナップショットの保存に失敗した可能性があります。原文URLをご確認ください。",
+            changes: [],
+            quote_verified_ratio: null,
+            ai_organized: false,
+            status: "pending",
+          })
+          .select("*")
+          .single()
+        draft = (fallbackDraft as KnowledgeDocumentChangeDraft | null) ?? null
       } catch (err) {
         console.error("[knowledge-sync] fallback_draft_failed", {
           documentId: doc.id,
@@ -260,6 +268,7 @@ async function syncFileDocument(
         })
       }
     }
+    await notifyDraftIfCreated(service, doc, draft)
   }
 
   const difyId = `dify-sync-${hash.slice(0, 12)}`
@@ -465,6 +474,26 @@ async function syncIndexDocument(
     changed: true,
     newItemCount: newcomers.length,
     message: `新着 ${newcomers.length}件を検知し、お知らせを作成しました。`,
+  }
+}
+
+async function notifyDraftIfCreated(
+  service: ServiceClient,
+  doc: KnowledgeDocument,
+  draft: KnowledgeDocumentChangeDraft | null
+) {
+  if (!draft) return
+  const { sent } = await notifyChangeDraftCreated({
+    doc,
+    aiSummary: draft.ai_summary,
+    aiOrganized: draft.ai_organized,
+    quoteVerifiedRatio: draft.quote_verified_ratio,
+  })
+  if (sent > 0) {
+    await service
+      .from("knowledge_document_change_drafts")
+      .update({ notified_at: new Date().toISOString() })
+      .eq("id", draft.id)
   }
 }
 
