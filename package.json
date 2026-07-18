@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:rls": "tsx --env-file=.env.local scripts/test-rls-isolation.ts",
     "test:check": "tsx scripts/test-check-mock.ts",
-    "test:review": "tsx --env-file=.env.local scripts/test-findings-review.ts"
+    "test:review": "tsx --env-file=.env.local scripts/test-findings-review.ts",
+    "test:lockout": "tsx --env-file=.env.local scripts/test-login-lockout.ts",
+    "unlock-user": "tsx --env-file=.env.local scripts/unlock-user.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

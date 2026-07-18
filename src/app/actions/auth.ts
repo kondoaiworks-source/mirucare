@@ -1,12 +1,21 @@
 "use server"
 
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createServiceClient } from "@/lib/supabase/server"
 import {
   toUserErrorMessage,
   validateEmail,
   validatePassword,
 } from "@/lib/auth-errors"
+import {
+  MSG_BAD_CREDENTIALS,
+  MSG_LOCKED,
+  clearLoginLockout,
+  isLockoutActive,
+  lookupLoginLockout,
+  recordFailedLogin,
+  writeAuthAuditLog,
+} from "@/lib/login-lockout"
 import type { ServiceType, UserRole } from "@/types/database"
 
 export type ActionResult = {
@@ -80,15 +89,74 @@ export async function signInAction(formData: FormData): Promise<ActionResult> {
     }
   }
 
+  const normalizedEmail = email.trim().toLowerCase()
+
   try {
+    const service = createServiceClient()
+    let lockRow: Awaited<ReturnType<typeof lookupLoginLockout>> = null
+
+    try {
+      lockRow = await lookupLoginLockout(normalizedEmail, service)
+    } catch (lookupError) {
+      return { ok: false, error: toUserErrorMessage(lookupError) }
+    }
+
+    // 登録済みかつロック中 → Auth を呼ばず拒否（正解PWでも）
+    if (lockRow && !lockRow.deleted_at) {
+      if (
+        lockRow.lockout_until &&
+        !isLockoutActive(lockRow.lockout_until)
+      ) {
+        // 期限切れロックは遅延クリア
+        await clearLoginLockout(lockRow.profile_id, service)
+        lockRow = {
+          ...lockRow,
+          failed_login_attempts: 0,
+          lockout_until: null,
+        }
+      }
+
+      if (isLockoutActive(lockRow.lockout_until)) {
+        return { ok: false, error: MSG_LOCKED }
+      }
+    }
+
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: normalizedEmail,
       password,
     })
 
     if (error) {
-      return { ok: false, error: toUserErrorMessage(error) }
+      // 未登録メールはカウンタを持たない（情報漏洩防止）
+      if (lockRow && !lockRow.deleted_at) {
+        const result = await recordFailedLogin(
+          lockRow.profile_id,
+          lockRow.failed_login_attempts,
+          normalizedEmail,
+          service
+        )
+        if (result.locked) {
+          return { ok: false, error: MSG_LOCKED }
+        }
+      }
+      return { ok: false, error: MSG_BAD_CREDENTIALS }
+    }
+
+    // 成功 → カウンタ／ロックをリセット
+    if (lockRow && !lockRow.deleted_at) {
+      if (
+        lockRow.failed_login_attempts > 0 ||
+        lockRow.lockout_until
+      ) {
+        await clearLoginLockout(lockRow.profile_id, service)
+        await writeAuthAuditLog({
+          action: "login_success_reset",
+          profileId: lockRow.profile_id,
+          email: normalizedEmail,
+          service,
+        })
+      }
     }
 
     const safeNext = next.startsWith("/") ? next : "/"

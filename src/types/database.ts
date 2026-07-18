@@ -89,6 +89,8 @@ export type Profile = {
   role: UserRole
   /** プラットフォーム運営（全事業所レビュー） */
   is_operator?: boolean
+  failed_login_attempts?: number
+  lockout_until?: string | null
   created_at: string
   updated_at: string
   deleted_at: string | null

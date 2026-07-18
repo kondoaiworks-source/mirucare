@@ -63,6 +63,13 @@ export function toUserErrorMessage(error: unknown, fallback?: string): string {
   }
 
   if (
+    normalized.includes("login") &&
+    (normalized.includes("lock") || normalized.includes("制限"))
+  ) {
+    return "ログイン試行が制限されています。しばらく時間をおいてから再度お試しください。"
+  }
+
+  if (
     normalized.includes("row-level security") ||
     normalized.includes("violates row-level security") ||
     normalized.includes("permission denied") ||

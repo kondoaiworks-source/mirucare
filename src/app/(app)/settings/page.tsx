@@ -8,6 +8,7 @@ import {
   SignOutButton,
 } from "@/components/features/settings/invite-form"
 import { SkipReviewToggle } from "@/components/features/settings/skip-review-toggle"
+import { UnlockLoginPanel } from "@/components/features/settings/unlock-login-panel"
 import { BillingPortalButton } from "@/components/features/billing/billing-buttons"
 import { SettingsSkeleton } from "@/components/features/skeletons/page-skeletons"
 import {
@@ -27,6 +28,7 @@ import {
   ClipboardList,
   CreditCard,
   Info,
+  Lock,
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react"
@@ -238,6 +240,16 @@ async function SettingsContent({ searchParams }: PageProps) {
       ) : (
         <InviteForm isAdmin={isAdmin} />
       )}
+
+      {(isAdmin || isOperator) ? (
+        <>
+          <Separator />
+          <section className="space-y-4">
+            <SectionHeading icon={Lock}>ログインセキュリティ</SectionHeading>
+            <UnlockLoginPanel canManage />
+          </section>
+        </>
+      ) : null}
 
       {isOperator ? (
         <>
