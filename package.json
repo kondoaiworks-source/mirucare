@@ -13,6 +13,7 @@
     "test:review": "tsx --env-file=.env.local scripts/test-findings-review.ts",
     "test:lockout": "tsx --env-file=.env.local scripts/test-login-lockout.ts",
     "backfill:knowledge-snapshots": "tsx --env-file=.env.local scripts/backfill-knowledge-snapshots.ts",
+    "seed:rule-sources": "tsx --env-file=.env.local scripts/seed-rule-source-urls.ts",
     "unlock-user": "tsx --env-file=.env.local scripts/unlock-user.ts"
   },
   "dependencies": {

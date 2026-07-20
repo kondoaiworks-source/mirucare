@@ -353,12 +353,47 @@ export type RuleJurisdiction = {
 export type RuleSourceKind = "law" | "notification" | "manual" | "other"
 export type RuleSourceStatus = "active" | "archived"
 
+/** 参照URLマスタの資料カテゴリ */
+export type RuleMaterialCategory =
+  | "訪問介護"
+  | "総合事業訪問型"
+  | "事故報告"
+  | "過誤申立"
+  | "加算届"
+  | "サービスコード表"
+
+export type RuleSourceFileType =
+  | "pdf"
+  | "html"
+  | "doc"
+  | "xlsx"
+  | "zip"
+  | "other"
+
+export type RuleHumanReviewStatus =
+  | "unverified"
+  | "verified"
+  | "needs_review"
+  | "outdated"
+
 export type RuleSource = {
   id: string
   jurisdiction_id: string
+  source_key: string | null
   title: string
   source_kind: RuleSourceKind
+  service_type: ServiceType
+  material_category: RuleMaterialCategory | null
   official_url: string | null
+  parent_page_url: string | null
+  direct_file_url: string | null
+  priority: number
+  last_verified_at: string | null
+  source_last_updated_on: string | null
+  file_type: RuleSourceFileType | null
+  content_hash: string | null
+  human_review_status: RuleHumanReviewStatus
+  memo: string | null
   knowledge_document_id: string | null
   published_on: string | null
   status: RuleSourceStatus

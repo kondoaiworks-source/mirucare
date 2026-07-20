@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   BookOpen,
+  Link2,
   MapPin,
   ClipboardList,
   Bot,
@@ -32,6 +33,12 @@ export const RULES_ADMIN_NAV: RulesAdminNavItem[] = [
     label: "法令管理",
     description: "法令・通知・マニュアル根拠",
     icon: BookOpen,
+  },
+  {
+    href: "/admin/rules/source-urls",
+    label: "参照URLマスタ",
+    description: "自治体別・資料別の原文URL",
+    icon: Link2,
   },
   {
     href: "/admin/rules/municipalities",

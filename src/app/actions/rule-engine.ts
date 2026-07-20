@@ -12,10 +12,15 @@ import type {
   KnowledgeDocumentChangeDraft,
   KnowledgeDocument,
   KnowledgeSyncAlert,
+  RuleHumanReviewStatus,
   RuleJurisdiction,
+  RuleMaterialCategory,
   RuleSet,
   RuleSource,
+  RuleSourceFileType,
   RuleSourceKind,
+  RuleSourceStatus,
+  ServiceType,
 } from "@/types/database"
 
 export type ActionResult<T = undefined> = {
@@ -232,6 +237,245 @@ export async function createRuleSourceAction(input: {
 
   if (error) return { ok: false, error: toUserErrorMessage(error) }
   revalidateRules("/admin/rules/laws")
+  revalidateRules("/admin/rules/source-urls")
+  return { ok: true }
+}
+
+export type RuleSourceRow = RuleSource & {
+  rule_jurisdictions: Pick<
+    RuleJurisdiction,
+    "id" | "name" | "code" | "municipality_name" | "level"
+  > | null
+}
+
+export async function listMunicipalitySourceUrlsAction(opts?: {
+  jurisdictionId?: string
+  materialCategory?: RuleMaterialCategory | "all"
+  status?: RuleSourceStatus | "all"
+  humanReviewStatus?: RuleHumanReviewStatus | "all"
+}): Promise<
+  ActionResult<{
+    rows: RuleSourceRow[]
+    municipalities: RuleJurisdiction[]
+  }>
+> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  let query = op.service
+    .from("rule_sources")
+    .select(
+      `
+      *,
+      rule_jurisdictions ( id, name, code, municipality_name, level )
+    `
+    )
+    .not("material_category", "is", null)
+    .order("priority", { ascending: true })
+    .order("updated_at", { ascending: false })
+    .limit(500)
+
+  if (opts?.jurisdictionId) {
+    query = query.eq("jurisdiction_id", opts.jurisdictionId)
+  }
+  if (opts?.materialCategory && opts.materialCategory !== "all") {
+    query = query.eq("material_category", opts.materialCategory)
+  }
+  if (opts?.status && opts.status !== "all") {
+    query = query.eq("status", opts.status)
+  }
+  if (opts?.humanReviewStatus && opts.humanReviewStatus !== "all") {
+    query = query.eq("human_review_status", opts.humanReviewStatus)
+  }
+
+  const [sources, municipalities] = await Promise.all([
+    query,
+    op.service
+      .from("rule_jurisdictions")
+      .select("*")
+      .eq("level", "municipality")
+      .eq("is_supported", true)
+      .order("sort_order", { ascending: true }),
+  ])
+
+  if (sources.error) {
+    return { ok: false, error: toUserErrorMessage(sources.error) }
+  }
+  if (municipalities.error) {
+    return { ok: false, error: toUserErrorMessage(municipalities.error) }
+  }
+
+  const rows = (sources.data ?? []).map((row) => {
+    const r = row as Record<string, unknown>
+    const j = r.rule_jurisdictions
+    return {
+      ...(row as RuleSource),
+      rule_jurisdictions: (Array.isArray(j) ? j[0] : j) as RuleSourceRow["rule_jurisdictions"],
+    }
+  })
+
+  return {
+    ok: true,
+    data: {
+      rows,
+      municipalities: (municipalities.data ?? []) as RuleJurisdiction[],
+    },
+  }
+}
+
+export async function updateRuleSourceUrlAction(input: {
+  id: string
+  title?: string
+  serviceType?: ServiceType
+  materialCategory?: RuleMaterialCategory
+  sourceKind?: RuleSourceKind
+  parentPageUrl?: string
+  directFileUrl?: string
+  priority?: number
+  sourceLastUpdatedOn?: string
+  fileType?: RuleSourceFileType | ""
+  contentHash?: string
+  status?: RuleSourceStatus
+  humanReviewStatus?: RuleHumanReviewStatus
+  memo?: string
+  markVerified?: boolean
+}): Promise<ActionResult> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  if (!input.id) return { ok: false, error: "対象が指定されていません。" }
+
+  const patch: Record<string, unknown> = {}
+
+  if (input.title !== undefined) {
+    const title = input.title.trim()
+    if (!title) return { ok: false, error: "資料名を入力してください。" }
+    patch.title = title
+  }
+  if (input.serviceType !== undefined) patch.service_type = input.serviceType
+  if (input.materialCategory !== undefined) {
+    patch.material_category = input.materialCategory
+  }
+  if (input.sourceKind !== undefined) patch.source_kind = input.sourceKind
+  if (input.parentPageUrl !== undefined) {
+    patch.parent_page_url = input.parentPageUrl.trim() || null
+  }
+  if (input.directFileUrl !== undefined) {
+    patch.direct_file_url = input.directFileUrl.trim() || null
+  }
+  if (input.priority !== undefined) {
+    if (input.priority < 1 || input.priority > 999) {
+      return { ok: false, error: "優先度は 1〜999 で入力してください。" }
+    }
+    patch.priority = input.priority
+  }
+  if (input.sourceLastUpdatedOn !== undefined) {
+    patch.source_last_updated_on = input.sourceLastUpdatedOn.trim() || null
+  }
+  if (input.fileType !== undefined) {
+    patch.file_type = input.fileType || null
+  }
+  if (input.contentHash !== undefined) {
+    patch.content_hash = input.contentHash.trim() || null
+  }
+  if (input.status !== undefined) patch.status = input.status
+  if (input.humanReviewStatus !== undefined) {
+    patch.human_review_status = input.humanReviewStatus
+  }
+  if (input.memo !== undefined) patch.memo = input.memo.trim() || null
+  if (input.markVerified) {
+    patch.last_verified_at = new Date().toISOString()
+    patch.human_review_status = "verified"
+  }
+
+  if (
+    input.parentPageUrl !== undefined ||
+    input.directFileUrl !== undefined
+  ) {
+    const parent =
+      input.parentPageUrl !== undefined
+        ? input.parentPageUrl.trim() || null
+        : undefined
+    const direct =
+      input.directFileUrl !== undefined
+        ? input.directFileUrl.trim() || null
+        : undefined
+
+    if (parent !== undefined || direct !== undefined) {
+      const { data: current } = await op.service
+        .from("rule_sources")
+        .select("parent_page_url, direct_file_url")
+        .eq("id", input.id)
+        .maybeSingle()
+
+      const nextParent =
+        parent !== undefined ? parent : (current?.parent_page_url ?? null)
+      const nextDirect =
+        direct !== undefined ? direct : (current?.direct_file_url ?? null)
+      patch.official_url = nextDirect || nextParent || null
+    }
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return { ok: false, error: "更新する項目がありません。" }
+  }
+
+  const { error } = await op.service
+    .from("rule_sources")
+    .update(patch)
+    .eq("id", input.id)
+
+  if (error) return { ok: false, error: toUserErrorMessage(error) }
+  revalidateRules("/admin/rules/source-urls")
+  revalidateRules("/admin/rules/laws")
+  return { ok: true }
+}
+
+export async function createMunicipalitySourceUrlAction(input: {
+  jurisdictionId: string
+  title: string
+  serviceType: ServiceType
+  materialCategory: RuleMaterialCategory
+  sourceKind?: RuleSourceKind
+  parentPageUrl?: string
+  directFileUrl?: string
+  priority?: number
+  fileType?: RuleSourceFileType | ""
+  memo?: string
+}): Promise<ActionResult> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  const title = input.title.trim()
+  if (!title) return { ok: false, error: "資料名を入力してください。" }
+  if (!input.jurisdictionId) {
+    return { ok: false, error: "自治体を選択してください。" }
+  }
+  if (!input.materialCategory) {
+    return { ok: false, error: "資料カテゴリを選択してください。" }
+  }
+
+  const parent = input.parentPageUrl?.trim() || null
+  const direct = input.directFileUrl?.trim() || null
+
+  const { error } = await op.service.from("rule_sources").insert({
+    jurisdiction_id: input.jurisdictionId,
+    title,
+    service_type: input.serviceType,
+    material_category: input.materialCategory,
+    source_kind: input.sourceKind ?? "manual",
+    parent_page_url: parent,
+    direct_file_url: direct,
+    official_url: direct || parent,
+    priority: input.priority ?? 100,
+    file_type: input.fileType || null,
+    memo: input.memo?.trim() || null,
+    status: "active",
+    human_review_status: "unverified",
+  })
+
+  if (error) return { ok: false, error: toUserErrorMessage(error) }
+  revalidateRules("/admin/rules/source-urls")
   return { ok: true }
 }
 

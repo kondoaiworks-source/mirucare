@@ -332,6 +332,33 @@ npm install -D @types/papaparse
 本番投入時の環境変数・Storage・確認手順の詳細は  
 [docs/OPERATIONS_STEP3.md](docs/OPERATIONS_STEP3.md) を参照してください。
 
+## 動作確認手順（参照URLマスタ：自治体別）
+
+1. マイグレーションを適用する
+   - `supabase/migrations/20260720120000_rule_engine.sql`（未適用の場合）
+   - `supabase/migrations/20260720130000_rule_source_urls.sql`（rule_sources 拡張）
+2. 初期データを投入する
+   ```bash
+   npm run seed:rule-sources
+   ```
+   - `supabase/seeds/rule_source_urls.json` を編集して URL を追記し、再実行で UPSERT されること
+   - 国・神奈川県＋横浜/鎌倉/藤沢/茅ヶ崎 × 6カテゴリが入ること（逗子市は対象外）
+3. 運営アカウントで [http://localhost:3000/admin/rules/source-urls](http://localhost:3000/admin/rules/source-urls) を開く
+4. 自治体・資料カテゴリで絞り込み、一覧が変わること
+5. 1件を編集して保存できること
+   - 親ページURL / 直接ファイルURL / 優先度 / 原文更新日 / ファイル種別 / ハッシュ / 有効無効 / 人間確認 / メモ
+6. 「確認済みにする」で `last_verified_at` と人間確認ステータスが更新されること
+7. 新規登録フォームから追加できること
+8. SQL で確認する例:
+   ```sql
+   SELECT j.name, rs.material_category, rs.title,
+          rs.parent_page_url, rs.direct_file_url, rs.human_review_status
+   FROM rule_sources rs
+   JOIN rule_jurisdictions j ON j.id = rs.jurisdiction_id
+   WHERE rs.material_category IS NOT NULL
+   ORDER BY j.sort_order, rs.priority;
+   ```
+
 ## 動作確認手順（マスタールールエンジン DB）
 
 画面は未実装。DB 骨格と湘南5市シードのみ。
@@ -351,7 +378,7 @@ npm install -D @types/papaparse
    JOIN rule_jurisdictions j ON j.id = rs.jurisdiction_id
    ORDER BY j.sort_order;
    ```
-   - 国・神奈川県・横浜/藤沢/鎌倉/逗子/茅ヶ崎があること
+   - 国・神奈川県・横浜/藤沢/鎌倉/茅ヶ崎があること（逗子市は管轄マスタに残るが参照URL seed 対象外）
    - 5市の訪問介護セットが `draft` であること（監査項目は空でよい）
 4. 施設ユーザーでは読めず、運営（`is_operator`）のみ参照できること（RLS）
 
@@ -416,7 +443,7 @@ npm install -D @types/papaparse
 | `/reports` | 月次レポート（プレミアム：原因分析・PDF） |
 | `/pricing` | 料金プラン（公開） |
 | `/admin` | 運営レビューコンソール（運営のみ） |
-| `/admin/rules` | ルールエンジン管理（法令・自治体・監査項目・AIルール等・運営のみ） |
+| `/admin/rules` | ルールエンジン管理（法令・自治体・参照URL・監査項目・AIルール等・運営のみ） |
 | `/admin/documents` | 行政マニュアル（ナレッジ）台帳・Dify登録（運営のみ） |
 | `/admin/reports` | 月次レポート管理（管理者のみ） |
 | `/settings` | 設定・招待・ログアウト |
@@ -433,4 +460,5 @@ npm run test        # 単体テスト（矛盾検知・請求突合）
 npm run test:rls     # RLS事業所分離テスト
 npm run test:check   # AIチェック モック／パーステスト
 npm run test:review  # 人間レビュー公開制御テスト
+npm run seed:rule-sources  # 自治体別参照URLマスタの初期投入
 ```
