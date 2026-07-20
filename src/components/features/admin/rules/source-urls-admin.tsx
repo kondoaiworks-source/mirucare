@@ -74,6 +74,39 @@ function formatDate(iso: string | null): string {
   return iso.slice(0, 10)
 }
 
+function urlLinkLabel(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const path =
+      parsed.pathname.length > 28
+        ? `${parsed.pathname.slice(0, 26)}…`
+        : parsed.pathname
+    return `${parsed.hostname}${path}`
+  } catch {
+    return url.length > 42 ? `${url.slice(0, 41)}…` : url
+  }
+}
+
+function SourceUrlLink({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={url}
+      className="group block min-w-0 text-sm text-primary"
+    >
+      <span className="line-clamp-2 break-all underline-offset-2 group-hover:underline">
+        {urlLinkLabel(url)}
+      </span>
+      <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <ExternalLink className="size-3.5 shrink-0" aria-hidden />
+        原文を開く
+      </span>
+    </a>
+  )
+}
+
 type EditState = {
   id: string
   title: string
@@ -276,6 +309,15 @@ export function SourceUrlsAdmin() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
+
+      <Alert className="rounded-xl border-primary/20 bg-muted/40">
+        <AlertTitle className="text-base">行政マニュアル管理との違い</AlertTitle>
+        <AlertDescription className="text-base leading-relaxed">
+          この画面は「どの原文URLを根拠にするか」の台帳です。自動監視・差分検知・施設向けお知らせは
+          <strong className="font-medium"> 行政マニュアル管理 </strong>
+          （/admin/documents）で行います。第1弾では参照URLマスタだけで十分です。重要PDFの変更検知を始める段階で、行政マニュアルに登録し、後から紐づけできます。
+        </AlertDescription>
+      </Alert>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="rounded-xl shadow-subtle">
@@ -511,17 +553,17 @@ export function SourceUrlsAdmin() {
           </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[52rem] table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead>自治体</TableHead>
-                <TableHead>資料カテゴリ</TableHead>
-                <TableHead>資料名</TableHead>
+                <TableHead className="w-[5.5rem]">自治体</TableHead>
+                <TableHead className="w-[7.5rem]">資料カテゴリ</TableHead>
+                <TableHead className="w-[11rem]">資料名</TableHead>
                 <TableHead>URL</TableHead>
-                <TableHead>優先度</TableHead>
-                <TableHead>確認</TableHead>
-                <TableHead>状態</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <TableHead className="w-[3.5rem] text-center">優先</TableHead>
+                <TableHead className="w-[5.5rem]">確認</TableHead>
+                <TableHead className="w-[4rem]">状態</TableHead>
+                <TableHead className="w-[9rem] text-right">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -529,46 +571,40 @@ export function SourceUrlsAdmin() {
                 const url = primarySourceUrl(row)
                 const isEditing = editing?.id === row.id
                 return (
-                  <TableRow key={row.id}>
-                    <TableCell className="whitespace-nowrap">
+                  <TableRow key={row.id} className="align-top">
+                    <TableCell className="whitespace-normal break-words">
                       {row.rule_jurisdictions?.name ?? "—"}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="whitespace-normal text-sm leading-snug">
                       {row.material_category
                         ? MATERIAL_CATEGORY_LABEL[row.material_category]
                         : "—"}
                     </TableCell>
-                    <TableCell className="max-w-[12rem] font-medium">
-                      <span className="line-clamp-2">{row.title}</span>
+                    <TableCell className="whitespace-normal font-medium">
+                      <span className="line-clamp-3">{row.title}</span>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {row.service_type}
                       </p>
                     </TableCell>
-                    <TableCell className="max-w-[14rem]">
+                    <TableCell className="min-w-0 whitespace-normal">
                       {url ? (
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-primary underline-offset-2 hover:underline"
-                        >
-                          <span className="line-clamp-2 break-all">{url}</span>
-                          <ExternalLink className="size-3.5 shrink-0" aria-hidden />
-                        </a>
+                        <SourceUrlLink url={url} />
                       ) : (
                         <Badge variant="outline" className="rounded-lg text-accent">
                           URL未設定
                         </Badge>
                       )}
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p className="mt-2 text-xs text-muted-foreground">
                         最終確認: {formatDateTime(row.last_verified_at)}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         原文更新日: {formatDate(row.source_last_updated_on)}
                       </p>
                     </TableCell>
-                    <TableCell className="tabular-nums">{row.priority}</TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-normal text-center tabular-nums">
+                      {row.priority}
+                    </TableCell>
+                    <TableCell className="whitespace-normal">
                       <Badge
                         variant={
                           row.human_review_status === "verified"
@@ -580,7 +616,7 @@ export function SourceUrlsAdmin() {
                         {HUMAN_REVIEW_STATUS_LABEL[row.human_review_status]}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-normal">
                       <Badge
                         variant={row.status === "active" ? "default" : "outline"}
                         className="rounded-lg"
@@ -588,8 +624,8 @@ export function SourceUrlsAdmin() {
                         {row.status === "active" ? "有効" : "無効"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex flex-col items-end gap-2">
+                    <TableCell className="whitespace-normal text-right">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
                         <Button
                           type="button"
                           variant="outline"
@@ -610,7 +646,7 @@ export function SourceUrlsAdmin() {
                           disabled={pending}
                           onClick={() => markVerified(row.id)}
                         >
-                          確認済みにする
+                          確認済み
                         </Button>
                       </div>
                     </TableCell>
