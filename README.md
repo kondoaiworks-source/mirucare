@@ -332,6 +332,30 @@ npm install -D @types/papaparse
 本番投入時の環境変数・Storage・確認手順の詳細は  
 [docs/OPERATIONS_STEP3.md](docs/OPERATIONS_STEP3.md) を参照してください。
 
+## 動作確認手順（マスタールールエンジン DB）
+
+画面は未実装。DB 骨格と湘南5市シードのみ。
+
+1. Supabase SQL Editor で `supabase/migrations/20260720120000_rule_engine.sql` を実行する  
+   （事前に `knowledge_documents` / `knowledge_document_change_drafts` マイグレーション適用済みであること）
+2. 次が存在することを確認する
+   - テーブル: `rule_jurisdictions` / `rule_sources` / `rule_sets` / `audit_items` / `ai_check_rules` / `ai_check_rule_versions`
+3. シード確認例（SQL Editor）:
+   ```sql
+   SELECT code, level, name, is_supported
+   FROM rule_jurisdictions
+   ORDER BY sort_order, code;
+
+   SELECT rs.title, j.name AS city, rs.service_type, rs.status, rs.fiscal_year
+   FROM rule_sets rs
+   JOIN rule_jurisdictions j ON j.id = rs.jurisdiction_id
+   ORDER BY j.sort_order;
+   ```
+   - 国・神奈川県・横浜/藤沢/鎌倉/逗子/茅ヶ崎があること
+   - 5市の訪問介護セットが `draft` であること（監査項目は空でよい）
+4. 施設ユーザーでは読めず、運営（`is_operator`）のみ参照できること（RLS）
+
+
 ## 動作確認手順（ログインロックアウト）
 
 1. Supabase SQL Editor で `supabase/migrations/20260719070000_login_lockout.sql` を実行する

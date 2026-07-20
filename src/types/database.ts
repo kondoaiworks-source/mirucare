@@ -329,3 +329,113 @@ export type AppAnnouncement = {
   knowledge_document_id: string | null
   created_at: string
 }
+
+/** マスタールールエンジン：管轄レベル */
+export type RuleJurisdictionLevel =
+  | "national"
+  | "prefecture"
+  | "municipality"
+
+export type RuleJurisdiction = {
+  id: string
+  code: string
+  level: RuleJurisdictionLevel
+  name: string
+  parent_id: string | null
+  prefecture_name: string | null
+  municipality_name: string | null
+  is_supported: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export type RuleSourceKind = "law" | "notification" | "manual" | "other"
+export type RuleSourceStatus = "active" | "archived"
+
+export type RuleSource = {
+  id: string
+  jurisdiction_id: string
+  title: string
+  source_kind: RuleSourceKind
+  official_url: string | null
+  knowledge_document_id: string | null
+  published_on: string | null
+  status: RuleSourceStatus
+  created_at: string
+  updated_at: string
+}
+
+export type RuleSetStatus = "draft" | "active" | "retired"
+
+export type RuleSet = {
+  id: string
+  jurisdiction_id: string
+  service_type: ServiceType
+  title: string
+  fiscal_year: number | null
+  status: RuleSetStatus
+  effective_from: string | null
+  effective_to: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type AuditItemCategory =
+  | "契約"
+  | "計画"
+  | "記録"
+  | "人員"
+  | "加算"
+  | "請求"
+  | "その他"
+
+export type AuditItem = {
+  id: string
+  rule_set_id: string
+  code: string
+  title: string
+  description: string
+  category: AuditItemCategory
+  risk_level: FindingSeverity
+  sort_order: number
+  status: "active" | "retired"
+  source_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type AiCheckRule = {
+  id: string
+  audit_item_id: string
+  code: string
+  title: string
+  target_doc_types: string[]
+  status: "active" | "retired"
+  created_at: string
+  updated_at: string
+}
+
+export type AiCheckRuleReviewStatus =
+  | "draft"
+  | "pending_review"
+  | "approved"
+  | "rejected"
+
+export type AiCheckRuleVersion = {
+  id: string
+  rule_id: string
+  version_no: number
+  check_logic: Record<string, unknown>
+  guidance_text: string
+  severity: FindingSeverity
+  effective_from: string
+  effective_to: string | null
+  review_status: AiCheckRuleReviewStatus
+  reviewed_by: string | null
+  reviewed_at: string | null
+  review_reason: string | null
+  change_summary: string | null
+  knowledge_change_draft_id: string | null
+  created_at: string
+}
