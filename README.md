@@ -345,11 +345,14 @@ npm install -D @types/papaparse
    - 国・神奈川県＋横浜/鎌倉/藤沢/茅ヶ崎 × 6カテゴリが入ること（逗子市は対象外）
 3. 運営アカウントで [http://localhost:3000/admin/rules/source-urls](http://localhost:3000/admin/rules/source-urls) を開く
 4. 自治体・資料カテゴリで絞り込み、一覧が変わること
-5. 1件を編集して保存できること
+5. 「チェック準備状況」で、対象4市×6カテゴリの登録数、確認済み件数、PDF直リンク不足、未確認メモなどの要確認理由が表示されること
+   - 絞り込み中も、準備状況カードは全体の登録状態を表示すること
+   - 未確認行を「確認済みにする」と、要確認件数が減ること
+6. 1件を編集して保存できること
    - 親ページURL / 直接ファイルURL / 優先度 / 原文更新日 / ファイル種別 / ハッシュ / 有効無効 / 人間確認 / メモ
-6. 「確認済みにする」で `last_verified_at` と人間確認ステータスが更新されること
-7. 新規登録フォームから追加できること
-8. SQL で確認する例:
+7. 「確認済みにする」で `last_verified_at` と人間確認ステータスが更新されること
+8. 新規登録フォームから追加できること
+9. SQL で確認する例:
    ```sql
    SELECT j.name, rs.material_category, rs.title,
           rs.parent_page_url, rs.direct_file_url, rs.human_review_status

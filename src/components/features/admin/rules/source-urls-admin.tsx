@@ -21,6 +21,7 @@ import {
   MATERIAL_CATEGORIES,
   MATERIAL_CATEGORY_LABEL,
   SERVICE_TYPE_OPTIONS,
+  TARGET_MUNICIPALITY_CODES,
   primarySourceUrl,
 } from "@/lib/rule-engine/source-urls"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -52,11 +53,13 @@ import {
 } from "@/components/ui/table"
 import {
   AlertTriangle,
+  CheckCircle2,
   ExternalLink,
   Loader2,
   Pencil,
   RefreshCw,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—"
@@ -141,8 +144,94 @@ function rowToEdit(row: RuleSourceRow): EditState {
   }
 }
 
+type ReadinessSummary = {
+  status: "ready" | "needs_attention"
+  totalSlots: number
+  coveredSlots: number
+  missingSlots: Array<{ municipality: string; category: RuleMaterialCategory }>
+  rowsNeedingAttention: Array<{ row: RuleSourceRow; reasons: string[] }>
+  verifiedRows: number
+  pdfDirectMissing: number
+}
+
+function readinessReasons(row: RuleSourceRow): string[] {
+  const reasons: string[] = []
+  if (row.status !== "active") reasons.push("無効")
+  if (!primarySourceUrl(row)) reasons.push("URL未設定")
+  if (row.human_review_status !== "verified") {
+    reasons.push(`人間確認が${HUMAN_REVIEW_STATUS_LABEL[row.human_review_status]}`)
+  }
+  if (!row.last_verified_at) reasons.push("最終確認なし")
+  if (row.file_type === "pdf" && !row.direct_file_url?.trim()) {
+    reasons.push("PDF直リンク未設定")
+  }
+  if (!row.file_type) reasons.push("ファイル種別未設定")
+  if (/(未確認|要確認|未設定)/.test(row.memo ?? "")) {
+    reasons.push("メモに未確認事項あり")
+  }
+  return reasons
+}
+
+function buildReadinessSummary(
+  rows: RuleSourceRow[],
+  municipalities: Array<{ code: string; name: string }>
+): ReadinessSummary {
+  const targetMunicipalities = municipalities.filter((m) =>
+    TARGET_MUNICIPALITY_CODES.includes(
+      m.code as (typeof TARGET_MUNICIPALITY_CODES)[number]
+    )
+  )
+  const activeRows = rows.filter((r) => r.status === "active")
+  const covered = new Set<string>()
+
+  for (const row of activeRows) {
+    const code = row.rule_jurisdictions?.code
+    if (
+      code &&
+      row.material_category &&
+      primarySourceUrl(row) &&
+      TARGET_MUNICIPALITY_CODES.includes(
+        code as (typeof TARGET_MUNICIPALITY_CODES)[number]
+      )
+    ) {
+      covered.add(`${code}:${row.material_category}`)
+    }
+  }
+
+  const missingSlots: ReadinessSummary["missingSlots"] = []
+  for (const municipality of targetMunicipalities) {
+    for (const category of MATERIAL_CATEGORIES) {
+      if (!covered.has(`${municipality.code}:${category}`)) {
+        missingSlots.push({ municipality: municipality.name, category })
+      }
+    }
+  }
+
+  const rowsNeedingAttention = rows
+    .map((row) => ({ row, reasons: readinessReasons(row) }))
+    .filter((item) => item.reasons.length > 0)
+
+  return {
+    status:
+      missingSlots.length === 0 && rowsNeedingAttention.length === 0
+        ? "ready"
+        : "needs_attention",
+    totalSlots: targetMunicipalities.length * MATERIAL_CATEGORIES.length,
+    coveredSlots:
+      targetMunicipalities.length * MATERIAL_CATEGORIES.length -
+      missingSlots.length,
+    missingSlots,
+    rowsNeedingAttention,
+    verifiedRows: rows.filter((r) => r.human_review_status === "verified").length,
+    pdfDirectMissing: rows.filter(
+      (r) => r.file_type === "pdf" && !r.direct_file_url?.trim()
+    ).length,
+  }
+}
+
 export function SourceUrlsAdmin() {
   const [rows, setRows] = useState<RuleSourceRow[]>([])
+  const [readinessRows, setReadinessRows] = useState<RuleSourceRow[]>([])
   const [municipalities, setMunicipalities] = useState<
     Array<{ id: string; name: string; code: string }>
   >([])
@@ -173,20 +262,32 @@ export function SourceUrlsAdmin() {
   const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const result = await listMunicipalitySourceUrlsAction({
+    const filters = {
       jurisdictionId: filterJurisdiction === "all" ? undefined : filterJurisdiction,
       materialCategory: filterCategory,
       status: filterStatus,
       humanReviewStatus: filterReview,
-    })
+    }
+    const hasFilters =
+      filters.jurisdictionId !== undefined ||
+      filterCategory !== "all" ||
+      filterStatus !== "all" ||
+      filterReview !== "all"
+    const [result, allResult] = await Promise.all([
+      listMunicipalitySourceUrlsAction(filters),
+      hasFilters ? listMunicipalitySourceUrlsAction() : Promise.resolve(null),
+    ])
     if (!result.ok) {
       setError(result.error ?? "取得に失敗しました。")
       setRows([])
+      setReadinessRows([])
       setMunicipalities([])
     } else {
+      const readinessData = allResult?.ok ? allResult.data : result.data
       setRows(result.data?.rows ?? [])
+      setReadinessRows(readinessData?.rows ?? [])
       setMunicipalities(
-        (result.data?.municipalities ?? []).map((m) => ({
+        (readinessData?.municipalities ?? result.data?.municipalities ?? []).map((m) => ({
           id: m.id,
           name: m.name,
           code: m.code,
@@ -210,6 +311,11 @@ export function SourceUrlsAdmin() {
     ).length
     return { total: rows.length, missingUrl, needsReview }
   }, [rows])
+
+  const readiness = useMemo(
+    () => buildReadinessSummary(readinessRows, municipalities),
+    [readinessRows, municipalities]
+  )
 
   function saveEdit() {
     if (!editing) return
@@ -315,7 +421,7 @@ export function SourceUrlsAdmin() {
         <AlertDescription className="text-base leading-relaxed">
           この画面は「どの原文URLを根拠にするか」の台帳です。自動監視・差分検知・施設向けお知らせは
           <strong className="font-medium"> 行政マニュアル管理 </strong>
-          （/admin/documents）で行います。第1弾では参照URLマスタだけで十分です。重要PDFの変更検知を始める段階で、行政マニュアルに登録し、後から紐づけできます。
+          （/admin/documents）で行います。URL台帳としての登録状態は下の「チェック準備状況」でご確認ください。重要PDFの変更検知を始める段階で、行政マニュアルに登録し、後から紐づけできます。
         </AlertDescription>
       </Alert>
 
@@ -343,6 +449,89 @@ export function SourceUrlsAdmin() {
           </CardHeader>
         </Card>
       </div>
+
+      <Card
+        className={cn(
+          "rounded-xl shadow-subtle",
+          readiness.status === "ready"
+            ? "border-primary/30"
+            : "border-accent/40"
+        )}
+      >
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            {readiness.status === "ready" ? (
+              <CheckCircle2 className="size-5 text-primary" aria-hidden />
+            ) : (
+              <AlertTriangle className="size-5 text-accent" aria-hidden />
+            )}
+            チェック準備状況
+          </CardTitle>
+          <CardDescription className="text-base leading-relaxed">
+            URLを登録しただけでは準備完了とは扱いません。対象自治体ごとの必要カテゴリ、URL、人間確認、PDF直リンクを見て不足を表示します。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-4">
+            <ReadinessMetric
+              label="カテゴリ登録"
+              value={`${readiness.coveredSlots}/${readiness.totalSlots}`}
+              hint={`対象${TARGET_MUNICIPALITY_CODES.length}市 × ${MATERIAL_CATEGORIES.length}カテゴリ`}
+            />
+            <ReadinessMetric
+              label="確認済み"
+              value={`${readiness.verifiedRows}/${readinessRows.length}`}
+              hint="人が原文URLを確認"
+            />
+            <ReadinessMetric
+              label="要確認"
+              value={`${readiness.rowsNeedingAttention.length}`}
+              hint="不足理由がある登録"
+              tone={readiness.rowsNeedingAttention.length > 0 ? "warning" : "ok"}
+            />
+            <ReadinessMetric
+              label="PDF直リンク不足"
+              value={`${readiness.pdfDirectMissing}`}
+              hint="PDF扱いだが直リンクなし"
+              tone={readiness.pdfDirectMissing > 0 ? "warning" : "ok"}
+            />
+          </div>
+
+          {readiness.status === "ready" ? (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-base leading-relaxed text-primary-dark">
+              準備OKです。対象自治体と資料カテゴリのURLがそろい、登録内容も確認済みです。
+            </div>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2">
+              <ReadinessIssueList
+                title="不足しているカテゴリ"
+                empty="対象カテゴリの登録漏れはありません。"
+                items={readiness.missingSlots
+                  .slice(0, 8)
+                  .map(
+                    (slot) =>
+                      `${slot.municipality}：${MATERIAL_CATEGORY_LABEL[slot.category]}`
+                  )}
+                moreCount={Math.max(readiness.missingSlots.length - 8, 0)}
+              />
+              <ReadinessIssueList
+                title="登録内容の要確認"
+                empty="登録内容の要確認はありません。"
+                items={readiness.rowsNeedingAttention
+                  .slice(0, 8)
+                  .map(
+                    ({ row, reasons }) =>
+                      `${row.rule_jurisdictions?.name ?? "管轄不明"}／${row.title}：${reasons.join("、")}`
+                  )}
+                moreCount={Math.max(readiness.rowsNeedingAttention.length - 8, 0)}
+              />
+            </div>
+          )}
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            この判定は参照URLマスタの準備状況です。AIチェックへ反映するには、必要に応じて行政マニュアル管理での監視登録やルールエンジンでのチェック観点化もご確認ください。
+          </p>
+        </CardContent>
+      </Card>
 
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
@@ -553,13 +742,14 @@ export function SourceUrlsAdmin() {
           </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <Table className="min-w-[52rem] table-fixed">
+          <Table className="min-w-[64rem] table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[5.5rem]">自治体</TableHead>
                 <TableHead className="w-[7.5rem]">資料カテゴリ</TableHead>
                 <TableHead className="w-[11rem]">資料名</TableHead>
                 <TableHead>URL</TableHead>
+                <TableHead className="w-[9rem]">準備</TableHead>
                 <TableHead className="w-[3.5rem] text-center">優先</TableHead>
                 <TableHead className="w-[5.5rem]">確認</TableHead>
                 <TableHead className="w-[4rem]">状態</TableHead>
@@ -570,6 +760,7 @@ export function SourceUrlsAdmin() {
               {rows.map((row) => {
                 const url = primarySourceUrl(row)
                 const isEditing = editing?.id === row.id
+                const reasons = readinessReasons(row)
                 return (
                   <TableRow key={row.id} className="align-top">
                     <TableCell className="whitespace-normal break-words">
@@ -600,6 +791,30 @@ export function SourceUrlsAdmin() {
                       <p className="text-xs text-muted-foreground">
                         原文更新日: {formatDate(row.source_last_updated_on)}
                       </p>
+                    </TableCell>
+                    <TableCell className="whitespace-normal">
+                      {reasons.length === 0 ? (
+                        <Badge className="gap-1 rounded-lg">
+                          <CheckCircle2 className="size-3.5" aria-hidden />
+                          準備OK
+                        </Badge>
+                      ) : (
+                        <div className="space-y-1">
+                          <Badge
+                            variant="outline"
+                            className="gap-1 rounded-lg text-accent"
+                          >
+                            <AlertTriangle className="size-3.5" aria-hidden />
+                            要確認
+                          </Badge>
+                          <p className="text-xs leading-relaxed text-muted-foreground">
+                            {reasons.slice(0, 2).join("、")}
+                            {reasons.length > 2
+                              ? ` ほか${reasons.length - 2}件`
+                              : ""}
+                          </p>
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="whitespace-normal text-center tabular-nums">
                       {row.priority}
@@ -655,7 +870,7 @@ export function SourceUrlsAdmin() {
               })}
               {!loading && rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-muted-foreground">
+                  <TableCell colSpan={9} className="text-muted-foreground">
                     該当する参照URLがありません。seed を実行するか、上のフォームから登録してください。
                   </TableCell>
                 </TableRow>
@@ -898,6 +1113,77 @@ export function SourceUrlsAdmin() {
           </CardContent>
         </Card>
       ) : null}
+    </div>
+  )
+}
+
+function ReadinessMetric({
+  label,
+  value,
+  hint,
+  tone = "default",
+}: {
+  label: string
+  value: string
+  hint: string
+  tone?: "default" | "ok" | "warning"
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "mt-1 text-2xl font-bold tabular-nums",
+          tone === "ok"
+            ? "text-primary-dark"
+            : tone === "warning"
+              ? "text-accent"
+              : "text-foreground"
+        )}
+      >
+        {value}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        {hint}
+      </p>
+    </div>
+  )
+}
+
+function ReadinessIssueList({
+  title,
+  empty,
+  items,
+  moreCount,
+}: {
+  title: string
+  empty: string
+  items: string[]
+  moreCount: number
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <h3 className="text-sm font-semibold text-primary-dark">{title}</h3>
+      {items.length === 0 ? (
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          {empty}
+        </p>
+      ) : (
+        <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-foreground">
+          {items.map((item, index) => (
+            <li key={`${item}-${index}`} className="flex gap-2">
+              <AlertTriangle
+                className="mt-0.5 size-4 shrink-0 text-accent"
+                aria-hidden
+              />
+              <span>{item}</span>
+            </li>
+          ))}
+          {moreCount > 0 ? (
+            <li className="text-muted-foreground">ほか{moreCount}件あります。</li>
+          ) : null}
+        </ul>
+      )}
     </div>
   )
 }
