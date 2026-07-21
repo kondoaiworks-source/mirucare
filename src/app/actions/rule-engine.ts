@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { requireOperator } from "@/lib/operator"
 import { toUserErrorMessage } from "@/lib/auth-errors"
+import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
 import type {
   AiCheckRule,
   AiCheckRuleVersion,
@@ -636,11 +637,12 @@ export async function createAuditItemAction(input: {
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
 
-  const code = input.code.trim().toUpperCase()
   const title = input.title.trim()
   if (!input.ruleSetId) return { ok: false, error: "ルールセットを選んでください。" }
-  if (!code) return { ok: false, error: "コードを入力してください。" }
   if (!title) return { ok: false, error: "項目名を入力してください。" }
+  const code =
+    normalizeAuditItemCode(input.code) ||
+    createFallbackAuditItemCode(input.category)
 
   const { error } = await op.service.from("audit_items").insert({
     rule_set_id: input.ruleSetId,
@@ -656,6 +658,98 @@ export async function createAuditItemAction(input: {
   revalidateRules("/admin/rules/audit-items")
   revalidateRules("/admin/rules/additions")
   return { ok: true }
+}
+
+const AUDIT_ITEM_CODE_PREFIX: Record<AuditItemCategory, string> = {
+  契約: "CONTRACT",
+  計画: "PLAN",
+  記録: "RECORD",
+  人員: "STAFF",
+  加算: "ADD",
+  請求: "BILLING",
+  その他: "OTHER",
+}
+
+function normalizeAuditItemCode(value: string) {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80)
+}
+
+function createFallbackAuditItemCode(category: AuditItemCategory) {
+  const timestamp = new Date().toISOString().replace(/\D/g, "").slice(0, 17)
+  return `${AUDIT_ITEM_CODE_PREFIX[category]}_${timestamp}`
+}
+
+export async function createHomeVisitAuditTemplateAction(input: {
+  ruleSetId: string
+}): Promise<ActionResult<{ insertedCount: number; skippedCount: number }>> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  if (!input.ruleSetId) {
+    return { ok: false, error: "ルールセットを選んでください。" }
+  }
+
+  const { data: ruleSet, error: ruleSetError } = await op.service
+    .from("rule_sets")
+    .select("id, service_type")
+    .eq("id", input.ruleSetId)
+    .maybeSingle()
+
+  if (ruleSetError) return { ok: false, error: toUserErrorMessage(ruleSetError) }
+  if (!ruleSet) return { ok: false, error: "ルールセットが見つかりません。" }
+  if ((ruleSet as Pick<RuleSet, "service_type">).service_type !== "訪問介護") {
+    return {
+      ok: false,
+      error: "訪問介護のルールセットを選んでください。",
+    }
+  }
+
+  const templateCodes = HOME_VISIT_AUDIT_TEMPLATE_ITEMS.map((item) => item.code)
+  const { data: existing, error: existingError } = await op.service
+    .from("audit_items")
+    .select("code")
+    .eq("rule_set_id", input.ruleSetId)
+    .in("code", templateCodes)
+
+  if (existingError) return { ok: false, error: toUserErrorMessage(existingError) }
+
+  const existingCodes = new Set((existing ?? []).map((row) => String(row.code)))
+  const rows = HOME_VISIT_AUDIT_TEMPLATE_ITEMS.flatMap((item, index) =>
+    existingCodes.has(item.code)
+      ? []
+      : [
+          {
+            rule_set_id: input.ruleSetId,
+            code: item.code,
+            title: item.title,
+            description: item.description,
+            category: item.category,
+            risk_level: item.riskLevel,
+            sort_order: (index + 1) * 10,
+            status: "active",
+          },
+        ]
+  )
+
+  if (rows.length > 0) {
+    const { error } = await op.service.from("audit_items").insert(rows)
+    if (error) return { ok: false, error: toUserErrorMessage(error) }
+  }
+
+  revalidateRules("/admin/rules/audit-items")
+  revalidateRules("/admin/rules/additions")
+  return {
+    ok: true,
+    data: {
+      insertedCount: rows.length,
+      skippedCount: HOME_VISIT_AUDIT_TEMPLATE_ITEMS.length - rows.length,
+    },
+  }
 }
 
 export async function listAiRulesAction(): Promise<
