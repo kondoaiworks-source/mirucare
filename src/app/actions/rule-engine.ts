@@ -40,10 +40,14 @@ export async function getRulesDashboardAction(): Promise<
     supportedMunicipalityCount: number
     ruleSetCount: number
     auditItemCount: number
+    additionItemCount: number
     aiRuleCount: number
+    approvedAiRuleCount: number
     pendingVersionCount: number
     openSyncAlertCount: number
     pendingKnowledgeDraftCount: number
+    knowledgeDocumentCount: number
+    sourceUrlCount: number
   }>
 > {
   const op = await requireOperator()
@@ -54,10 +58,14 @@ export async function getRulesDashboardAction(): Promise<
     supported,
     sets,
     items,
+    additions,
     rules,
+    approvedRules,
     pendingVersions,
     alerts,
     drafts,
+    documents,
+    sourceUrls,
   ] = await Promise.all([
     op.service
       .from("rule_jurisdictions")
@@ -70,8 +78,16 @@ export async function getRulesDashboardAction(): Promise<
     op.service.from("rule_sets").select("id", { count: "exact", head: true }),
     op.service.from("audit_items").select("id", { count: "exact", head: true }),
     op.service
+      .from("audit_items")
+      .select("id", { count: "exact", head: true })
+      .eq("category", "加算"),
+    op.service
       .from("ai_check_rules")
       .select("id", { count: "exact", head: true }),
+    op.service
+      .from("ai_check_rule_versions")
+      .select("id", { count: "exact", head: true })
+      .eq("review_status", "approved"),
     op.service
       .from("ai_check_rule_versions")
       .select("id", { count: "exact", head: true })
@@ -84,6 +100,14 @@ export async function getRulesDashboardAction(): Promise<
       .from("knowledge_document_change_drafts")
       .select("id", { count: "exact", head: true })
       .eq("status", "pending"),
+    op.service
+      .from("knowledge_documents")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active"),
+    op.service
+      .from("rule_sources")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active"),
   ])
 
   const firstError =
@@ -91,10 +115,14 @@ export async function getRulesDashboardAction(): Promise<
     supported.error ||
     sets.error ||
     items.error ||
+    additions.error ||
     rules.error ||
+    approvedRules.error ||
     pendingVersions.error ||
     alerts.error ||
-    drafts.error
+    drafts.error ||
+    documents.error ||
+    sourceUrls.error
 
   if (firstError) {
     return {
@@ -112,10 +140,14 @@ export async function getRulesDashboardAction(): Promise<
       supportedMunicipalityCount: supported.count ?? 0,
       ruleSetCount: sets.count ?? 0,
       auditItemCount: items.count ?? 0,
+      additionItemCount: additions.count ?? 0,
       aiRuleCount: rules.count ?? 0,
+      approvedAiRuleCount: approvedRules.count ?? 0,
       pendingVersionCount: pendingVersions.count ?? 0,
       openSyncAlertCount: alerts.count ?? 0,
       pendingKnowledgeDraftCount: drafts.count ?? 0,
+      knowledgeDocumentCount: documents.count ?? 0,
+      sourceUrlCount: sourceUrls.count ?? 0,
     },
   }
 }

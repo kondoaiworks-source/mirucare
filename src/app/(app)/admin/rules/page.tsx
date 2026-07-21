@@ -1,18 +1,19 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { getRulesDashboardAction } from "@/app/actions/rule-engine"
+import { SetupReadinessPanel } from "@/components/features/admin/setup-readiness-panel"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { PURPOSE_SECTIONS } from "@/lib/rule-engine/purpose-sections"
-import { AlertCircle, ArrowRight } from "lucide-react"
+import { buildSetupReadiness } from "@/lib/rule-engine/setup-readiness"
+import { AlertCircle, ArrowRight, CheckCircle2 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
   title: "チェック設定",
@@ -38,9 +39,9 @@ function StatCard(props: {
         </CardTitle>
       </CardHeader>
       {props.hint ? (
-        <CardContent>
+        <div className="px-6 pb-4">
           <p className="text-sm text-muted-foreground">{props.hint}</p>
-        </CardContent>
+        </div>
       ) : null}
     </Card>
   )
@@ -52,6 +53,35 @@ function StatCard(props: {
     )
   }
   return inner
+}
+
+function purposeStatus(
+  sectionId: (typeof PURPOSE_SECTIONS)[number]["id"],
+  readiness: ReturnType<typeof buildSetupReadiness>
+): { label: string; done: boolean } {
+  const byId = Object.fromEntries(readiness.steps.map((s) => [s.id, s]))
+  switch (sectionId) {
+    case "audit":
+      return {
+        label: byId.audit?.done ? "設定あり" : "未設定",
+        done: Boolean(byId.audit?.done),
+      }
+    case "additions":
+      return {
+        label: byId.additions?.done ? "設定あり" : "任意・未設定",
+        done: Boolean(byId.additions?.done),
+      }
+    case "ai":
+      return {
+        label: byId.ai?.done ? "利用可能" : "未完了",
+        done: Boolean(byId.ai?.done),
+      }
+    case "regulatory":
+      return {
+        label: byId.regulatory?.done ? "設定あり" : "任意・未設定",
+        done: Boolean(byId.regulatory?.done),
+      }
+  }
 }
 
 export default async function RulesDashboardPage() {
@@ -71,6 +101,7 @@ export default async function RulesDashboardPage() {
   }
 
   const d = result.data
+  const readiness = buildSetupReadiness(d)
 
   return (
     <div className="space-y-8">
@@ -79,9 +110,11 @@ export default async function RulesDashboardPage() {
           チェック設定ホーム
         </h1>
         <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          やりたいことから選んで、監査対策・加算・AI判定の設定を整えられます。
+          必須ステップが揃うと「利用可能」になります。どこまで終わったか、この画面で確認できます。
         </p>
       </div>
+
+      <SetupReadinessPanel readiness={readiness} />
 
       {(d.pendingVersionCount > 0 ||
         d.pendingKnowledgeDraftCount > 0 ||
@@ -119,6 +152,7 @@ export default async function RulesDashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {PURPOSE_SECTIONS.map((section) => {
             const Icon = section.icon
+            const status = purposeStatus(section.id, readiness)
             return (
               <Link
                 key={section.id}
@@ -131,10 +165,30 @@ export default async function RulesDashboardPage() {
                       <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                         <Icon className="size-5" aria-hidden />
                       </span>
-                      <ArrowRight
-                        className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
-                        aria-hidden
-                      />
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "rounded-md text-xs",
+                            status.done
+                              ? "border-primary/30 bg-primary/10 text-primary-dark"
+                              : "border-warning/40 bg-warning/10 text-warning"
+                          )}
+                        >
+                          {status.done ? (
+                            <span className="inline-flex items-center gap-1">
+                              <CheckCircle2 className="size-3" aria-hidden />
+                              {status.label}
+                            </span>
+                          ) : (
+                            status.label
+                          )}
+                        </Badge>
+                        <ArrowRight
+                          className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+                          aria-hidden
+                        />
+                      </div>
                     </div>
                     <CardTitle className="text-lg text-primary-dark">
                       {section.label}
@@ -152,17 +206,29 @@ export default async function RulesDashboardPage() {
 
       <section className="space-y-4" aria-labelledby="status-heading">
         <h2 id="status-heading" className="text-xl font-bold text-primary-dark">
-          いまの状況
+          件数の詳細
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="対応自治体（市区町村）"
+            value={d.supportedMunicipalityCount}
+            hint={`管轄マスタ全体 ${d.jurisdictionCount} 件`}
+            href="/admin/rules/municipalities"
+          />
           <StatCard
             label="監査項目"
             value={d.auditItemCount}
             href="/admin/rules/audit-items"
           />
           <StatCard
-            label="AI判定ルール"
-            value={d.aiRuleCount}
+            label="加算項目"
+            value={d.additionItemCount}
+            href="/admin/rules/additions"
+          />
+          <StatCard
+            label="承認済みAIルール"
+            value={d.approvedAiRuleCount}
+            hint={`ルール総数 ${d.aiRuleCount} 件`}
             href="/admin/rules/ai-rules"
           />
           <StatCard
@@ -184,30 +250,13 @@ export default async function RulesDashboardPage() {
             warn={d.openSyncAlertCount > 0}
           />
           <StatCard
-            label="対応自治体（市区町村）"
-            value={d.supportedMunicipalityCount}
-            hint={`管轄マスタ全体 ${d.jurisdictionCount} 件`}
-            href="/admin/rules/municipalities"
+            label="行政資料 / 参照サイト"
+            value={d.knowledgeDocumentCount + d.sourceUrlCount}
+            hint={`資料 ${d.knowledgeDocumentCount} / URL ${d.sourceUrlCount}`}
+            href="/admin/rules/regulatory"
           />
         </div>
       </section>
-
-      <Card className="rounded-xl shadow-subtle">
-        <CardHeader>
-          <CardTitle className="text-lg">まず始めるなら</CardTitle>
-          <CardDescription className="text-base leading-relaxed">
-            監査で確認される項目を整えてから、AI判定ルールを承認するとチェックの根拠がはっきりします。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button asChild size="lg">
-            <Link href="/admin/rules/audit-items">監査対策を開く</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="/admin/rules/pending">承認待ちを確認する</Link>
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   )
 }
