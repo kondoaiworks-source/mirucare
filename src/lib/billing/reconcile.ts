@@ -155,8 +155,16 @@ function parseTimeRange(raw: string): { start: string; end: string } | null {
 }
 
 function isoToHm(iso: string): string {
-  const d = new Date(iso)
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso))
+  const hour = parts.find((part) => part.type === "hour")?.value ?? "00"
+  const minute = parts.find((part) => part.type === "minute")?.value ?? "00"
+  return `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`
 }
 
 function normalizeClientKey(label: string): string {
