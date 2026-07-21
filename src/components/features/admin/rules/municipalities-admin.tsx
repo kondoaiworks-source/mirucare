@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AlertTriangle, Loader2, RefreshCw } from "lucide-react"
+import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 
 const LEVEL_LABEL: Record<RuleJurisdiction["level"], string> = {
   national: "国",
@@ -79,9 +80,12 @@ export function MunicipalitiesAdmin() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-primary-dark">自治体管理</h1>
+          <AdminBreadcrumb items={[{ label: "自治体マスタ" }]} />
+          <h1 className="mt-2 text-2xl font-bold text-primary-dark">
+            自治体マスタ
+          </h1>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            国・都道府県・市区町村マスタです。全国対応はここに行を追加して拡張します。
+            国・都道府県・市区町村の一覧です。対応地域を追加するときに使います。
           </p>
         </div>
         <Button

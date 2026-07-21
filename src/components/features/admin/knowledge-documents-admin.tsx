@@ -116,7 +116,11 @@ async function fileToBase64(file: File): Promise<string> {
   return btoa(binary)
 }
 
-export function KnowledgeDocumentsAdmin() {
+export function KnowledgeDocumentsAdmin(props?: {
+  /** 親ページで見出し・パンくずを出す場合は true */
+  hidePageHeader?: boolean
+}) {
+  const hidePageHeader = props?.hidePageHeader ?? false
   const [rows, setRows] = useState<KnowledgeDocument[]>([])
   const [alerts, setAlerts] = useState<KnowledgeSyncAlert[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -340,15 +344,17 @@ export function KnowledgeDocumentsAdmin() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-          行政マニュアル管理
-        </h1>
-        <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          PDF直リンクの内容監視、または新着一覧ページの行単位監視（1日1回）を行います。取得失敗・疑い・セレクタ破損は下の「要対応」に出ます。
-        </p>
-      </div>
+    <div className={hidePageHeader ? "space-y-8" : "mx-auto max-w-5xl space-y-8"}>
+      {hidePageHeader ? null : (
+        <div>
+          <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
+            行政資料
+          </h1>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            AIが参照する行政マニュアルを登録・更新します。PDF監視や一覧監視の設定もここから行えます。
+          </p>
+        </div>
+      )}
 
       {alerts.length > 0 ? (
         <Card className="rounded-lg border-warning/40 shadow-subtle">

@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AlertTriangle } from "lucide-react"
+import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 
 type DocRow = Pick<
   KnowledgeDocument,
@@ -88,9 +89,10 @@ export function RulesJobsAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary-dark">ジョブ監視</h1>
+        <AdminBreadcrumb items={[{ label: "ジョブ監視" }]} />
+        <h1 className="mt-2 text-2xl font-bold text-primary-dark">ジョブ監視</h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          行政マニュアルの定期同期（Cron）の結果です。ルール更新ジョブの本格キューは今後拡張します。
+          行政資料の自動同期の結果を確認します。問題があれば行政資料画面で対応してください。
         </p>
       </div>
 
@@ -111,7 +113,7 @@ export function RulesJobsAdmin() {
             </CardDescription>
           </div>
           <Button asChild variant="outline" size="lg" className="min-h-11">
-            <Link href="/admin/documents">台帳で対応する</Link>
+            <Link href="/admin/rules/documents">行政資料で対応する</Link>
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">

@@ -300,7 +300,7 @@ npm install -D @types/papaparse
    - `supabase/migrations/20260719060000_knowledge_watch_index.sql`（一覧監視・ETag・item_key）
    - `supabase/migrations/20260719080000_knowledge_change_drafts.sql`（スナップショット・差分ドラフト・通知先）
 2. 運営オペレータ（`profiles.is_operator = true` または `OPERATOR_EMAILS`）でログインする
-3. [http://localhost:3000/admin/documents](http://localhost:3000/admin/documents) を開く
+3. [http://localhost:3000/admin/rules/documents](http://localhost:3000/admin/rules/documents) を開く（旧URL `/admin/documents` も同画面へリダイレクト）
 4. マニュアルを登録する
    - **PDF直リンク（file）**: 監視用PDF直リンク、またはPDFアップロード
    - **新着一覧（index）**: 一覧ページURL + 記事1件を指すCSSセレクタ（必須）
@@ -322,12 +322,12 @@ npm install -D @types/papaparse
      curl -X POST http://localhost:3000/api/cron/knowledge-sync \
        -H "Authorization: Bearer $CRON_SECRET"
      ```
-8. 設定画面の運営カードから「行政マニュアル管理」へ遷移できること
+8. 設定画面の運営カードから「行政資料を開く」または「チェック設定を開く」へ遷移できること
 9. 変更承認: [http://localhost:3000/admin/document-changes](http://localhost:3000/admin/document-changes)
    - ハッシュ変更後に承認待ちが表示されること
    - 「要精査」案件は理由10文字以上がないと承認できないこと
    - 承認後にダッシュボード「お知らせ」が増えること
-   - `/admin/documents` ヘッダーの「変更承認」バッジ件数が減ること
+   - `/admin/rules/documents` ヘッダーの「変更を承認する」バッジ件数が減ること
 
 本番投入時の環境変数・Storage・確認手順の詳細は  
 [docs/OPERATIONS_STEP3.md](docs/OPERATIONS_STEP3.md) を参照してください。
@@ -382,18 +382,18 @@ npm install -D @types/papaparse
    - 5市の訪問介護セットが `draft` であること（監査項目は空でよい）
 4. 施設ユーザーでは読めず、運営（`is_operator`）のみ参照できること（RLS）
 
-## 動作確認手順（ルールエンジン管理画面）
+## 動作確認手順（チェック設定：目的別UI）
 
 1. 上記ルールエンジン DB マイグレーション適用済みであること
 2. 運営アカウントでログインする
-3. 設定 → 「ルールエンジン管理」または [http://localhost:3000/admin/rules](http://localhost:3000/admin/rules)
-4. 左（または上部）メニューで次が開けること
-   - ダッシュボード / 法令管理 / 自治体管理 / 監査項目管理 / AIルール管理
-   - 加算管理 / 更新履歴 / 承認待ち / 通知一覧 / ジョブ監視
-5. 監査項目を1件登録 → AIルールを「承認待ち」で登録 → 承認待ちで理由を書いて承認できること
-6. findings のレビューコンソール（`/admin`）や Stripe には影響しないこと
-
-
+3. 設定 → 「チェック設定を開く」または [http://localhost:3000/admin/rules](http://localhost:3000/admin/rules)
+4. 左（または上部）メニューが目的別に分かれていること
+   - ホーム / 監査対策 / 加算設定 / AI設定 / 法改正・行政情報
+   - 運用サポート（承認待ち・更新履歴・通知・ジョブ・自治体マスタ）
+5. 各目的のTOPに「この画面で行うこと」「操作手順」カードがあること
+6. AI設定・法改正・行政情報のTOPから、管理一覧カードで各画面へ遷移できること
+7. 監査対策で項目を1件登録 → AI判定ルールを「承認待ち」で登録 → 承認待ちで理由を書いて承認できること
+8. findings のレビューコンソール（`/admin`）や Stripe には影響しないこと
 
 ## 動作確認手順（ログインロックアウト）
 
@@ -443,8 +443,8 @@ npm install -D @types/papaparse
 | `/reports` | 月次レポート（プレミアム：原因分析・PDF） |
 | `/pricing` | 料金プラン（公開） |
 | `/admin` | 運営レビューコンソール（運営のみ） |
-| `/admin/rules` | ルールエンジン管理（法令・自治体・参照URL・監査項目・AIルール等・運営のみ） |
-| `/admin/documents` | 行政マニュアル（ナレッジ）台帳・Dify登録（運営のみ） |
+| `/admin/rules` | チェック設定（目的別：監査対策・加算・AI・法改正など・運営のみ） |
+| `/admin/rules/documents` | 行政資料（ナレッジ）台帳・Dify登録（運営のみ）。旧 `/admin/documents` はリダイレクト |
 | `/admin/reports` | 月次レポート管理（管理者のみ） |
 | `/settings` | 設定・招待・ログアウト |
 | `/styleguide` | デザインシステム確認用 |

@@ -97,6 +97,7 @@ export async function resolveKnowledgeSyncAlertAction(
     return { ok: false, error: toUserErrorMessage(error) }
   }
 
+  revalidatePath("/admin/rules/documents")
   revalidatePath("/admin/documents")
   return { ok: true }
 }
@@ -116,6 +117,7 @@ export async function archiveKnowledgeDocumentAction(
     return { ok: false, error: toUserErrorMessage(error) }
   }
 
+  revalidatePath("/admin/rules/documents")
   revalidatePath("/admin/documents")
   return { ok: true }
 }
@@ -283,7 +285,8 @@ export async function registerKnowledgeDocumentAction(input: {
       .eq("id", document.id)
       .single()
     if (refreshed) {
-      revalidatePath("/admin/documents")
+      revalidatePath("/admin/rules/documents")
+  revalidatePath("/admin/documents")
       revalidatePath("/")
       return {
         ok: true,
@@ -292,6 +295,7 @@ export async function registerKnowledgeDocumentAction(input: {
     }
   }
 
+  revalidatePath("/admin/rules/documents")
   revalidatePath("/admin/documents")
   return { ok: true, data: { document } }
 }
@@ -323,13 +327,15 @@ export async function runKnowledgeSyncNowAction(
         data as KnowledgeDocument,
         op.service
       )
-      revalidatePath("/admin/documents")
+      revalidatePath("/admin/rules/documents")
+  revalidatePath("/admin/documents")
       revalidatePath("/")
       return { ok: true, data: { results: [result] } }
     }
 
     const { results } = await syncAllKnowledgeDocuments()
-    revalidatePath("/admin/documents")
+    revalidatePath("/admin/rules/documents")
+  revalidatePath("/admin/documents")
     revalidatePath("/")
     return { ok: true, data: { results } }
   } catch (error) {

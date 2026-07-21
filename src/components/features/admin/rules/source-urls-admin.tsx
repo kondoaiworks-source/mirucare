@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
+import Link from "next/link"
 import { toast } from "sonner"
 import {
   createMunicipalitySourceUrlAction,
@@ -57,6 +58,8 @@ import {
   Pencil,
   RefreshCw,
 } from "lucide-react"
+import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import { PurposeGuide } from "@/components/features/admin/purpose-guide"
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—"
@@ -279,10 +282,20 @@ export function SourceUrlsAdmin() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-primary-dark">参照URLマスタ</h1>
+          <AdminBreadcrumb
+            items={[
+              {
+                label: "法改正・行政情報",
+                href: "/admin/rules/regulatory",
+              },
+              { label: "参照サイト" },
+            ]}
+          />
+          <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
+            参照サイト
+          </h1>
           <p className="mt-1 max-w-3xl text-base leading-relaxed text-muted-foreground">
-            自治体・厚労省等の原文URLを正本として管理します。AI要約は正本にせず、
-            差分抽出・チェック観点化のみに利用します。ルール反映は管理者承認後に行います。
+            自治体・厚労省などの原文URLを管理します。法改正時はリンク切れがないかご確認ください。
           </p>
         </div>
         <Button
@@ -302,6 +315,13 @@ export function SourceUrlsAdmin() {
         </Button>
       </div>
 
+      <PurposeGuide
+        purpose="AIや監査対策が参照する公式サイトのURLを最新に保ちます。自治体別・資料別に整理できます。"
+        steps={["参照サイトを選択", "URLを確認・更新", "保存"]}
+      />
+
+      <h2 className="text-xl font-bold text-primary-dark">管理一覧</h2>
+
       {error ? (
         <Alert variant="destructive" className="rounded-xl">
           <AlertTriangle />
@@ -311,11 +331,16 @@ export function SourceUrlsAdmin() {
       ) : null}
 
       <Alert className="rounded-xl border-primary/20 bg-muted/40">
-        <AlertTitle className="text-base">行政マニュアル管理との違い</AlertTitle>
+        <AlertTitle className="text-base">行政資料との違い</AlertTitle>
         <AlertDescription className="text-base leading-relaxed">
-          この画面は「どの原文URLを根拠にするか」の台帳です。自動監視・差分検知・施設向けお知らせは
-          <strong className="font-medium"> 行政マニュアル管理 </strong>
-          （/admin/documents）で行います。第1弾では参照URLマスタだけで十分です。重要PDFの変更検知を始める段階で、行政マニュアルに登録し、後から紐づけできます。
+          この画面は「どの公式URLを根拠にするか」の一覧です。PDFの自動監視や差分確認は
+          <Link
+            href="/admin/rules/documents"
+            className="font-medium text-primary underline-offset-2 hover:underline"
+          >
+            行政資料
+          </Link>
+          で行います。
         </AlertDescription>
       </Alert>
 

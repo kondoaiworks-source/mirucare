@@ -230,6 +230,7 @@ export async function approveChangeDraftAction(input: {
   })
 
   revalidatePath("/admin/document-changes")
+  revalidatePath("/admin/rules/documents")
   revalidatePath("/admin/documents")
   revalidatePath("/")
   return { ok: true }
@@ -273,6 +274,7 @@ export async function rejectChangeDraftAction(input: {
   }
 
   revalidatePath("/admin/document-changes")
+  revalidatePath("/admin/rules/documents")
   revalidatePath("/admin/documents")
   return { ok: true }
 }

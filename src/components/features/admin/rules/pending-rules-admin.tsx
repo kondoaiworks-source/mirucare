@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react"
+import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 
 type Row = AiCheckRuleVersion & {
   ai_check_rules: Pick<AiCheckRule, "id" | "title" | "code"> | null
@@ -71,9 +72,10 @@ export function PendingRulesAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary-dark">承認待ち</h1>
+        <AdminBreadcrumb items={[{ label: "承認待ち" }]} />
+        <h1 className="mt-2 text-2xl font-bold text-primary-dark">承認待ち</h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          AI判定ルール版の承認キューです。承認理由の記録が必須です。
+          AI判定ルールの変更を確認し、問題なければ承認します。
         </p>
         <p className="mt-2 text-base tabular-nums text-muted-foreground">
           件数{" "}

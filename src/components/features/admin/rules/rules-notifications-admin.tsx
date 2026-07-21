@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AlertTriangle } from "lucide-react"
+import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 
 type Row = KnowledgeDocumentChangeDraft & {
   knowledge_documents: Pick<KnowledgeDocument, "id" | "title"> | null
@@ -65,9 +66,10 @@ export function RulesNotificationsAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary-dark">通知一覧</h1>
+        <AdminBreadcrumb items={[{ label: "通知一覧" }]} />
+        <h1 className="mt-2 text-2xl font-bold text-primary-dark">通知一覧</h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          行政マニュアル変更ドラフトの作成・メール通知状況です（Resend）。
+          行政資料の変更やメール通知の状況を確認します。
         </p>
       </div>
 

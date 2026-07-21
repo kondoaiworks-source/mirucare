@@ -35,6 +35,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AlertTriangle, Loader2 } from "lucide-react"
+import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import { PurposeGuide } from "@/components/features/admin/purpose-guide"
 
 const KIND_LABEL: Record<RuleSourceKind, string> = {
   law: "法令",
@@ -100,11 +102,29 @@ export function LawsAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary-dark">法令管理</h1>
+        <AdminBreadcrumb
+          items={[
+            {
+              label: "法改正・行政情報",
+              href: "/admin/rules/regulatory",
+            },
+            { label: "法令・根拠" },
+          ]}
+        />
+        <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
+          法令・根拠
+        </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          法令・通知・マニュアル根拠のメタ情報です。PDF本文は行政マニュアル台帳で管理します。
+          法令・通知などの根拠情報を確認・更新します。PDF本文は「行政資料」で管理します。
         </p>
       </div>
+
+      <PurposeGuide
+        purpose="判定や監査の根拠となる法令・通知を登録・更新します。法改正時はこちらも合わせてご確認ください。"
+        steps={["根拠を選択または登録", "内容・URLを更新", "保存"]}
+      />
+
+      <h2 className="text-xl font-bold text-primary-dark">管理一覧</h2>
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">

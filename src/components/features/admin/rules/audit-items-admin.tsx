@@ -41,6 +41,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AlertTriangle, Loader2 } from "lucide-react"
+import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import { PurposeGuide } from "@/components/features/admin/purpose-guide"
+import { getPurposeSection } from "@/lib/rule-engine/purpose-sections"
 
 const CATEGORIES: AuditItemCategory[] = [
   "契約",
@@ -117,18 +120,29 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
     })
   }
 
+  const purpose = getPurposeSection(isAdditions ? "additions" : "audit")
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary-dark">
-          {isAdditions ? "加算管理" : "監査項目管理"}
+        <AdminBreadcrumb
+          items={[{ label: isAdditions ? "加算設定" : "監査対策" }]}
+        />
+        <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
+          {isAdditions ? "加算設定" : "監査対策"}
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
           {isAdditions
-            ? "カテゴリ「加算」の監査項目です。算定要件の抜け漏れ確認に使います。"
-            : "監査官が実際に確認する項目を登録します（常勤換算＝職員の人数の数え方、など短い補足を description に書けます）。"}
+            ? "加算の算定条件と必要書類を確認・編集します。"
+            : "運営指導で確認されやすい項目と必要書類を確認・編集します。"}
         </p>
       </div>
+
+      {purpose ? (
+        <PurposeGuide purpose={purpose.purpose} steps={purpose.steps} />
+      ) : null}
+
+      <h2 className="text-xl font-bold text-primary-dark">管理一覧</h2>
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">

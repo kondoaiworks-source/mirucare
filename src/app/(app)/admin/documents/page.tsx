@@ -1,49 +1,16 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
-import Link from "next/link"
 import { requireOperator } from "@/lib/operator"
-import { KnowledgeDocumentsAdmin } from "@/components/features/admin/knowledge-documents-admin"
-import { countPendingChangeDraftsAction } from "@/app/actions/knowledge-change-drafts"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 
 export const metadata: Metadata = {
-  title: "行政マニュアル管理",
+  title: "行政資料",
 }
 
-export default async function AdminKnowledgeDocumentsPage() {
+/** 旧URL互換：チェック設定配下の行政資料へ誘導 */
+export default async function AdminKnowledgeDocumentsRedirectPage() {
   const op = await requireOperator()
   if ("error" in op) {
     redirect("/")
   }
-
-  const pending = await countPendingChangeDraftsAction()
-  const count = pending.ok ? (pending.data?.count ?? 0) : 0
-
-  return (
-    <div className="space-y-4">
-      <div className="no-print flex flex-wrap items-center justify-end gap-2">
-        <Button asChild variant="outline" className="relative min-h-11">
-          <Link href="/admin/document-changes">
-            変更承認
-            {count > 0 ? (
-              <Badge
-                variant="destructive"
-                className="ml-2 h-6 rounded-lg px-2 text-xs tabular-nums"
-              >
-                {count}
-              </Badge>
-            ) : null}
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/admin">レビューコンソール</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/admin/reports">月次レポート管理</Link>
-        </Button>
-      </div>
-      <KnowledgeDocumentsAdmin />
-    </div>
-  )
+  redirect("/admin/rules/documents")
 }

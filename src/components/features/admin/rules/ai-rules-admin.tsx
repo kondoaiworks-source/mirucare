@@ -41,6 +41,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AlertTriangle, Loader2 } from "lucide-react"
+import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import { PurposeGuide } from "@/components/features/admin/purpose-guide"
 
 const DOC_TYPES: DocType[] = [
   "ケアプラン",
@@ -136,11 +138,31 @@ export function AiRulesAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary-dark">AIルール管理</h1>
+        <AdminBreadcrumb
+          items={[
+            { label: "AI設定", href: "/admin/rules/ai" },
+            { label: "AI判定ルール" },
+          ]}
+        />
+        <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
+          AI判定ルール
+        </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          監査項目に対するAI判定ルールです。内容は版管理し、承認後に適用日で有効になります。
+          書類チェックの判定基準を確認・編集します。変更は版管理され、承認後に適用されます。
         </p>
       </div>
+
+      <PurposeGuide
+        purpose="AIが指摘する基準を設定します。監査項目に紐づけて、判定の見方を整えられます。"
+        steps={[
+          "ルールを選択または登録",
+          "判定内容を編集",
+          "必要に応じて承認依頼",
+          "保存",
+        ]}
+      />
+
+      <h2 className="text-xl font-bold text-primary-dark">管理一覧</h2>
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">

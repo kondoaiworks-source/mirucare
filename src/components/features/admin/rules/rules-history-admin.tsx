@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { AlertTriangle } from "lucide-react"
+import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 
 const REVIEW_LABEL: Record<AiCheckRuleVersion["review_status"], string> = {
   draft: "下書き",
@@ -65,9 +66,10 @@ export function RulesHistoryAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary-dark">更新履歴</h1>
+        <AdminBreadcrumb items={[{ label: "更新履歴" }]} />
+        <h1 className="mt-2 text-2xl font-bold text-primary-dark">更新履歴</h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          AI判定ルール版の作成・承認履歴です（新しい順・最大100件）。
+          AI判定ルールの作成・承認の履歴です（新しい順）。
         </p>
       </div>
 
