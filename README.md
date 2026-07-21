@@ -400,6 +400,8 @@ npm install -D @types/papaparse
    - ホームの必須進捗と目的カードの「設定あり／未完了」が更新されること
 9. findings のレビューコンソール（`/admin`）や Stripe には影響しないこと
 
+詳細な操作説明（一般向け）：[docs/チェック設定ホーム操作マニュアル.md](docs/チェック設定ホーム操作マニュアル.md)
+
 ## 動作確認手順（ログインロックアウト）
 
 1. Supabase SQL Editor で `supabase/migrations/20260719070000_login_lockout.sql` を実行する
