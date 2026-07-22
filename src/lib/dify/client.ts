@@ -288,6 +288,7 @@ async function postWorkflowOnce(options: {
  *
  * Workflow 入力変数:
  * - document_text / prefecture / municipality / doc_type / national
+ * - approved_rules_json / regulatory_basis_json / check_as_of（任意・未定義でも動く想定）
  * - 画像は File Upload 後、top-level の files[]（variable = DIFY_FILE_INPUT_KEY、既定 document_image）
  * - 空 messages エラー時は files なしで1回だけ再試行する
  */
@@ -328,6 +329,9 @@ export async function runDifyCheck(
     municipality: input.municipality || "",
     doc_type: input.docType || "その他",
     national: input.national || "1",
+    approved_rules_json: input.approvedRulesJson || "[]",
+    regulatory_basis_json: input.regulatoryBasisJson || "[]",
+    check_as_of: input.checkAsOf || "",
   }
 
   let hasVisionFile = false

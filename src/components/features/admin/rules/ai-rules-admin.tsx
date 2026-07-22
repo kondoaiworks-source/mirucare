@@ -63,7 +63,11 @@ type RuleRow = AiCheckRule & {
   audit_items: Pick<AuditItem, "id" | "title" | "code"> | null
 }
 
-export function AiRulesAdmin() {
+export function AiRulesAdmin({
+  fromDraftId,
+}: {
+  fromDraftId?: string
+}) {
   const [rules, setRules] = useState<RuleRow[]>([])
   const [versions, setVersions] = useState<AiCheckRuleVersion[]>([])
   const [auditItems, setAuditItems] = useState<AuditItem[]>([])
@@ -118,6 +122,10 @@ export function AiRulesAdmin() {
         severity,
         effectiveFrom,
         submitForReview,
+        knowledgeChangeDraftId: fromDraftId,
+        changeSummary: fromDraftId
+          ? `行政資料変更ドラフト ${fromDraftId.slice(0, 8)} からの改訂案`
+          : undefined,
       })
       if (!result.ok) {
         toast.error(result.error ?? "登録に失敗しました。")
@@ -151,6 +159,16 @@ export function AiRulesAdmin() {
           書類チェックの判定基準を確認・編集します。変更は版管理され、承認後に適用されます。
         </p>
       </div>
+
+      {fromDraftId ? (
+        <Alert className="rounded-xl border-primary/25 bg-primary/[0.03]">
+          <AlertTriangle className="text-primary" />
+          <AlertTitle>行政資料の台帳反映あとの次ステップです</AlertTitle>
+          <AlertDescription className="text-base leading-relaxed">
+            台帳反映だけではチェック用辞書には載りません。ここで改訂案を作り、承認待ちに回してください（ドラフトID紐付けあり）。
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <PurposeGuide
         purpose="AIが指摘する基準を設定します。監査項目に紐づけて、判定の見方を整えられます。"

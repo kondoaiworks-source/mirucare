@@ -142,8 +142,37 @@ export type Document = {
   mime_type: string | null
   file_size: number | null
   status: DocumentStatus
+  /** チェック基準日 YYYY-MM-DD（未実行時は null/undefined） */
+  check_as_of?: string | null
+  applied_rule_version_ids?: string[] | null
+  applied_rules_snapshot?: AppliedRulesSnapshot | null
   created_at: string
   deleted_at: string | null
+}
+
+/** documents.applied_rules_snapshot の形（UI・トレーサビリティ） */
+export type AppliedRulesSnapshot = {
+  asOf: string
+  ruleCount: number
+  truncated: boolean
+  rules: Array<{
+    versionId: string
+    code: string
+    title: string
+    versionNo: number
+    severity: FindingSeverity
+    effectiveFrom: string
+    effectiveTo: string | null
+    auditItemTitle: string | null
+    sourceTitle: string | null
+  }>
+  regulatoryBasis: Array<{
+    id: string
+    title: string
+    year: number | null
+    regionName: string | null
+    jurisdictionLevel: string | null
+  }>
 }
 
 export type Report = {

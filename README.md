@@ -142,6 +142,7 @@ SQL Editor で次を **順番に** 実行します。
 4. 本番ではモックを黙って使わずエラーにします（監視が 0 のまま成功する事故を防ぐ）
 5. Workflow 入力変数は次を想定:
    - `document_text` / `prefecture` / `municipality` / `doc_type` / `national`（`"1"`=国基準・`"0"`=自治体基準）
+   - `approved_rules_json` / `regulatory_basis_json` / `check_as_of`（承認済みルール・行政資料タイトル・基準日。未定義でも Workflow は動く想定）
    - 画像・スキャンPDF時: File Upload API のあと、**リクエスト top-level の `files`** に `variable: "document_image"` で載せる（`inputs` 内に File を埋め込まない）
    - **Dify 開始ノード**: ファイルリスト変数 **`document_image`** を追加（必須オフ）。LLM Vision には LEGACY `files` ではなく **`document_image`** を接続して公開
    - 変数名が違う場合は Vercel / `.env.local` の `DIFY_FILE_INPUT_KEY` を合わせる（既定: `document_image`）
@@ -281,6 +282,28 @@ SQL Editor で次を **順番に** 実行します。
    - [5] 日報・勤怠CSVは必要項目だけDBに保存し、元CSVや被保険者番号は保存しないこと
    - [6] `npm run test` で突合・矛盾・取込パーサの単体テストが通ること
    - [7] UIに「違反です／返還を防ぐ／保証する」などの断定・保証表現が出ないこと
+
+## 動作確認手順（フェーズC＋D：辞書接続・世代可視化）
+
+> 完成図の③④⑤とチェック実行をつなぐ。承認済みAIルールを Dify 入力へ渡し、結果に「いつの版で見たか」を残す。
+
+1. Supabase SQL Editor で `supabase/migrations/20260722100000_document_check_rule_snapshot.sql` を実行する
+2. （任意）チェック設定で承認済み AI 判定ルールを1件以上用意する（`/admin/rules/ai-rules` → 承認待ち → 承認）
+3. 書類をアップロードしてチェックを実行する
+   - サーバーログに `[check] applied_rules`（件数）が出ること
+   - モック時は `[dify] mock_rules_payload` で rules/basis の有無が出ること
+4. `/check/[documentId]` で **「このチェックで使った基準」** が表示されること
+   - 基準日・適用ルール版（開閉）・行政資料タイトル（あれば）
+   - 各指摘の「根拠」テキストも従来どおり表示
+5. `/documents` の完了／レビュー済みカードに **基準日** が出ること
+6. `/admin/document-changes`（またはルール配下の変更承認）で
+   - 「辞書反映は2段階」の説明があること
+   - 承認後トースト／「AI判定ルールの改訂案を作る」導線があること
+   - `?fromDraft=` 付きで AI 判定ルール画面を開くと案内バナーが出ること
+7. Dify Workflow（本番）に任意変数を追加（未定義でもアプリは文字列を送る）:
+   - `approved_rules_json` / `regulatory_basis_json` / `check_as_of`
+8. `npm run test` が通ること（`resolve-check-rules` のシリアライズ含む）
+
 ```bash
 npm install papaparse react-dropzone
 npm install -D @types/papaparse
@@ -455,7 +478,7 @@ npm install -D @types/papaparse
 | `/` | ダッシュボード（今日やること・週次・最近の指摘） |
 | `/documents` | 書類一覧（今日／過去） |
 | `/check/upload` | 書類アップロード（2ステップ：アップ → 種類選択して開始） |
-| `/check/[documentId]` | チェック結果 |
+| `/check/[documentId]` | チェック結果（適用ルール版・基準日つき） |
 | `/check/demo/[scenario]` | 結果画面デモ（success / parse_error / empty） |
 | `/later` | あとで確認リスト |
 | `/reconcile` | 月末の確認（4書類投入状況・矛盾候補・用途別入口） |

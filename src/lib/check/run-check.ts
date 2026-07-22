@@ -4,6 +4,12 @@ import { runDifyCheck } from "@/lib/dify/client"
 import { decideMockMode } from "@/lib/dify/env"
 import { normalizeSeverity, type MockScenario } from "@/lib/dify/types"
 import { prefectureFromMunicipality } from "@/lib/municipalities"
+import {
+  resolveApprovedRulesForCheck,
+  serializeRegulatoryBasisForDify,
+  serializeRulesForDify,
+  toAppliedRulesSnapshot,
+} from "@/lib/rule-engine/resolve-check-rules"
 import type { DocumentStatus } from "@/types/database"
 
 export type RunCheckOptions = {
@@ -108,6 +114,20 @@ export async function runDocumentCheck(
   const municipality = org.municipality?.trim() || ""
   const useNational = !municipality
 
+  const rulesResolution = await resolveApprovedRulesForCheck(admin, {
+    municipality,
+    docType: doc.doc_type,
+  })
+  const rulesSnapshot = toAppliedRulesSnapshot(rulesResolution)
+
+  console.error("[check] applied_rules", {
+    documentId: doc.id,
+    asOf: rulesResolution.asOf,
+    ruleCount: rulesResolution.rules.length,
+    basisCount: rulesResolution.regulatoryBasis.length,
+    truncated: rulesResolution.truncated,
+  })
+
   let difyResult
   try {
     difyResult = await runDifyCheck({
@@ -118,6 +138,11 @@ export async function runDocumentCheck(
       documentText: extracted.text,
       imageBase64: extracted.imageBase64,
       imageMimeType: extracted.imageMimeType,
+      approvedRulesJson: serializeRulesForDify(rulesResolution.rules),
+      regulatoryBasisJson: serializeRegulatoryBasisForDify(
+        rulesResolution.regulatoryBasis
+      ),
+      checkAsOf: rulesResolution.asOf,
       mockScenario: options.mockScenario,
     })
   } catch (err) {
@@ -131,6 +156,7 @@ export async function runDocumentCheck(
       organizationId: options.organizationId,
       skipReview: Boolean(org.skip_finding_review),
       reason: "dify_invoke_failed",
+      rulesSnapshot,
     })
     return {
       ok: true,
@@ -202,7 +228,12 @@ export async function runDocumentCheck(
 
   await admin
     .from("documents")
-    .update({ status: "reviewed" satisfies DocumentStatus })
+    .update({
+      status: "reviewed" satisfies DocumentStatus,
+      check_as_of: rulesSnapshot.asOf,
+      applied_rule_version_ids: rulesResolution.rules.map((r) => r.versionId),
+      applied_rules_snapshot: rulesSnapshot,
+    })
     .eq("id", doc.id)
 
   const mode: RunCheckResult["mode"] = decideMockMode({
@@ -216,6 +247,7 @@ export async function runDocumentCheck(
     findingCount: rows.length,
     usedFallback: difyResult.usedFallback,
     mode,
+    appliedRuleCount: rulesResolution.rules.length,
   })
 
   return {
@@ -234,6 +266,7 @@ async function saveFallbackAndFinish(
     organizationId: string
     skipReview: boolean
     reason: string
+    rulesSnapshot?: ReturnType<typeof toAppliedRulesSnapshot>
   }
 ) {
   void opts.reason
@@ -261,8 +294,16 @@ async function saveFallbackAndFinish(
     sort_order: 0,
   })
 
-  await admin
-    .from("documents")
-    .update({ status: "reviewed" satisfies DocumentStatus })
-    .eq("id", opts.documentId)
+  const docPatch: Record<string, unknown> = {
+    status: "reviewed" satisfies DocumentStatus,
+  }
+  if (opts.rulesSnapshot) {
+    docPatch.check_as_of = opts.rulesSnapshot.asOf
+    docPatch.applied_rule_version_ids = opts.rulesSnapshot.rules.map(
+      (r) => r.versionId
+    )
+    docPatch.applied_rules_snapshot = opts.rulesSnapshot
+  }
+
+  await admin.from("documents").update(docPatch).eq("id", opts.documentId)
 }

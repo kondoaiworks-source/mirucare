@@ -826,6 +826,8 @@ export async function createAiCheckRuleWithVersionAction(input: {
   effectiveFrom: string
   changeSummary?: string
   submitForReview: boolean
+  /** 行政資料変更ドラフトから起こした場合の紐付け */
+  knowledgeChangeDraftId?: string
 }): Promise<ActionResult> {
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
@@ -872,6 +874,7 @@ export async function createAiCheckRuleWithVersionAction(input: {
       effective_from: input.effectiveFrom,
       review_status: input.submitForReview ? "pending_review" : "draft",
       change_summary: input.changeSummary?.trim() || "初版",
+      knowledge_change_draft_id: input.knowledgeChangeDraftId?.trim() || null,
     })
 
   if (verError) {

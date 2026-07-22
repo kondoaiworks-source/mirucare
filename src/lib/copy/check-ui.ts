@@ -23,6 +23,18 @@ export const CHECK_UI = {
   checking: "書類を確認しています。完了まで少々お待ちください。",
   checkingHint: "通常は数分以内に結果が表示されます。",
   basisLabel: "根拠",
+  appliedRulesTitle: "このチェックで使った基準",
+  appliedRulesHint: (count: number, truncated: boolean) =>
+    truncated
+      ? `基準日時点の承認済みルール版を参照しています（表示は先頭 ${count}件。件数が多いため一部のみ）。断定ではありません。`
+      : count > 0
+        ? `基準日時点の承認済みルール版 ${count}件を参照しています。AIの指摘根拠とあわせてご確認ください。`
+        : "基準日は記録されていますが、承認済みルール版の参照はありませんでした。未設定の範囲は未検証です。",
+  appliedRulesEmpty:
+    "承認済みのAI判定ルールがまだないか、この書類種別に該当するものがありませんでした。",
+  appliedRulesMissing:
+    "この書類には、まだ適用ルール版の記録がありません（再チェック後に表示されます）。最終判断は貴施設の責任で行ってください。",
+  regulatoryBasisLabel: "参照した行政資料（タイトル）",
   suggestionLabel: "修正の参考案",
   actionFixed: "対応した",
   actionLater: "あとで",

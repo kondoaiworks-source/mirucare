@@ -7,11 +7,13 @@ import { CheckRunner } from "@/components/features/check/check-runner"
 import { FindingsResultView } from "@/components/features/check/findings-result-view"
 import { ApproveFindingsButton } from "@/components/features/check/approve-findings-button"
 import { ZeroFindingsComplete } from "@/components/features/check/zero-findings-complete"
+import { AppliedRulesPanel } from "@/components/features/check/applied-rules-panel"
 import { CheckResultSkeleton } from "@/components/features/skeletons/page-skeletons"
 import { getDocumentWithFindingsAction } from "@/app/actions/findings"
 import { getCurrentProfile } from "@/app/actions/auth"
 import { CHECK_UI } from "@/lib/copy/check-ui"
 import { DOC_TYPE_OPTIONS } from "@/lib/documents"
+import type { AppliedRulesSnapshot } from "@/types/database"
 import { AlertCircle } from "lucide-react"
 
 export const metadata: Metadata = {
@@ -61,6 +63,9 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
   const typeMeta = DOC_TYPE_OPTIONS.find((o) => o.value === document.doc_type)
   const profile = await getCurrentProfile()
   const isAdmin = profile?.role === "admin"
+  const isOperator = Boolean(profile?.is_operator)
+  const appliedSnapshot =
+    (document.applied_rules_snapshot as AppliedRulesSnapshot | null) ?? null
 
   const openFindings = findings.filter((f) => f.status === "open")
   const countForSummary = openFindings.length || findings.length
@@ -148,6 +153,14 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
                 </p>
               </>
             )}
+
+            <div className="mt-6">
+              <AppliedRulesPanel
+                snapshot={appliedSnapshot}
+                checkAsOf={document.check_as_of}
+                showOperatorHistoryLink={isOperator}
+              />
+            </div>
 
             {findings.length > 0 ? (
               <div className="mt-8">

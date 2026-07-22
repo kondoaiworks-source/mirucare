@@ -79,8 +79,17 @@ export async function runMockDifyCheck(
   void input.municipality
   void input.prefecture
   void input.national
+  void input.approvedRulesJson
+  void input.regulatoryBasisJson
+  void input.checkAsOf
 
-  await new Promise((r) => setTimeout(r, 80))
+  console.error("[dify] mock_rules_payload", {
+    hasRulesJson: Boolean(input.approvedRulesJson && input.approvedRulesJson !== "[]"),
+    hasBasisJson: Boolean(
+      input.regulatoryBasisJson && input.regulatoryBasisJson !== "[]"
+    ),
+    checkAsOf: input.checkAsOf ?? null,
+  })
 
   if (scenario === "parse_error") {
     return parseWithRetryAndFallback(BROKEN_TEXT, [

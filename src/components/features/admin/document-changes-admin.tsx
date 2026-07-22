@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState, useTransition } from "react"
+import Link from "next/link"
 import {
   AlertTriangle,
   CheckCircle2,
@@ -105,7 +106,17 @@ export function DocumentChangesAdmin() {
         toast.error(result.error ?? "承認に失敗しました。")
         return
       }
-      toast.success("承認して台帳へ反映しました。")
+      toast.success("台帳に反映しました", {
+        description:
+          "AI判定ルールへの自動反映はありません。必要なら次にルール改訂案を作成してください。",
+        action: {
+          label: "AI判定ルールへ",
+          onClick: () => {
+            window.location.href = `/admin/rules/ai-rules?fromDraft=${draft.id}`
+          },
+        },
+        duration: 10000,
+      })
       setReasons((prev) => {
         const next = { ...prev }
         delete next[draft.id]
@@ -144,7 +155,8 @@ export function DocumentChangesAdmin() {
             マニュアル変更の承認
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
-            監視で検知した変更を確認し、問題なければ台帳へ反映します（Wチェック支援）。
+            監視で検知した変更を確認し、問題なければ<strong>行政資料の台帳</strong>
+            へ反映します。チェック用のAI判定ルールへは自動では載りません（次のステップで人が作ります）。
           </p>
         </div>
         <Button
@@ -179,6 +191,20 @@ export function DocumentChangesAdmin() {
         </span>{" "}
         件
       </p>
+
+      <Alert className="rounded-xl border-primary/20 bg-primary/[0.03]">
+        <CheckCircle2 className="text-primary" />
+        <AlertTitle>辞書反映は2段階です</AlertTitle>
+        <AlertDescription className="space-y-2 text-base leading-relaxed">
+          <p>
+            ①この画面の承認＝行政資料の<strong>台帳・版履歴</strong>への反映。
+            ②チェックで使うAI判定ルールは、別途「AI判定ルール」で改訂案を作り、承認して初めて参照されます。
+          </p>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href="/admin/rules/ai-rules">AI判定ルールを開く</Link>
+          </Button>
+        </AlertDescription>
+      </Alert>
 
       {loading && drafts.length === 0 ? (
         <p className="flex items-center gap-2 text-base text-muted-foreground">
@@ -377,7 +403,7 @@ export function DocumentChangesAdmin() {
                     />
                   </div>
 
-                  <div className="flex flex-col gap-3 sm:flex-row">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                     <Button
                       type="button"
                       size="lg"
@@ -386,7 +412,7 @@ export function DocumentChangesAdmin() {
                       onClick={() => onApprove(draft)}
                     >
                       <CheckCircle2 className="size-4" aria-hidden />
-                      承認して反映する
+                      承認して台帳へ反映する
                     </Button>
                     <Button
                       type="button"
@@ -398,6 +424,13 @@ export function DocumentChangesAdmin() {
                     >
                       <XCircle className="size-4" aria-hidden />
                       差し戻す
+                    </Button>
+                    <Button asChild size="lg" variant="ghost" className="min-h-11">
+                      <Link
+                        href={`/admin/rules/ai-rules?fromDraft=${draft.id}`}
+                      >
+                        AI判定ルールの改訂案を作る
+                      </Link>
                     </Button>
                   </div>
                 </CardContent>

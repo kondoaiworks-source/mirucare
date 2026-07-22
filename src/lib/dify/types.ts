@@ -29,6 +29,12 @@ export type DifyCheckInput = {
   /** 画像をビジョン入力する場合の base64（data URL 可） */
   imageBase64?: string
   imageMimeType?: string
+  /** 承認済み AI 判定ルール（JSON文字列） */
+  approvedRulesJson?: string
+  /** 行政資料タイトル等の根拠一覧（JSON文字列） */
+  regulatoryBasisJson?: string
+  /** チェック基準日 YYYY-MM-DD */
+  checkAsOf?: string
   /** モックシナリオ上書き */
   mockScenario?: MockScenario
 }

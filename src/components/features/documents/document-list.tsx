@@ -138,6 +138,10 @@ function DocumentCard({ doc }: { doc: DocumentListItem }) {
             <CardDescription className="break-words text-sm [overflow-wrap:anywhere]">
               {isUploaded ? "種類未設定" : doc.doc_type}
               {doc.file_size ? ` · ${formatFileSize(doc.file_size)}` : null}
+              {doc.check_as_of &&
+              (doc.status === "reviewed" || doc.status === "done")
+                ? ` · 基準日 ${doc.check_as_of}`
+                : null}
             </CardDescription>
           </div>
         </div>
