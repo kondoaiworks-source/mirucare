@@ -28,6 +28,12 @@ export type PurposeSection = {
   icon: LucideIcon
   /** 「この画面で行うこと」 */
   purpose: string
+  /** ホームで示す、登録する元データ */
+  dataToRegister: string
+  /** ホームで示す、登録データの使い道 */
+  usedFor: string
+  /** 業種を問わず伝えるための例え */
+  plainExample: string
   steps: string[]
   /** ハブに出す管理対象カード（単一対象の画面では空でも可） */
   links: PurposeLink[]
@@ -43,8 +49,14 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     navDescription: "指摘されやすい項目を整える",
     icon: ShieldCheck,
     purpose:
-      "運営指導・監査で確認される内容を管理します。監査項目や必要書類を確認・編集できます。",
-    steps: ["監査項目を選択", "内容を確認・編集", "保存"],
+      "公的な指導・監査で見られやすい確認項目を、AIが使うチェックリストとして登録します。介護でいえば契約書の署名、計画の同意日、サービス提供記録の日付などです。",
+    dataToRegister:
+      "公的な指導・監査で確認される項目名、説明、対象書類、リスクの目安",
+    usedFor:
+      "利用者が書類をアップロードしたとき、AIが「どの観点を確認するか」を決める土台にします。",
+    plainExample:
+      "飲食店なら衛生チェック表、建設業なら安全点検表のような「見るべき項目リスト」です。",
+    steps: ["登録先を選ぶ", "見るべき項目を登録", "AIルールへつなげる"],
     links: [],
     matchPaths: ["/admin/rules/audit-items"],
   },
@@ -55,8 +67,14 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     navDescription: "算定条件と必要書類を整える",
     icon: Coins,
     purpose:
-      "介護報酬の加算要件を管理します。必要書類や算定条件を確認・編集できます。",
-    steps: ["加算を選択", "算定条件を確認", "必要書類を確認", "保存"],
+      "追加で請求・算定する項目について、必要な条件と書類を登録します。介護でいえば特定事業所加算など、要件を満たしているか確認したい項目です。",
+    dataToRegister:
+      "加算の名称、算定条件、必要書類、確認したい記録や期限",
+    usedFor:
+      "AIが書類を見るとき、加算に必要な条件や添付書類がそろっている可能性があるかを確認する材料にします。",
+    plainExample:
+      "補助金申請や追加料金メニューで「この条件を満たしたときだけ申請・請求できる」と整理する表です。",
+    steps: ["加算を選ぶ", "条件と必要書類を確認", "保存"],
     links: [],
     matchPaths: ["/admin/rules/additions"],
   },
@@ -67,13 +85,17 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     navDescription: "判定の基準を整える",
     icon: Bot,
     purpose:
-      "AIが判定する基準を設定します。法令・行政資料・独自ルールをAIへ反映します。",
+      "AIに「どの書類の、どの記載を、どう確認するか」を教えます。断定ではなく「不備の可能性があります」「ご確認ください」と案内するための判定基準です。",
+    dataToRegister:
+      "対象書類、確認する記載、疑う条件、利用者へ出す案内文、根拠への紐づけ",
+    usedFor:
+      "AIがアップロード書類を読んだあと、指摘候補と確認理由を作るときの判断材料にします。",
+    plainExample:
+      "新人担当者向けの作業手順書に「この欄が空なら確認する」と書いておくイメージです。",
     steps: [
-      "AI判定ルールを選択",
-      "行政資料・法令を確認",
-      "ルールを編集",
-      "AIテストを実行",
-      "保存",
+      "確認したい項目を選ぶ",
+      "AIへの指示を登録",
+      "承認して使える状態にする",
     ],
     links: [
       {
@@ -104,8 +126,14 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     navDescription: "最新の行政情報へ更新する",
     icon: Landmark,
     purpose:
-      "AIが参照する行政資料・法令・参考サイトを管理します。法改正時に最新情報へ更新します。",
-    steps: ["行政資料を選択", "URLまたは資料を更新", "保存"],
+      "AIの根拠確認に使う公式資料や参照サイトを登録します。法改正や自治体資料の更新時に、古い情報のまま案内しないために見直します。",
+    dataToRegister:
+      "厚労省・自治体などの公式PDF、通知、マニュアル、参照URL",
+    usedFor:
+      "AIや運営担当者が、指摘候補の根拠を確認するときの参照先として使います。",
+    plainExample:
+      "会社の規程集や官公庁サイトのリンク集を、チェック担当者がすぐ見られる場所に置くイメージです。",
+    steps: ["公式資料を選ぶ", "PDFやURLを更新", "変更があれば承認"],
     links: [
       {
         href: "/admin/rules/documents",
