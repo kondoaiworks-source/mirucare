@@ -156,8 +156,8 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
           {isAdditions
-            ? "加算の算定条件と必要書類を確認・編集します。"
-            : "運営指導で確認されやすい項目と必要書類を確認・編集します。"}
+            ? "追加で請求・算定する項目の条件と必要書類を、AIが確認に使える形で登録します。"
+            : "公的な指導・監査で見られやすい確認項目を、AIが使うチェック表として登録します。介護以外でいえば、衛生点検表や安全点検表の項目を用意する画面です。"}
         </p>
       </div>
 
@@ -178,8 +178,8 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
           <CardTitle className="text-lg">ルールセットを選ぶ</CardTitle>
-          <CardDescription className="text-base">
-            監査項目を登録する自治体×サービスのセットを選択します。
+          <CardDescription className="text-base leading-relaxed">
+            登録先の地域・サービス種別を選びます。どの自治体や業務区分の基準として使うかを決めるための箱です。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -248,8 +248,8 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
           <CardTitle className="text-lg">項目を個別に登録する</CardTitle>
-          <CardDescription className="text-base">
-            上で選択したルールセットに紐づけます。コードは未入力でも登録できます。
+          <CardDescription className="text-base leading-relaxed">
+            AIに見てほしい項目名・説明・分類を登録します。例：署名の有無、日付の前後関係、必要書類の不足など。コードは未入力でも登録できます。
           </CardDescription>
         </CardHeader>
         <CardContent>

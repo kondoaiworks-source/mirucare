@@ -67,7 +67,8 @@ export function buildSetupReadiness(
     {
       id: "municipality",
       label: "対応自治体を用意する",
-      description: "チェック対象の市区町村が選べる状態にします。",
+      description:
+        "どの地域の公的ルールを参考にするか選べる状態にします。",
       href: "/admin/rules/municipalities",
       actionLabel: "自治体マスタを開く",
       done: input.supportedMunicipalityCount > 0,
@@ -81,7 +82,8 @@ export function buildSetupReadiness(
     {
       id: "audit",
       label: "監査項目を登録する",
-      description: "運営指導で確認されやすい項目を1件以上登録します。",
+      description:
+        "AIに見てほしいチェック項目を1件以上登録します。例：署名、日付、必要書類の有無。",
       href: "/admin/rules/audit-items",
       actionLabel: "監査対策を開く",
       done: input.auditItemCount > 0,
@@ -95,7 +97,8 @@ export function buildSetupReadiness(
     {
       id: "ai",
       label: "AI判定ルールを承認する",
-      description: "判定基準を登録し、承認済みの版を1件以上用意します。",
+      description:
+        "チェック項目ごとに「どう疑うか」「どう案内するか」を登録し、承認済みにします。",
       href:
         input.approvedAiRuleCount > 0
           ? "/admin/rules/ai-rules"
@@ -119,7 +122,8 @@ export function buildSetupReadiness(
     {
       id: "clearQueue",
       label: "確認待ちを残さない",
-      description: "承認待ち・マニュアル差分・同期アラートを解消します。",
+      description:
+        "古い基準と新しい基準が混ざらないよう、承認待ち・資料差分・同期アラートを確認します。",
       href:
         input.pendingVersionCount > 0
           ? "/admin/rules/pending"
@@ -138,7 +142,8 @@ export function buildSetupReadiness(
     {
       id: "additions",
       label: "加算項目を整える（任意）",
-      description: "加算の算定条件・必要書類を登録すると精度が上がります。",
+      description:
+        "追加で請求・算定する項目の条件や必要書類を登録すると、確認の精度が上がります。",
       href: "/admin/rules/additions",
       actionLabel: "加算設定を開く",
       done: input.additionItemCount > 0,
@@ -152,7 +157,8 @@ export function buildSetupReadiness(
     {
       id: "regulatory",
       label: "行政情報を用意する（任意）",
-      description: "行政資料や参照サイトがあると、根拠確認がしやすくなります。",
+      description:
+        "公式PDFや参照サイトがあると、AIの指摘候補に根拠を添えやすくなります。",
       href: "/admin/rules/regulatory",
       actionLabel: "法改正・行政情報を開く",
       done: input.knowledgeDocumentCount + input.sourceUrlCount > 0,

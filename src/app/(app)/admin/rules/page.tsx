@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -84,6 +85,24 @@ function purposeStatus(
   }
 }
 
+const overviewItems = [
+  {
+    title: "1. 何を見るかを登録する",
+    description:
+      "監査対策や加算設定で、AIに見てほしいチェック項目を用意します。介護以外でいえば、衛生点検表・安全点検表・経費確認リストのようなものです。",
+  },
+  {
+    title: "2. どう見ればよいかを登録する",
+    description:
+      "AI設定で「この欄が空なら確認を促す」「日付の前後関係をご確認ください」のような判断基準を用意します。",
+  },
+  {
+    title: "3. 何を根拠にするかを登録する",
+    description:
+      "法改正・行政情報で、公式PDFや自治体サイトを参照先として管理します。AIの指摘候補に根拠を添えやすくするための資料置き場です。",
+  },
+]
+
 export default async function RulesDashboardPage() {
   const result = await getRulesDashboardAction()
 
@@ -110,9 +129,45 @@ export default async function RulesDashboardPage() {
           チェック設定ホーム
         </h1>
         <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          必須ステップが揃うと「利用可能」になります。どこまで終わったか、この画面で確認できます。
+          AIが書類をチェックするときの「チェック表・判断基準・根拠資料」を用意する場所です。必須ステップが揃うと「利用可能」になります。
         </p>
       </div>
+
+      <section
+        className="space-y-4"
+        aria-labelledby="settings-overview-heading"
+      >
+        <Card className="rounded-xl border-primary/20 bg-primary/[0.03] shadow-subtle">
+          <CardHeader className="pb-3">
+            <CardTitle
+              id="settings-overview-heading"
+              className="text-xl text-primary-dark"
+            >
+              このホームで何を準備するのか
+            </CardTitle>
+            <CardDescription className="text-base leading-relaxed text-foreground/80">
+              世の中の公的ルール・社内チェック表・公式資料を、AIが確認に使える形で登録します。登録した内容は、利用者が書類をアップロードしたときの「不備の可能性があります」「ここをご確認ください」という案内に使われます。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ol className="grid gap-3 md:grid-cols-3">
+              {overviewItems.map((item) => (
+                <li
+                  key={item.title}
+                  className="rounded-xl border border-border bg-white p-4"
+                >
+                  <p className="text-base font-semibold text-primary-dark">
+                    {item.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {item.description}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
+      </section>
 
       <SetupReadinessPanel readiness={readiness} />
 
@@ -197,6 +252,27 @@ export default async function RulesDashboardPage() {
                       {section.purpose}
                     </CardDescription>
                   </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    <div className="rounded-xl bg-muted/50 p-3">
+                      <p className="text-sm font-semibold text-primary-dark">
+                        登録するデータ
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                        {section.dataToRegister}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-muted/50 p-3">
+                      <p className="text-sm font-semibold text-primary-dark">
+                        何に使うか
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                        {section.usedFor}
+                      </p>
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground/80">
+                      {section.plainExample}
+                    </p>
+                  </CardContent>
                 </Card>
               </Link>
             )
