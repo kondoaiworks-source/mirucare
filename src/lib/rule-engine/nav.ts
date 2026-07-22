@@ -1,10 +1,8 @@
 import {
-  LayoutDashboard,
-  MapPin,
   History,
   Hourglass,
-  Bell,
-  Activity,
+  LayoutDashboard,
+  MoreHorizontal,
   type LucideIcon,
 } from "lucide-react"
 import { PURPOSE_SECTIONS } from "@/lib/rule-engine/purpose-sections"
@@ -25,7 +23,10 @@ export type RulesAdminNavGroup = {
   items: RulesAdminNavItem[]
 }
 
-/** 目的別サイドナビ（グループ構成） */
+/**
+ * シンプル化したサイドナビ（主要6＋その他）。
+ * 加算・ジョブ・通知などは /admin/rules/more へ。
+ */
 export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
   {
     id: "home",
@@ -33,55 +34,58 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
       {
         href: "/admin/rules",
         label: "ホーム",
-        description: "全体の状況と入口",
+        description: "準備状況と次にやること",
         icon: LayoutDashboard,
       },
     ],
   },
   {
-    id: "purpose",
-    label: "目的から選ぶ",
+    id: "main",
+    label: "設定する",
     items: PURPOSE_SECTIONS.map((section) => ({
       href: section.href,
       label: section.label,
       description: section.navDescription,
       icon: section.icon,
-      matchPaths: section.matchPaths,
+      matchPaths: section.matchPaths.filter(
+        // 承認待ちは別メニューなので AI のハイライトから外す
+        (p) => p !== "/admin/rules/pending"
+      ),
     })),
   },
   {
-    id: "ops",
-    label: "運用サポート",
+    id: "review",
+    label: "確認する",
     items: [
       {
         href: "/admin/rules/pending",
         label: "承認待ち",
-        description: "判定ルール版の承認",
+        description: "ルール版を本番に載せる前の確認",
         icon: Hourglass,
       },
       {
         href: "/admin/rules/history",
         label: "更新履歴",
-        description: "ルール版の変更履歴",
+        description: "いつの版に変わったか",
         icon: History,
       },
+    ],
+  },
+  {
+    id: "more",
+    items: [
       {
-        href: "/admin/rules/notifications",
-        label: "通知一覧",
-        description: "マニュアル変更の通知",
-        icon: Bell,
-      },
-      {
-        href: "/admin/rules/jobs",
-        label: "ジョブ監視",
-        description: "同期・監視の実行状況",
-        icon: Activity,
-      },
-      {
-        href: "/admin/rules/municipalities",
-        label: "自治体マスタ",
-        description: "国・都道府県・市区町村",
-        icon: MapPin,
+        href: "/admin/rules/more",
+        label: "その他の設定",
+        description: "加算・自治体・ジョブなど",
+        icon: MoreHorizontal,
+        matchPaths: [
+          "/admin/rules/more",
+          "/admin/rules/additions",
+          "/admin/rules/municipalities",
+          "/admin/rules/jobs",
+          "/admin/rules/notifications",
+        ],
       },
     ],
   },
@@ -99,9 +103,7 @@ export function isNavItemActive(
     return pathname === "/admin/rules"
   }
 
-  const paths = item.matchPaths?.length
-    ? item.matchPaths
-    : [item.href]
+  const paths = item.matchPaths?.length ? item.matchPaths : [item.href]
 
   return paths.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`)

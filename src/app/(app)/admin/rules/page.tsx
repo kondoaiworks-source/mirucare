@@ -66,11 +66,6 @@ function purposeStatus(
         label: byId.audit?.done ? "設定あり" : "未設定",
         done: Boolean(byId.audit?.done),
       }
-    case "additions":
-      return {
-        label: byId.additions?.done ? "設定あり" : "任意・未設定",
-        done: Boolean(byId.additions?.done),
-      }
     case "ai":
       return {
         label: byId.ai?.done ? "利用可能" : "未完了",
@@ -110,7 +105,7 @@ export default async function RulesDashboardPage() {
           チェック設定ホーム
         </h1>
         <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          必須ステップが揃うと「利用可能」になります（合否・返還は保証しません。致命傷になりやすい矛盾・疑義の洗い出しを始める状態です）。どこまで終わったか、この画面で確認できます。
+          メニューは「監査項目・AI判定ルール・行政情報」の3本が中心です。必須が揃うと「利用可能」になります（合否・返還は保証しません）。
         </p>
       </div>
 
@@ -124,19 +119,25 @@ export default async function RulesDashboardPage() {
           <AlertTitle>確認が必要なことがあります</AlertTitle>
           <AlertDescription className="flex flex-wrap gap-2 pt-2">
             {d.pendingVersionCount > 0 ? (
-              <Badge variant="destructive" className="rounded-lg tabular-nums">
-                ルール承認待ち {d.pendingVersionCount}
-              </Badge>
+              <Link href="/admin/rules/pending">
+                <Badge variant="destructive" className="rounded-lg tabular-nums">
+                  ルール承認待ち {d.pendingVersionCount}
+                </Badge>
+              </Link>
             ) : null}
             {d.pendingKnowledgeDraftCount > 0 ? (
-              <Badge variant="destructive" className="rounded-lg tabular-nums">
-                マニュアル差分 {d.pendingKnowledgeDraftCount}
-              </Badge>
+              <Link href="/admin/document-changes">
+                <Badge variant="destructive" className="rounded-lg tabular-nums">
+                  マニュアル差分 {d.pendingKnowledgeDraftCount}
+                </Badge>
+              </Link>
             ) : null}
             {d.openSyncAlertCount > 0 ? (
-              <Badge variant="outline" className="rounded-lg tabular-nums">
-                同期アラート {d.openSyncAlertCount}
-              </Badge>
+              <Link href="/admin/rules/jobs">
+                <Badge variant="outline" className="rounded-lg tabular-nums">
+                  同期アラート {d.openSyncAlertCount}
+                </Badge>
+              </Link>
             ) : null}
           </AlertDescription>
         </Alert>
@@ -147,9 +148,9 @@ export default async function RulesDashboardPage() {
           id="purpose-entry-heading"
           className="text-xl font-bold text-primary-dark"
         >
-          目的から選ぶ
+          よく使う設定
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           {PURPOSE_SECTIONS.map((section) => {
             const Icon = section.icon
             const status = purposeStatus(section.id, readiness)
@@ -202,28 +203,27 @@ export default async function RulesDashboardPage() {
             )
           })}
         </div>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          加算・自治体マスタ・ジョブ監視などは{" "}
+          <Link
+            href="/admin/rules/more"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            その他の設定
+          </Link>
+          にまとめています。
+        </p>
       </section>
 
       <section className="space-y-4" aria-labelledby="status-heading">
         <h2 id="status-heading" className="text-xl font-bold text-primary-dark">
-          件数の詳細
+          いまの件数
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="対応自治体（市区町村）"
-            value={d.supportedMunicipalityCount}
-            hint={`管轄マスタ全体 ${d.jurisdictionCount} 件`}
-            href="/admin/rules/municipalities"
-          />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <StatCard
             label="監査項目"
             value={d.auditItemCount}
             href="/admin/rules/audit-items"
-          />
-          <StatCard
-            label="加算項目"
-            value={d.additionItemCount}
-            href="/admin/rules/additions"
           />
           <StatCard
             label="承認済みAIルール"
@@ -232,10 +232,16 @@ export default async function RulesDashboardPage() {
             href="/admin/rules/ai-rules"
           />
           <StatCard
-            label="承認待ち（ルール版）"
+            label="承認待ち"
             value={d.pendingVersionCount}
             href="/admin/rules/pending"
             warn={d.pendingVersionCount > 0}
+          />
+          <StatCard
+            label="行政資料 / 参照サイト"
+            value={d.knowledgeDocumentCount + d.sourceUrlCount}
+            hint={`資料 ${d.knowledgeDocumentCount} / URL ${d.sourceUrlCount}`}
+            href="/admin/rules/regulatory"
           />
           <StatCard
             label="マニュアル差分（未承認）"
@@ -244,16 +250,10 @@ export default async function RulesDashboardPage() {
             warn={d.pendingKnowledgeDraftCount > 0}
           />
           <StatCard
-            label="同期アラート（未解消）"
-            value={d.openSyncAlertCount}
-            href="/admin/rules/jobs"
-            warn={d.openSyncAlertCount > 0}
-          />
-          <StatCard
-            label="行政資料 / 参照サイト"
-            value={d.knowledgeDocumentCount + d.sourceUrlCount}
-            hint={`資料 ${d.knowledgeDocumentCount} / URL ${d.sourceUrlCount}`}
-            href="/admin/rules/regulatory"
+            label="対応自治体"
+            value={d.supportedMunicipalityCount}
+            hint="詳細は「その他の設定」"
+            href="/admin/rules/municipalities"
           />
         </div>
       </section>

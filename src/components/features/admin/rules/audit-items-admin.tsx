@@ -143,21 +143,34 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
     })
   }
 
-  const purpose = getPurposeSection(isAdditions ? "additions" : "audit")
+  const purpose = isAdditions
+    ? {
+        purpose:
+          "加算の算定条件と必要書類を管理します。なくても最低限のチェックは始められます。",
+        steps: ["加算を選ぶ／登録する", "算定条件を確認する", "保存する"],
+      }
+    : getPurposeSection("audit")
 
   return (
     <div className="space-y-6">
       <div>
         <AdminBreadcrumb
-          items={[{ label: isAdditions ? "加算設定" : "監査対策" }]}
+          items={[
+            ...(isAdditions
+              ? [
+                  { label: "その他の設定", href: "/admin/rules/more" },
+                  { label: "加算設定" },
+                ]
+              : [{ label: "監査項目" }]),
+          ]}
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          {isAdditions ? "加算設定" : "監査対策"}
+          {isAdditions ? "加算設定" : "監査項目"}
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
           {isAdditions
             ? "加算の算定条件と必要書類を確認・編集します。"
-            : "運営指導で確認されやすい項目と必要書類を確認・編集します。"}
+            : "運営指導で確認されやすい項目を登録します。AI判定ルールの土台になります。"}
         </p>
       </div>
 

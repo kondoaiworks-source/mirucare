@@ -285,7 +285,7 @@ export function SourceUrlsAdmin() {
           <AdminBreadcrumb
             items={[
               {
-                label: "法改正・行政情報",
+                label: "行政情報",
                 href: "/admin/rules/regulatory",
               },
               { label: "参照サイト" },
@@ -316,7 +316,7 @@ export function SourceUrlsAdmin() {
       </div>
 
       <PurposeGuide
-        purpose="AIや監査対策が参照する公式サイトのURLを最新に保ちます。自治体別・資料別に整理できます。"
+        purpose="AIや監査項目が参照する公式サイトのURLを最新に保ちます。自治体別・資料別に整理できます。"
         steps={["参照サイトを選択", "URLを確認・更新", "保存"]}
       />
 

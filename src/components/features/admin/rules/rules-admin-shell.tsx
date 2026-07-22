@@ -20,7 +20,7 @@ export function RulesAdminShell({ children }: { children: React.ReactNode }) {
             チェック設定
           </p>
           <p className="px-2 pb-3 text-sm leading-relaxed text-muted-foreground">
-            やりたいことから選んで、監査・加算・AIの設定を整えられます
+            監査項目・AIルール・行政情報の3つが中心です
           </p>
         </div>
 
@@ -64,9 +64,6 @@ export function RulesAdminShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="mt-4 hidden flex-col gap-2 lg:flex">
-          <Button asChild variant="outline" size="sm" className="justify-start">
-            <Link href="/admin/document-changes">マニュアル変更の承認へ</Link>
-          </Button>
           <Button asChild variant="outline" size="sm" className="justify-start">
             <Link href="/settings">設定へ戻る</Link>
           </Button>

@@ -3,7 +3,7 @@ import { PurposeHub } from "@/components/features/admin/purpose-hub"
 import { getPurposeSection } from "@/lib/rule-engine/purpose-sections"
 
 export const metadata: Metadata = {
-  title: "法改正・行政情報",
+  title: "行政情報",
 }
 
 export default function RegulatoryHubPage() {

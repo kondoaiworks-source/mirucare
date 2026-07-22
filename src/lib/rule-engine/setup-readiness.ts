@@ -83,7 +83,7 @@ export function buildSetupReadiness(
       label: "監査項目を登録する",
       description: "運営指導で確認されやすい項目を1件以上登録します。",
       href: "/admin/rules/audit-items",
-      actionLabel: "監査対策を開く",
+      actionLabel: "監査項目を開く",
       done: input.auditItemCount > 0,
       required: true,
       detail:
@@ -101,11 +101,11 @@ export function buildSetupReadiness(
           ? "/admin/rules/ai-rules"
           : input.pendingVersionCount > 0
             ? "/admin/rules/pending"
-            : "/admin/rules/ai",
+            : "/admin/rules/ai-rules",
       actionLabel:
         input.pendingVersionCount > 0
           ? "承認待ちを確認する"
-          : "AI設定を開く",
+          : "AI判定ルールを開く",
       done: input.approvedAiRuleCount > 0,
       required: true,
       detail:
@@ -125,7 +125,7 @@ export function buildSetupReadiness(
           ? "/admin/rules/pending"
           : input.pendingKnowledgeDraftCount > 0
             ? "/admin/document-changes"
-            : "/admin/rules/jobs",
+            : "/admin/rules/more",
       actionLabel: "要対応を確認する",
       done: queueCount === 0,
       required: true,
@@ -140,7 +140,7 @@ export function buildSetupReadiness(
       label: "加算項目を整える（任意）",
       description: "加算の算定条件・必要書類を登録すると精度が上がります。",
       href: "/admin/rules/additions",
-      actionLabel: "加算設定を開く",
+      actionLabel: "加算設定を開く（その他）",
       done: input.additionItemCount > 0,
       required: false,
       detail:
@@ -154,7 +154,7 @@ export function buildSetupReadiness(
       label: "行政情報を用意する（任意）",
       description: "行政資料や参照サイトがあると、根拠確認がしやすくなります。",
       href: "/admin/rules/regulatory",
-      actionLabel: "法改正・行政情報を開く",
+      actionLabel: "行政情報を開く",
       done: input.knowledgeDocumentCount + input.sourceUrlCount > 0,
       required: false,
       detail:

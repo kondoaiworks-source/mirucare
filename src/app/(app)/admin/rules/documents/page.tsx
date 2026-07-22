@@ -24,7 +24,7 @@ export default async function RulesDocumentsPage() {
           <AdminBreadcrumb
             items={[
               {
-                label: "法改正・行政情報",
+                label: "行政情報",
                 href: "/admin/rules/regulatory",
               },
               { label: "行政資料" },

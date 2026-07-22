@@ -105,7 +105,7 @@ export function LawsAdmin() {
         <AdminBreadcrumb
           items={[
             {
-              label: "法改正・行政情報",
+              label: "行政情報",
               href: "/admin/rules/regulatory",
             },
             { label: "法令・根拠" },

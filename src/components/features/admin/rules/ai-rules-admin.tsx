@@ -148,7 +148,6 @@ export function AiRulesAdmin({
       <div>
         <AdminBreadcrumb
           items={[
-            { label: "AI設定", href: "/admin/rules/ai" },
             { label: "AI判定ルール" },
           ]}
         />
