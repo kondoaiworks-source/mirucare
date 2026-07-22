@@ -139,9 +139,14 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
                 </p>
               </>
             ) : (
-              <h1 className="mt-3 text-3xl font-bold leading-tight text-primary-dark tabular-nums">
-                {CHECK_UI.summaryWithFindings(countForSummary)}
-              </h1>
+              <>
+                <h1 className="mt-3 text-3xl font-bold leading-tight text-primary-dark tabular-nums">
+                  {CHECK_UI.summaryWithFindings(countForSummary)}
+                </h1>
+                <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+                  {CHECK_UI.summaryWithFindingsNote}
+                </p>
+              </>
             )}
 
             {findings.length > 0 ? (

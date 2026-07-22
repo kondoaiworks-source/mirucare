@@ -49,7 +49,7 @@ async function AlertsContent() {
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">期限アラート</h1>
           <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-            同意日・更新期限などの見落としを防ぐための画面です。
+            同意日・更新期限などの見落とし確認を支援する画面です。
           </p>
         </div>
         <EmptyState

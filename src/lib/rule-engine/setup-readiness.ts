@@ -188,7 +188,7 @@ export function buildSetupReadiness(
   } else {
     statusLabel = "利用可能"
     statusHint =
-      "最低限のチェック設定は整いました。法改正時は行政情報の更新をご確認ください。"
+      "最低限の設定が整い、致命傷になりやすい矛盾・疑義の洗い出しを始められます（合否・返還は保証しません）。未投入の範囲は未検証です。法改正時は行政情報の更新をご確認ください。"
   }
 
   const nextStep =

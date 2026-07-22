@@ -6,9 +6,11 @@
 export const CHECK_UI = {
   summaryWithFindings: (count: number) =>
     `気になる点が ${count}件 ありました`,
+  summaryWithFindingsNote:
+    "断定ではありません。「〜の可能性」としてご確認ください。未アップロードや読めない箇所は未検証です。最終判断・提出は貴施設の責任で行ってください。",
   summaryZero: "今回は気になる点は見つかりませんでした",
   summaryZeroNote:
-    "見落としを保証するものではありません。最終判断・提出は貴施設の責任で行ってください。",
+    "見落としがないことを保証するものではありません。未検証の範囲が残っている可能性があります。最終判断・提出は貴施設の責任で行ってください。",
   summaryFallback:
     "AIが確認できませんでした。運営が確認します",
   summaryFallbackBody:
@@ -32,7 +34,7 @@ export const CHECK_UI = {
   copied: "コピーしました",
   completeTitle: "今日のWチェックが完了しました",
   completeBody:
-    "指摘への対応記録が残りました。月次レポートで振り返ることができます。",
+    "指摘への対応記録が残りました。月次レポートで振り返ることができます。合否や返還は保証しません。",
   backToList: "書類一覧に戻る",
   sectionOpen: "これから確認",
   sectionLater: "あとで確認",
@@ -92,6 +94,9 @@ export const FORBIDDEN_ASSERTIONS = [
   "違法です",
   "必ず返還",
   "確定で指摘",
+  "全自動で防ぐ",
+  "返還を防ぐ",
+  "返還を保証",
 ] as const
 
 export function containsForbiddenAssertion(text: string): boolean {

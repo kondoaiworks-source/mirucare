@@ -38,8 +38,8 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/reconcile",
-    label: "月次作業",
-    shortLabel: "月次",
+    label: "月末の確認",
+    shortLabel: "月末",
     icon: GitCompareArrows,
   },
   {

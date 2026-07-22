@@ -9,8 +9,8 @@ export const REPORT_UI = {
   description:
     "1か月のチェック結果を振り返り、原因分析と改善のヒントを確認できます。",
   monthLabel: "対象月",
-  riskLabel: "返還リスクにつながる指摘",
-  riskHint: "優先してご確認いただきたい指摘の件数です",
+  riskLabel: "優先して確認したい指摘候補",
+  riskHint: "返還につながりやすい矛盾・疑義の候補件数です（断定ではありません）",
   fixedLabel: "対応済み",
   fixedHint: "「対応した」とした指摘の件数です",
   analysisTitle: "原因分析",

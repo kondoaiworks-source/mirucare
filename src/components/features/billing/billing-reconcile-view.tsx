@@ -31,6 +31,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { ProductCharterBanner } from "@/components/features/product-charter-banner"
+import { PRODUCT_CHARTER } from "@/lib/copy/product-charter"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -51,8 +53,8 @@ function currentYearMonth(): string {
 
 function statusLabel(status: BillingReconcileResult["status"]): string {
   if (status === "exact") return "完全一致"
-  if (status === "missing") return "日報なし"
-  return "ズレあり"
+  if (status === "missing") return "日報なしの可能性"
+  return "ずれの可能性"
 }
 
 export function BillingReconcileView() {
@@ -186,6 +188,8 @@ export function BillingReconcileView() {
           国保連へ送る直前の請求CSVを、日報と1分単位で照合します。CSVはブラウザ内だけで処理し、サーバーには送りません。
         </p>
       </div>
+
+      <ProductCharterBanner compact extra={PRODUCT_CHARTER.unverifiedScope} />
 
       <Alert className="rounded-lg border-primary/20 bg-primary/5">
         <Shield />
@@ -335,7 +339,7 @@ export function BillingReconcileView() {
           <CardHeader>
             <CardTitle className="text-lg">照合結果</CardTitle>
             <CardDescription>
-              完全一致は緑、ズレ・日報なしは赤で強調しています。
+              完全一致は緑、ズレ・日報なしは赤で強調しています。日報が未取込の月は未検証です。ご確認ください。
             </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">

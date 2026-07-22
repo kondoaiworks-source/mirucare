@@ -18,8 +18,10 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RiskBadge, type RiskLevel } from "@/components/features/risk-badge"
+import { ProductCharterBanner } from "@/components/features/product-charter-banner"
 import { DEADLINE_UI, toPrivacySubject } from "@/lib/deadlines"
 import { annotateTerms } from "@/lib/copy/check-ui"
+import { PRODUCT_CHARTER } from "@/lib/copy/product-charter"
 import type {
   DashboardData,
   DashboardIncompleteDocument,
@@ -109,10 +111,17 @@ export function DashboardView({ data }: { data: DashboardData }) {
             未完了の書類チェックと、まもなくの期限を確認できます。
           </p>
         </div>
-        <Button asChild size="lg" className="w-full shrink-0 sm:w-auto">
-          <Link href="/check/upload">{DEADLINE_UI.ctaCheck}</Link>
-        </Button>
+        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
+          <Button asChild size="lg" className="w-full sm:w-auto">
+            <Link href="/check/upload">{DEADLINE_UI.ctaCheck}</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
+            <Link href="/reconcile">{PRODUCT_CHARTER.monthlyHubCta}</Link>
+          </Button>
+        </div>
       </div>
+
+      <ProductCharterBanner compact extra={PRODUCT_CHARTER.unverifiedScope} />
 
       {announcements.length > 0 ? (
         <section className="space-y-3" aria-labelledby="app-announcements">

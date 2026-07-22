@@ -34,6 +34,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { EmptyState } from "@/components/features/empty-state"
+import { ProductCharterBanner } from "@/components/features/product-charter-banner"
+import { PRODUCT_CHARTER } from "@/lib/copy/product-charter"
 import { cn } from "@/lib/utils"
 
 function defaultFromDate(): string {
@@ -82,7 +84,9 @@ export function AttendanceContradictionView({ initialItems = [] }: Props) {
       setItems(result.data ?? [])
       const n = result.data?.length ?? 0
       if (n === 0) {
-        toast.success("この期間では矛盾は見つかりませんでした")
+        toast.message(
+          "この期間では矛盾候補は見つかりませんでした。未投入データは未検証です。"
+        )
       } else {
         toast.message(`気になる点が ${n} 件あります。ご確認ください。`)
       }
@@ -104,11 +108,13 @@ export function AttendanceContradictionView({ initialItems = [] }: Props) {
         </Button>
       </div>
 
-      <Alert className="rounded-lg">
-        <AlertTriangle />
-        <AlertTitle>Wチェック支援です</AlertTitle>
+      <ProductCharterBanner compact />
+
+      <Alert className="rounded-lg border-warning/30 bg-warning/5">
+        <AlertTriangle className="text-warning" />
+        <AlertTitle>検証範囲について</AlertTitle>
         <AlertDescription>
-          合否や返還リスクを保証するものではありません。表示内容は貴施設で最終確認してください。
+          {PRODUCT_CHARTER.unverifiedScope}
         </AlertDescription>
       </Alert>
 
@@ -186,8 +192,8 @@ export function AttendanceContradictionView({ initialItems = [] }: Props) {
       {items.length === 0 ? (
         <EmptyState
           icon={CheckCircle2}
-          title="表示する矛盾はありません"
-          description="期間を指定して「矛盾を検知する」を実行してください。データが未登録の場合は、先に介護ソフトのCSVから取り込んでください。"
+          title="表示する矛盾候補はありません"
+          description="期間を指定して「矛盾を検知する」を実行してください。データが未登録の場合は未検証です。先に介護ソフトのCSVから取り込んでください。"
           action={
             <Button asChild size="lg">
               <Link href="/attendance/import">データを取り込む</Link>

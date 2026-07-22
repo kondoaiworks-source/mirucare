@@ -110,7 +110,7 @@ export default async function RulesDashboardPage() {
           チェック設定ホーム
         </h1>
         <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          必須ステップが揃うと「利用可能」になります。どこまで終わったか、この画面で確認できます。
+          必須ステップが揃うと「利用可能」になります（合否・返還は保証しません。致命傷になりやすい矛盾・疑義の洗い出しを始める状態です）。どこまで終わったか、この画面で確認できます。
         </p>
       </div>
 

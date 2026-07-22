@@ -247,32 +247,40 @@ SQL Editor で次を **順番に** 実行します。
    UPDATE public.organizations SET plan = 'light' WHERE id = '<事業所ID>';
    ```
 
-## 動作確認手順（STEP 9：月次確認＝勤怠矛盾検知・請求CSV照合）
+## 動作確認手順（STEP 9：月末の確認＝投入カバレッジ・勤怠矛盾・請求CSV照合）
 
-> 2026-07 変更: 「雑多なCSVをまとめて入れて後で分類する」導線を廃止し、**投入場所を用途ごとに分ける**導線に変更しました（ナビ名称は「突合」→「月次」）。
+> 2026-07 変更: 「雑多なCSVをまとめて入れて後で分類する」導線を廃止し、**投入場所を用途ごとに分ける**導線に変更しました（ナビ名称は「突合」→「月次」→「月末の確認」）。
+>
+> 2026-07 追加（フェーズA＋B）: 月末ハブを「4大書類の投入状況＋矛盾候補一覧＋用途別入口」に再構成。憲章バナー（予防装置・保証しない）と検証カバレッジ（投入済み／未投入）を施設向け画面に明示。
 
 1. マイグレーション⑨⑩（`20260713080000_…` / `20260713090000_…`）を SQL Editor で実行する
-2. [http://localhost:3000/reconcile](http://localhost:3000/reconcile)（月次確認）を開く。用途別の4カードが並ぶこと
-   - 日報CSVを取り込む／勤怠・タイムカードCSVを取り込む／勤怠の矛盾を確認する／請求CSVを照合する
-3. **日報CSVを取り込む**（`/attendance/import?kind=service_records`）
+2. [http://localhost:3000/](http://localhost:3000/) ダッシュボード
+   - 「Wチェック支援（予防装置）」バナーと「月末の確認をはじめる」ボタンがあること
+3. [http://localhost:3000/reconcile](http://localhost:3000/reconcile)（月末の確認）を開く
+   - 憲章バナー・「4大書類の投入状況」・「矛盾候補（勤怠×日報）」・用途別4カードがあること
+   - 未投入があるとき警告が出ること。投入後は「投入済み」ラベルに変わること
+4. **日報CSVを取り込む**（`/attendance/import?kind=service_records`）
    - 見出しが「日報CSVを取り込む」、データの種類が「サービス提供記録（日報）」に固定されていること
    - `/samples/attendance-service-records.csv` を取り込めること（時間重複の例を含む）
-4. **勤怠・タイムカードCSVを取り込む**（`/attendance/import?kind=attendance`）
+5. **勤怠・タイムカードCSVを取り込む**（`/attendance/import?kind=attendance`）
    - 見出しが「勤怠・タイムカードCSVを取り込む」、データの種類が「タイムカード（勤怠）」に固定されていること
    - `/samples/attendance-timecard.csv` を取り込めること
    - **別種CSVの確認**: 日報の取込画面で勤怠CSV（またはその逆）を入れると、「別の種類のCSVの可能性があります」と該当ファイル名が出て、「CSVを入れ直す」が主ボタンになること。「内容を確認してこのまま取り込む」は目立たない例外導線であること
-5. [http://localhost:3000/attendance](http://localhost:3000/attendance)（勤怠の矛盾を確認する）で「矛盾を検知する」→ `OVERLAP` / `TIME_DISCREPANCY` が出ること
-6. **請求CSVを照合する**（`/billing-reconcile`）で対象月を選び、ローカルの `.csv` をドロップ
+6. `/reconcile` に戻り、矛盾候補が一覧に出ること（または「見つからない」＋未検証注意）
+7. [http://localhost:3000/attendance](http://localhost:3000/attendance)（勤怠の矛盾を確認する）で「矛盾を検知する」→ `OVERLAP` / `TIME_DISCREPANCY` が出ること。文言が「〜の可能性／ご確認ください」であること
+8. **請求CSVを照合する**（`/billing-reconcile`）で対象月を選び、ローカルの `.csv` をドロップ
    - **請求CSVはサーバーへ送信・保存されない**（DevTools Network で確認）
-   - 完全一致は緑、ズレ／日報なしは赤で警告
+   - 完全一致は緑、ズレ／日報なしは赤で警告（「〜の可能性」ラベル）
    - 勤怠・シフトなど別種CSVを入れた場合は「請求CSVをご確認ください」と入れ直し導線が出ること
-7. 受け入れの目安
-   - [1] 用途別の入口からCSV取込・矛盾検知・請求照合ができること
-   - [2] RLS により他事業所の日報が見えないこと
-   - [3] 請求CSV用の Storage / テーブルが存在しないこと（ブラウザ内処理のみ）
-   - [4] 日報・勤怠CSVは必要項目だけDBに保存し、元CSVや被保険者番号は保存しないこと
-   - [5] `npm run test` で突合・矛盾・取込パーサの単体テストが通ること
-
+9. 書類チェック結果（`/check/[id]`）で、指摘あり／ゼロ件の双方に「未検証・最終判断は施設」の注意があること
+10. 受け入れの目安
+   - [1] 月末ハブで投入状況と矛盾候補が分かること
+   - [2] 用途別の入口からCSV取込・矛盾検知・請求照合ができること
+   - [3] RLS により他事業所の日報が見えないこと
+   - [4] 請求CSV用の Storage / テーブルが存在しないこと（ブラウザ内処理のみ）
+   - [5] 日報・勤怠CSVは必要項目だけDBに保存し、元CSVや被保険者番号は保存しないこと
+   - [6] `npm run test` で突合・矛盾・取込パーサの単体テストが通ること
+   - [7] UIに「違反です／返還を防ぐ／保証する」などの断定・保証表現が出ないこと
 ```bash
 npm install papaparse react-dropzone
 npm install -D @types/papaparse
@@ -450,7 +458,7 @@ npm install -D @types/papaparse
 | `/check/[documentId]` | チェック結果 |
 | `/check/demo/[scenario]` | 結果画面デモ（success / parse_error / empty） |
 | `/later` | あとで確認リスト |
-| `/reconcile` | 月次確認ハブ（用途別カード） |
+| `/reconcile` | 月末の確認（4書類投入状況・矛盾候補・用途別入口） |
 | `/attendance/import` | 介護ソフトCSV取込（ヘルパー・勤怠・日報・シフト） |
 | `/attendance` | 勤怠の矛盾検知 |
 | `/billing-reconcile` | 請求CSV突合（ブラウザ完結） |

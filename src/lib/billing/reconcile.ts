@@ -352,7 +352,7 @@ export function reconcileBillingWithRecords(
       recordStart,
       recordEnd,
       status: "mismatch" as const,
-      warning: `1分単位でズレがある可能性があります。請求: ${row.startHm}〜${row.endHm} / 日報: ${recordStart}〜${recordEnd}`,
+      warning: `1分単位でズレがある可能性があります。請求: ${row.startHm}〜${row.endHm} / 日報: ${recordStart}〜${recordEnd}。ご確認ください。`,
       sourceRow: row.sourceRow,
     }
   })
