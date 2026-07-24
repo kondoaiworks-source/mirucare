@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { purgeDueDocumentOriginals } from "@/lib/documents/retention"
+import { purgeDueDocumentOriginals } from "@/lib/documents/purge-originals"
 
 export const runtime = "nodejs"
 export const maxDuration = 60

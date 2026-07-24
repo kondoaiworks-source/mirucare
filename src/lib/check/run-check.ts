@@ -12,9 +12,9 @@ import {
 } from "@/lib/rule-engine/resolve-check-rules"
 import {
   computePurgeAfter,
-  purgeDocumentOriginal,
   type OriginalKeepDays,
 } from "@/lib/documents/retention"
+import { purgeDocumentOriginal } from "@/lib/documents/purge-originals"
 import type { DocumentStatus } from "@/types/database"
 
 export type RunCheckOptions = {
