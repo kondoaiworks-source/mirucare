@@ -3,7 +3,8 @@
 介護事業所向け「AI書類Wチェック」SaaS（Wチェック支援）。
 
 **公式ポジション：** 合否・返還は保証しないが、実務上の致命傷を未然に浮かび上がらせる予防装置。  
-完成図（5つのコア機能）：[docs/プロダクト完成図.md](docs/プロダクト完成図.md)
+完成図（5つのコア機能）：[docs/プロダクト完成図.md](docs/プロダクト完成図.md)  
+Phase1改訂の確定事項：[docs/PHASE1_REDESIGN.md](docs/PHASE1_REDESIGN.md)
 
 ## 技術スタック
 
@@ -443,7 +444,39 @@ npm install -D @types/papaparse
 
 詳細な操作説明（一般向け）：[docs/チェック設定ホーム操作マニュアル.md](docs/チェック設定ホーム操作マニュアル.md)
 
+## 動作確認手順（Phase1 改訂 IA・原本保持）
+
+確定事項の正：[docs/PHASE1_REDESIGN.md](docs/PHASE1_REDESIGN.md)
+
+1. Supabase SQL Editor で次を実行する
+   - `supabase/migrations/20260725060000_document_original_retention.sql`
+   - `supabase/migrations/20260725070000_phase1_kawasaki_jurisdiction.sql`
+2. （任意）川崎の参照URL seed: `npm run seed:rule-sources`
+3. ログイン後、サイドバーに次があること
+   - ホーム / あとで確認 / ルールブック更新お知らせ / 監査結果の履歴 / 運用AI監査
+   - 法令AI監査・運営AI監査は「準備中」
+   - 初期設定・設定
+   - **月末の確認・月次レポートが主导線に出ない**こと
+4. モバイルのハンバーガーに「初期設定」「監査書類アップロード」があること
+5. `/audit/operations` → アップロードへ進み、同意チェックなしでは開始できないこと
+6. 「再確認のため原本を最大7日間残す」はデフォルトOFFであること
+7. 同意して監査開始 → 結果画面の優先度が「緊急／要改善／推奨」であること
+8. 結果画面に匿名化の注意文があること
+9. `/setup` で Phase1 対象市（横浜・川崎・藤沢・鎌倉・茅ヶ崎）が表示されること
+10. （モック時）指摘に氏名・電話が残らず「利用者A」「[電話番号]」等になること（`DIFY_MOCK=1`）
+11. 適用ルール版パネルの件数が Phase1 対象に寄っていること（`CHECK_RULES_SCOPE=all` でないこと）
+12. 原本削除 Cron（任意）:
+    ```bash
+    curl -X POST "http://localhost:3000/api/cron/purge-document-originals" \
+      -H "Authorization: Bearer $CRON_SECRET"
+    ```
+
 ## 動作確認手順（ログインロックアウト）
+
+本番（Vercel）向けの詳しい手順（素人向け・監査ログ確認・admin/ops解除含む）:
+[docs/OPERATIONS_LOGIN_LOCKOUT.md](docs/OPERATIONS_LOGIN_LOCKOUT.md)
+
+要約:
 
 1. Supabase SQL Editor で `supabase/migrations/20260719070000_login_lockout.sql` を実行する
 2. 登録済みアカウントで、わざと誤パスワードを5回連続入力する
@@ -477,18 +510,24 @@ npm install -D @types/papaparse
 | `/signup` | アカウント作成 |
 | `/onboarding` | 初回オンボーディング |
 | `/invite/[token]` | 招待受諾 |
-| `/` | ダッシュボード（今日やること・週次・最近の指摘） |
-| `/documents` | 書類一覧（今日／過去） |
-| `/check/upload` | 書類アップロード（2ステップ：アップ → 種類選択して開始） |
+| `/` | ホーム（お知らせ・直近の指摘） |
+| `/announcements` | 自治体ルールブック更新お知らせ |
+| `/audit-history` | 監査結果の履歴と対応状況 |
+| `/audit/operations` | 運用AI監査（Phase1） |
+| `/audit/legal` | 法令AI監査（準備中） |
+| `/audit/management` | 運営AI監査（準備中） |
+| `/setup` | 初期設定 |
+| `/later` | あとで確認リスト |
+| `/documents` | （旧）→ `/audit-history` へリダイレクト |
+| `/check/upload` | 監査書類アップロード（同意・7日オプション） |
 | `/check/[documentId]` | チェック結果（適用ルール版・基準日つき） |
 | `/check/demo/[scenario]` | 結果画面デモ（success / parse_error / empty） |
-| `/later` | あとで確認リスト |
-| `/reconcile` | 月末の確認（4書類投入状況・矛盾候補・用途別入口） |
-| `/attendance/import` | 介護ソフトCSV取込（ヘルパー・勤怠・日報・シフト） |
-| `/attendance` | 勤怠の矛盾検知 |
-| `/billing-reconcile` | 請求CSV突合（ブラウザ完結） |
-| `/alerts` | 期限アラート |
-| `/reports` | 月次レポート（プレミアム：原因分析・PDF） |
+| `/reconcile` | 月末の確認（Phase1では主导線外） |
+| `/attendance/import` | 介護ソフトCSV取込（主导線外） |
+| `/attendance` | 勤怠の矛盾検知（主导線外） |
+| `/billing-reconcile` | 請求CSV突合（主导線外） |
+| `/alerts` | 期限アラート（主导線外） |
+| `/reports` | 月次レポート（主导線外） |
 | `/pricing` | 料金プラン（公開） |
 | `/admin` | 運営レビューコンソール（運営のみ） |
 | `/admin/rules` | チェック設定（監査項目・AI判定ルール・行政情報＋その他・運営のみ） |

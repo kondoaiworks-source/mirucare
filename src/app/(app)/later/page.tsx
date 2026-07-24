@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { CHECK_UI, annotateTerms } from "@/lib/copy/check-ui"
+import { anonymizeText } from "@/lib/privacy/anonymize"
 import type { FindingSeverity } from "@/types/database"
 
 export const metadata: Metadata = {
@@ -67,7 +68,7 @@ async function LaterListContent() {
         description={CHECK_UI.laterListEmptyDescription}
         action={
           <Button asChild size="lg">
-            <Link href="/documents">書類一覧を見る</Link>
+            <Link href="/audit-history">監査結果の履歴を見る</Link>
           </Button>
         }
       />
@@ -92,7 +93,7 @@ async function LaterListContent() {
                 </span>
               </div>
               <CardTitle className="text-base font-bold leading-snug text-primary-dark">
-                {annotateTerms(f.title)}
+                {annotateTerms(anonymizeText(f.title).text)}
               </CardTitle>
               <CardDescription className="text-sm">
                 {doc?.original_name ?? "書類"}

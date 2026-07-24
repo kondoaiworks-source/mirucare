@@ -10,6 +10,11 @@ import {
   serializeRulesForDify,
   toAppliedRulesSnapshot,
 } from "@/lib/rule-engine/resolve-check-rules"
+import {
+  computePurgeAfter,
+  purgeDocumentOriginal,
+  type OriginalKeepDays,
+} from "@/lib/documents/retention"
 import type { DocumentStatus } from "@/types/database"
 
 export type RunCheckOptions = {
@@ -40,7 +45,7 @@ export async function runDocumentCheck(
   const { data: doc, error: docError } = await admin
     .from("documents")
     .select(
-      "id, organization_id, doc_type, file_path, original_name, mime_type, status, deleted_at"
+      "id, organization_id, doc_type, file_path, original_name, mime_type, status, deleted_at, keep_original_days, original_purged_at"
     )
     .eq("id", options.documentId)
     .eq("organization_id", options.organizationId)
@@ -177,20 +182,29 @@ export async function runDocumentCheck(
     .is("deleted_at", null)
 
   const severityOrder = { high: 0, mid: 1, low: 2 } as const
+  const { anonymizeFindingFields } = await import("@/lib/privacy/anonymize")
   const rows = difyResult.findings
-    .map((f, index) => ({
-      document_id: doc.id,
-      organization_id: options.organizationId,
-      severity: normalizeSeverity(f.severity),
-      title: (f.title ?? "ご確認ください").slice(0, 200),
-      description: (f.description ?? "内容をご確認ください。").slice(0, 4000),
-      basis: f.basis?.slice(0, 1000) ?? null,
-      suggestion: f.suggestion?.slice(0, 4000) ?? null,
-      status: "open" as const,
-      review_status: reviewStatus,
-      is_fallback: difyResult.usedFallback,
-      sort_order: severityOrder[normalizeSeverity(f.severity)] * 100 + index,
-    }))
+    .map((f, index) => {
+      const anon = anonymizeFindingFields({
+        title: (f.title ?? "ご確認ください").slice(0, 200),
+        description: (f.description ?? "内容をご確認ください。").slice(0, 4000),
+        basis: f.basis?.slice(0, 1000) ?? null,
+        suggestion: f.suggestion?.slice(0, 4000) ?? null,
+      })
+      return {
+        document_id: doc.id,
+        organization_id: options.organizationId,
+        severity: normalizeSeverity(f.severity),
+        title: anon.title,
+        description: anon.description,
+        basis: anon.basis,
+        suggestion: anon.suggestion,
+        status: "open" as const,
+        review_status: reviewStatus,
+        is_fallback: difyResult.usedFallback,
+        sort_order: severityOrder[normalizeSeverity(f.severity)] * 100 + index,
+      }
+    })
     .sort((a, b) => a.sort_order - b.sort_order)
 
   if (rows.length > 0) {
@@ -236,6 +250,14 @@ export async function runDocumentCheck(
     })
     .eq("id", doc.id)
 
+  await applyOriginalRetentionAfterCheck(admin, {
+    documentId: doc.id,
+    organizationId: options.organizationId,
+    filePath: doc.file_path as string,
+    keepOriginalDays: (Number(doc.keep_original_days) === 7 ? 7 : 0) as OriginalKeepDays,
+    alreadyPurged: Boolean(doc.original_purged_at),
+  })
+
   const mode: RunCheckResult["mode"] = decideMockMode({
     mockScenario: options.mockScenario,
   }).mock
@@ -272,7 +294,14 @@ async function saveFallbackAndFinish(
   void opts.reason
   const reviewStatus = opts.skipReview ? "approved" : "pending"
   const { buildFallbackFinding } = await import("@/lib/dify/parse")
+  const { anonymizeFindingFields } = await import("@/lib/privacy/anonymize")
   const fb = buildFallbackFinding()
+  const anon = anonymizeFindingFields({
+    title: fb.title ?? "ご確認ください",
+    description: fb.description ?? "内容をご確認ください。",
+    basis: fb.basis ?? null,
+    suggestion: fb.suggestion ?? null,
+  })
 
   await admin
     .from("findings")
@@ -284,10 +313,10 @@ async function saveFallbackAndFinish(
     document_id: opts.documentId,
     organization_id: opts.organizationId,
     severity: "mid",
-    title: fb.title,
-    description: fb.description,
-    basis: fb.basis,
-    suggestion: fb.suggestion,
+    title: anon.title,
+    description: anon.description,
+    basis: anon.basis,
+    suggestion: anon.suggestion,
     status: "open",
     review_status: reviewStatus,
     is_fallback: true,
@@ -306,4 +335,52 @@ async function saveFallbackAndFinish(
   }
 
   await admin.from("documents").update(docPatch).eq("id", opts.documentId)
+
+  const { data: docMeta } = await admin
+    .from("documents")
+    .select("file_path, keep_original_days, original_purged_at")
+    .eq("id", opts.documentId)
+    .maybeSingle()
+
+  if (docMeta) {
+    await applyOriginalRetentionAfterCheck(admin, {
+      documentId: opts.documentId,
+      organizationId: opts.organizationId,
+      filePath: (docMeta.file_path as string) ?? "",
+      keepOriginalDays: (Number(docMeta.keep_original_days) === 7
+        ? 7
+        : 0) as OriginalKeepDays,
+      alreadyPurged: Boolean(docMeta.original_purged_at),
+    })
+  }
+}
+
+async function applyOriginalRetentionAfterCheck(
+  admin: ReturnType<typeof createServiceClient>,
+  opts: {
+    documentId: string
+    organizationId: string
+    filePath: string
+    keepOriginalDays: OriginalKeepDays
+    alreadyPurged: boolean
+  }
+): Promise<void> {
+  if (opts.alreadyPurged) return
+
+  const purgeAfter = computePurgeAfter(opts.keepOriginalDays)
+  await admin
+    .from("documents")
+    .update({ original_purge_after: purgeAfter })
+    .eq("id", opts.documentId)
+    .eq("organization_id", opts.organizationId)
+
+  // 0日保持＝完了直後に削除。7日は Cron 待ち。
+  if (opts.keepOriginalDays <= 0) {
+    await purgeDocumentOriginal(
+      opts.documentId,
+      opts.filePath,
+      opts.organizationId,
+      admin
+    )
+  }
 }

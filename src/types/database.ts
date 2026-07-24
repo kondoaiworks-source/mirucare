@@ -146,6 +146,11 @@ export type Document = {
   check_as_of?: string | null
   applied_rule_version_ids?: string[] | null
   applied_rules_snapshot?: AppliedRulesSnapshot | null
+  /** 原本保持日数（0=完了後すぐ削除 / 7=最大7日） */
+  keep_original_days?: number
+  retention_consent_at?: string | null
+  original_purge_after?: string | null
+  original_purged_at?: string | null
   created_at: string
   deleted_at: string | null
 }

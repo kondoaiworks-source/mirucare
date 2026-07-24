@@ -21,6 +21,7 @@ import { RiskBadge, type RiskLevel } from "@/components/features/risk-badge"
 import { ProductCharterBanner } from "@/components/features/product-charter-banner"
 import { DEADLINE_UI, toPrivacySubject } from "@/lib/deadlines"
 import { annotateTerms } from "@/lib/copy/check-ui"
+import { anonymizeText } from "@/lib/privacy/anonymize"
 import { PRODUCT_CHARTER } from "@/lib/copy/product-charter"
 import type {
   DashboardData,
@@ -105,18 +106,18 @@ export function DashboardView({ data }: { data: DashboardData }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-            ダッシュボード
+            ホーム
           </h1>
           <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-            未完了の書類チェックと、まもなくの期限を確認できます。
+            運用AI監査の入口と、ルールブック更新・あとで確認をまとめて確認できます。
           </p>
         </div>
         <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
           <Button asChild size="lg" className="w-full sm:w-auto">
-            <Link href="/check/upload">{DEADLINE_UI.ctaCheck}</Link>
+            <Link href="/audit/operations">運用AI監査を始める</Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
-            <Link href="/reconcile">{PRODUCT_CHARTER.monthlyHubCta}</Link>
+            <Link href="/check/upload">監査書類をアップロードする</Link>
           </Button>
         </div>
       </div>
@@ -130,8 +131,16 @@ export function DashboardView({ data }: { data: DashboardData }) {
             className="flex items-center gap-2 text-lg font-bold text-primary-dark"
           >
             <Megaphone className="size-5 text-primary" aria-hidden />
-            お知らせ
+            ルールブック更新お知らせ
           </h2>
+          <p className="text-sm text-muted-foreground">
+            <Link
+              href="/announcements"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              すべて見る
+            </Link>
+          </p>
           <ul className="space-y-3">
             {announcements.slice(0, 3).map((a) => (
               <li key={a.id}>
@@ -343,7 +352,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
                         <RiskBadge level={toRiskLevel(f.severity)} />
                       </div>
                       <CardTitle className="text-base font-bold leading-snug">
-                        {annotateTerms(f.title)}
+                        {annotateTerms(anonymizeText(f.title).text)}
                       </CardTitle>
                       <CardDescription className="text-sm">
                         {doc?.original_name ?? "書類"}

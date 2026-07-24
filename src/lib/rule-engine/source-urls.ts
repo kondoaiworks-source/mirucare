@@ -5,9 +5,10 @@ import type {
   ServiceType,
 } from "@/types/database"
 
-/** 対象市区町村の管轄コード（seed・フィルタ用。逗子市は今回対象外） */
+/** 対象市区町村の管轄コード（seed・フィルタ用。逗子市は対象外、川崎市を含む） */
 export const TARGET_MUNICIPALITY_CODES = [
   "JP-14-14100", // 横浜市
+  "JP-14-14130", // 川崎市
   "JP-14-14204", // 鎌倉市
   "JP-14-14205", // 藤沢市
   "JP-14-14207", // 茅ヶ崎市

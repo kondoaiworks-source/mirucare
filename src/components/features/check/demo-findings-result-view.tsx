@@ -105,7 +105,7 @@ export function DemoFindingsResultView({
           {CHECK_UI.completeBody}
         </p>
         <Button asChild size="lg" className="mt-2">
-          <Link href="/documents">{CHECK_UI.backToList}</Link>
+          <Link href="/audit-history">{CHECK_UI.backToList}</Link>
         </Button>
       </div>
     )

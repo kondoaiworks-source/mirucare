@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/card"
 import { RiskBadge, type RiskLevel } from "@/components/features/risk-badge"
 import { CHECK_UI, annotateTerms } from "@/lib/copy/check-ui"
+import { anonymizeText } from "@/lib/privacy/anonymize"
 import { updateFindingAction } from "@/app/actions/findings"
 import {
   groupFindingsByStatus,
@@ -124,7 +125,9 @@ function FindingCard({
   async function copySuggestion() {
     if (!finding.suggestion) return
     try {
-      await navigator.clipboard.writeText(finding.suggestion)
+      await navigator.clipboard.writeText(
+        anonymizeText(finding.suggestion).text
+      )
       toast.success(CHECK_UI.copied)
     } catch {
       toast.error("コピーできませんでした。手動で選択してください。")
@@ -142,11 +145,11 @@ function FindingCard({
           ) : null}
         </div>
         <CardTitle className="text-lg font-bold leading-snug text-primary-dark">
-          {annotateTerms(finding.title)}
+          {annotateTerms(anonymizeText(finding.title).text)}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 text-base leading-relaxed">
-        <p>{annotateTerms(finding.description)}</p>
+        <p>{annotateTerms(anonymizeText(finding.description).text)}</p>
 
         {finding.basis ? (
           <div>
@@ -167,7 +170,7 @@ function FindingCard({
             </button>
             {basisOpen ? (
               <p className="mt-2 rounded-lg bg-surface px-3 py-2 text-sm leading-relaxed text-muted-foreground">
-                {annotateTerms(finding.basis)}
+                {annotateTerms(anonymizeText(finding.basis).text)}
               </p>
             ) : null}
           </div>
@@ -179,7 +182,7 @@ function FindingCard({
               【{CHECK_UI.suggestionLabel}】
             </p>
             <p className="mt-2 whitespace-pre-wrap text-base leading-relaxed">
-              {annotateTerms(finding.suggestion)}
+              {annotateTerms(anonymizeText(finding.suggestion).text)}
             </p>
             <Button
               type="button"
@@ -310,7 +313,7 @@ export function FindingsResultView({
           {CHECK_UI.completeBody}
         </p>
         <Button asChild size="lg" className="mt-2">
-          <Link href="/documents">{CHECK_UI.backToList}</Link>
+          <Link href="/audit-history">{CHECK_UI.backToList}</Link>
         </Button>
       </div>
     )
@@ -318,6 +321,9 @@ export function FindingsResultView({
 
   return (
     <div className="space-y-8">
+      <p className="rounded-lg border border-border bg-surface px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+        {CHECK_UI.anonymityNote}
+      </p>
       <p className="text-sm tabular-nums text-muted-foreground">
         {CHECK_UI.remainingLabel(
           groups.open.length,

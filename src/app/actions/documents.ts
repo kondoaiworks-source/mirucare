@@ -252,7 +252,11 @@ export async function getUploadedDocumentAction(
  * 実際の AI 実行はクライアントから /api/check を呼ぶ（Cookie 付き）。
  */
 export async function startDocumentCheckAction(
-  documentIds: string[]
+  documentIds: string[],
+  options?: {
+    keepOriginalDays?: 0 | 7
+    retentionConsent?: boolean
+  }
 ): Promise<ActionResult<{ documentIds: string[] }>> {
   if (documentIds.length === 0) {
     return {
@@ -260,6 +264,16 @@ export async function startDocumentCheckAction(
       error: "チェックする書類がありません。ファイルをアップロードしてください。",
     }
   }
+
+  if (!options?.retentionConsent) {
+    return {
+      ok: false,
+      error:
+        "原本の取り扱いへの同意が必要です。内容をご確認のうえ、同意して監査を開始してください。",
+    }
+  }
+
+  const keepOriginalDays = options.keepOriginalDays === 7 ? 7 : 0
 
   const ctx = await requireOrgContext()
   if ("error" in ctx) return { ok: false, error: ctx.error }
@@ -272,9 +286,16 @@ export async function startDocumentCheckAction(
     }
   }
 
+  const now = new Date()
+  const consentAt = now.toISOString()
+  // 保持期限は監査完了時に確定する。開始時点では同意と希望日数のみ記録。
   const { error } = await ctx.supabase
     .from("documents")
-    .update({ status: "checking" satisfies DocumentStatus })
+    .update({
+      status: "checking" satisfies DocumentStatus,
+      keep_original_days: keepOriginalDays,
+      retention_consent_at: consentAt,
+    })
     .in("id", documentIds)
     .eq("organization_id", ctx.organizationId)
 

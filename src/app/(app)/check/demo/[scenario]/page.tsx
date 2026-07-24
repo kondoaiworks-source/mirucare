@@ -84,7 +84,7 @@ export default function CheckDemoPage({ params }: PageProps) {
             {CHECK_UI.summaryZeroNote}
           </p>
           <Button asChild size="lg">
-            <Link href="/documents">{CHECK_UI.backToList}</Link>
+            <Link href="/audit-history">{CHECK_UI.backToList}</Link>
           </Button>
         </>
       ) : (

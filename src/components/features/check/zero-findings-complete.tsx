@@ -38,7 +38,7 @@ export function ZeroFindingsComplete({
           {CHECK_UI.completeBody}
         </p>
         <Button asChild size="lg" className="mt-2">
-          <Link href="/documents">{CHECK_UI.backToList}</Link>
+          <Link href="/audit-history">{CHECK_UI.backToList}</Link>
         </Button>
       </div>
     )
@@ -65,7 +65,7 @@ export function ZeroFindingsComplete({
         {pending ? "処理しています…" : "完了"}
       </Button>
       <Button asChild size="lg" variant="outline">
-        <Link href="/documents">{CHECK_UI.backToList}</Link>
+        <Link href="/audit-history">{CHECK_UI.backToList}</Link>
       </Button>
     </div>
   )

@@ -1,3 +1,7 @@
+import {
+  matchesPhase1RuleText,
+  shouldScopeCheckRulesToPhase1,
+} from "@/lib/phase1-audit"
 import type { DocType, FindingSeverity } from "@/types/database"
 
 /** Dify 入力・書類スナップショット用のコンパクトなルール要約 */
@@ -99,10 +103,14 @@ export async function resolveApprovedRulesForCheck(
     docType: DocType | string
     asOf?: string
     limit?: number
+    /** true=Phase1項目のみ（既定は CHECK_RULES_SCOPE） */
+    phase1Only?: boolean
   }
 ): Promise<CheckRulesResolution> {
   const asOf = options.asOf ?? todayIsoDate()
   const limit = Math.min(Math.max(options.limit ?? MAX_RULES, 1), 80)
+  const phase1Only =
+    options.phase1Only ?? shouldScopeCheckRulesToPhase1()
 
   const { data: ruleRows, error: rulesError } = await admin
     .from("ai_check_rules")
@@ -130,7 +138,17 @@ export async function resolveApprovedRulesForCheck(
   const matchingRules = (ruleRows as Array<Record<string, unknown>>).filter(
     (row) => {
       const targets = row.target_doc_types as string[] | null
-      return matchesDocType(targets, options.docType)
+      if (!matchesDocType(targets, options.docType)) return false
+      if (!phase1Only) return true
+      const auditRaw = row.audit_items
+      const audit = (
+        Array.isArray(auditRaw) ? auditRaw[0] : auditRaw
+      ) as Record<string, unknown> | null
+      return matchesPhase1RuleText(
+        row.code as string | undefined,
+        row.title as string | undefined,
+        (audit?.title as string | undefined) ?? null
+      )
     }
   )
 
@@ -220,6 +238,15 @@ export async function resolveApprovedRulesForCheck(
     admin,
     options.municipality
   )
+
+  if (phase1Only) {
+    console.error("[check] phase1_rules_scope", {
+      asOf,
+      docType: options.docType,
+      ruleCount: rules.length,
+      truncated,
+    })
+  }
 
   return { asOf, rules, regulatoryBasis, truncated }
 }

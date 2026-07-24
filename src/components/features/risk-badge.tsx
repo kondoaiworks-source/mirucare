@@ -18,20 +18,20 @@ const riskConfig: Record<
   }
 > = {
   high: {
-    label: "高",
-    description: "優先してご確認ください",
+    label: "緊急",
+    description: "返還・行政指導につながりやすい不備の可能性があります",
     icon: AlertCircle,
     className: "bg-danger/10 text-danger border-danger/30",
   },
   medium: {
-    label: "中",
-    description: "確認をおすすめします",
+    label: "要改善",
+    description: "監査で指摘される可能性が高い事項です",
     icon: AlertTriangle,
     className: "bg-warning/10 text-warning border-warning/30",
   },
   low: {
-    label: "低",
-    description: "参考としてご確認ください",
+    label: "推奨",
+    description: "運営品質向上のための改善提案です",
     icon: Info,
     className: "bg-muted text-muted-foreground border-border",
   },
@@ -62,10 +62,10 @@ export function RiskBadge({
         className
       )}
       role="status"
-      aria-label={`リスク${config.label}：${config.description}`}
+      aria-label={`${config.label}：${config.description}`}
     >
       <Icon className="size-4 shrink-0" aria-hidden />
-      <span>リスク{config.label}</span>
+      <span>{config.label}</span>
       {showDescription ? (
         <span className="font-normal opacity-80">（{config.description}）</span>
       ) : null}

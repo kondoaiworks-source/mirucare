@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { MOBILE_TAB_ITEMS } from "./nav-items"
+import { MOBILE_TAB_ITEMS, isNavItemActive } from "./nav-items"
 
 export function MobileTabBar({
   laterCount = 0,
@@ -23,20 +23,10 @@ export function MobileTabBar({
       <ul className="flex w-full min-w-0 gap-0.5 px-1 pt-1">
         {MOBILE_TAB_ITEMS.map((item) => {
           const Icon = item.icon
-          const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : item.href === "/documents"
-                ? pathname.startsWith("/documents") ||
-                  pathname.startsWith("/check")
-                : item.href === "/reconcile"
-                  ? pathname.startsWith("/reconcile") ||
-                    pathname.startsWith("/attendance") ||
-                    pathname.startsWith("/billing-reconcile")
-                  : pathname.startsWith(item.href)
+          const isActive = isNavItemActive(pathname, item.href)
           const showLaterBadge = item.href === "/later" && laterCount > 0
           const showDocsBadge =
-            item.href === "/documents" && incompleteDocumentsCount > 0
+            item.href === "/audit-history" && incompleteDocumentsCount > 0
           const badgeCount = showLaterBadge
             ? laterCount
             : showDocsBadge
@@ -59,7 +49,6 @@ export function MobileTabBar({
                   showBadge ? `${item.label}（${badgeCount}件）` : item.label
                 }
               >
-                {/* 選択中の目印（上の線） */}
                 {isActive ? (
                   <span
                     className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-primary"

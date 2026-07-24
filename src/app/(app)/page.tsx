@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "ダッシュボード",
+  title: "ホーム",
 }
 
 export default function DashboardPage() {
@@ -29,11 +29,11 @@ async function DashboardContent() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-              ダッシュボード
+              ホーム
             </h1>
           </div>
           <Button asChild size="lg">
-            <Link href="/check/upload">今日の分をチェックする</Link>
+            <Link href="/audit/operations">運用AI監査を始める</Link>
           </Button>
         </div>
         <Alert variant="destructive" className="rounded-lg">

@@ -47,7 +47,7 @@ export const CHECK_UI = {
   completeTitle: "今日のWチェックが完了しました",
   completeBody:
     "指摘への対応記録が残りました。月次レポートで振り返ることができます。合否や返還は保証しません。",
-  backToList: "書類一覧に戻る",
+  backToList: "監査結果の履歴に戻る",
   sectionOpen: "これから確認",
   sectionLater: "あとで確認",
   sectionDismissed: "違う指摘だった",
@@ -67,12 +67,14 @@ export const CHECK_UI = {
   laterListEmptyDescription:
     "チェック結果で「あとで」を押すと、ここに入ります。",
   laterListOpenResult: "結果を開く",
-  severityHigh: "高",
-  severityMid: "中",
-  severityLow: "低",
-  severityHighHint: "優先してご確認ください",
-  severityMidHint: "確認をおすすめします",
-  severityLowHint: "参考としてご確認ください",
+  severityHigh: "緊急",
+  severityMid: "要改善",
+  severityLow: "推奨",
+  severityHighHint: "返還・行政指導につながりやすい不備の可能性があります",
+  severityMidHint: "監査で指摘される可能性が高い事項です",
+  severityLowHint: "運営品質向上のための改善提案です",
+  anonymityNote:
+    "結果は「利用者A」など匿名表記で表示・保存します。氏名など個人が特定できる情報は結果に残さない方針です。",
 } as const
 
 /** 専門用語の短い補足 */

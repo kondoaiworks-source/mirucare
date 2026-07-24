@@ -12,6 +12,7 @@ import { CheckResultSkeleton } from "@/components/features/skeletons/page-skelet
 import { getDocumentWithFindingsAction } from "@/app/actions/findings"
 import { getCurrentProfile } from "@/app/actions/auth"
 import { CHECK_UI } from "@/lib/copy/check-ui"
+import { RETENTION_COPY } from "@/lib/documents/retention"
 import { DOC_TYPE_OPTIONS } from "@/lib/documents"
 import type { AppliedRulesSnapshot } from "@/types/database"
 import { AlertCircle } from "lucide-react"
@@ -47,7 +48,7 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
           </AlertDescription>
         </Alert>
         <Button asChild size="lg">
-          <Link href="/documents">書類一覧に戻る</Link>
+          <Link href="/audit-history">監査結果の履歴に戻る</Link>
         </Button>
       </div>
     )
@@ -76,6 +77,11 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
         <p className="text-sm text-muted-foreground">
           {typeMeta?.title ?? document.doc_type} · {document.original_name}
         </p>
+        {document.original_purged_at ? (
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {RETENTION_COPY.purged}
+          </p>
+        ) : null}
 
         {setupHint ? (
           <Alert className="mt-4 rounded-lg border-warning/40 bg-warning/10 text-foreground">
@@ -107,7 +113,7 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
               上記のマイグレーションを適用したあと、書類一覧から再度この書類を開いてください。
             </p>
             <Button asChild size="lg" className="mt-6">
-              <Link href="/documents">書類一覧に戻る</Link>
+              <Link href="/audit-history">監査結果の履歴に戻る</Link>
             </Button>
           </>
         ) : null}

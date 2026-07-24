@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { NAV_ITEMS } from "./nav-items"
+import { NAV_ITEMS, isNavItemActive } from "./nav-items"
 
 export function Sidebar({
   laterCount = 0,
@@ -34,23 +34,13 @@ export function Sidebar({
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 p-3">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
-          const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : item.href === "/documents"
-                ? pathname.startsWith("/documents") ||
-                  pathname.startsWith("/check")
-                : item.href === "/reconcile"
-                  ? pathname.startsWith("/reconcile") ||
-                    pathname.startsWith("/attendance") ||
-                    pathname.startsWith("/billing-reconcile")
-                  : pathname.startsWith(item.href)
+          const isActive = isNavItemActive(pathname, item.href)
           const showLaterBadge = item.href === "/later" && laterCount > 0
           const showDocsBadge =
-            item.href === "/documents" && incompleteDocumentsCount > 0
+            item.href === "/audit-history" && incompleteDocumentsCount > 0
           const badgeCount = showLaterBadge
             ? laterCount
             : showDocsBadge
@@ -66,15 +56,25 @@ export function Sidebar({
                 "flex min-h-11 items-center gap-3 rounded-lg px-3 text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 isActive
                   ? "bg-primary/10 text-primary"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent",
+                item.comingSoon && !isActive && "opacity-80"
               )}
               aria-current={isActive ? "page" : undefined}
               aria-label={
-                showBadge ? `${item.label}（${badgeCount}件）` : undefined
+                showBadge
+                  ? `${item.label}（${badgeCount}件）`
+                  : item.comingSoon
+                    ? `${item.label}（準備中）`
+                    : undefined
               }
             >
               <Icon className="size-5 shrink-0" aria-hidden />
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1 leading-snug">{item.label}</span>
+              {item.comingSoon ? (
+                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  準備中
+                </span>
+              ) : null}
               {showBadge ? (
                 <span
                   className={cn(

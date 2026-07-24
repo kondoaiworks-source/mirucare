@@ -17,6 +17,7 @@ import {
   updateDocumentTypeAction,
 } from "@/app/actions/documents"
 import { cn } from "@/lib/utils"
+import { RETENTION_COPY } from "@/lib/documents/retention"
 import { UploadDropzone } from "./upload-dropzone"
 import { UploadProgressList } from "./upload-progress-list"
 import { useUploadManager } from "./upload-provider"
@@ -51,6 +52,8 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
   const [resuming, setResuming] = useState(Boolean(resumeDocumentId))
   const [mismatches, setMismatches] = useState<Mismatch[] | null>(null)
   const [pending, startTransition] = useTransition()
+  const [retentionConsent, setRetentionConsent] = useState(false)
+  const [keepOriginal7Days, setKeepOriginal7Days] = useState(false)
   const resumeAttempted = useRef(false)
 
   const doneItems = useMemo(
@@ -93,6 +96,10 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
 
   function attemptStart() {
     setError(null)
+    if (!retentionConsent) {
+      setError(RETENTION_COPY.consentRequired)
+      return
+    }
     if (isUploading) {
       setError(
         "まだアップロード中のファイルがあります。完了してから開始してください。"
@@ -143,7 +150,10 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
         .map((i) => i.documentId)
         .filter((id): id is string => Boolean(id))
 
-      const result = await startDocumentCheckAction(ids)
+      const result = await startDocumentCheckAction(ids, {
+        retentionConsent: true,
+        keepOriginalDays: keepOriginal7Days ? 7 : 0,
+      })
       if (!result.ok) {
         setError(result.error ?? "チェックの開始に失敗しました。")
         return
@@ -163,7 +173,7 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
       if (firstId) {
         router.push(`/check/${firstId}`)
       } else {
-        router.push("/documents")
+        router.push("/audit-history")
       }
       router.refresh()
     })
@@ -172,10 +182,10 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
   const purposeTitle = dailyCheckPurposeTitle(selectedDocType)
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col pb-52 md:pb-28">
+    <div className="mx-auto flex max-w-2xl flex-col pb-72 md:pb-40">
       <div className="mb-6">
         <p className="text-sm font-medium text-muted-foreground">
-          日次チェック {step}/{STEPS.length}
+          監査書類アップロード {step}/{STEPS.length}
         </p>
         <Progress value={progress} className="mt-2 h-2" aria-label="進捗" />
         <ol className="mt-3 flex gap-2 text-sm">
@@ -258,6 +268,39 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
 
           <UploadDropzone />
           <UploadProgressList />
+
+          <div className="space-y-3 rounded-lg border border-border bg-surface p-4">
+            <p className="text-base leading-relaxed text-foreground">
+              {RETENTION_COPY.policyShort}
+            </p>
+            <label className="flex min-h-11 cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-1 size-5 shrink-0 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                checked={keepOriginal7Days}
+                onChange={(e) => setKeepOriginal7Days(e.target.checked)}
+              />
+              <span className="text-base leading-relaxed">
+                <span className="font-semibold text-foreground">
+                  {RETENTION_COPY.keep7Label}
+                </span>
+                <span className="mt-1 block text-sm text-muted-foreground">
+                  {RETENTION_COPY.keep7Hint}
+                </span>
+              </span>
+            </label>
+            <label className="flex min-h-11 cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-1 size-5 shrink-0 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                checked={retentionConsent}
+                onChange={(e) => setRetentionConsent(e.target.checked)}
+              />
+              <span className="text-base leading-relaxed text-foreground">
+                原本の取り扱いを理解し、同意して監査を開始します
+              </span>
+            </label>
+          </div>
         </section>
       ) : null}
 
@@ -349,14 +392,20 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
               type="button"
               size="lg"
               className="w-full"
-              disabled={pending || resuming || isUploading || doneItems.length === 0}
+              disabled={
+                pending ||
+                resuming ||
+                isUploading ||
+                doneItems.length === 0 ||
+                !retentionConsent
+              }
               onClick={attemptStart}
             >
               {pending
                 ? "開始しています…"
                 : isUploading
                   ? "アップロード中…"
-                  : "日次チェックを開始する"}
+                  : "同意して運用AI監査を開始する"}
             </Button>
             <Button
               type="button"

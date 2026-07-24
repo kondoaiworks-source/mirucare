@@ -110,67 +110,145 @@
   {
     "source_key": "JP-14-14100:訪問介護:総合事業訪問型",
     "jurisdiction_code": "JP-14-14100",
-    "title": "横浜市 総合事業（訪問型）参照資料",
+    "title": "横浜市 総合事業新規指定（訪問型）",
     "service_type": "訪問介護",
     "material_category": "総合事業訪問型",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.yokohama.lg.jp/business/bunyabetsu/fukushi-kaigo/kaigo/shinsei/kaigoshidokansa.html",
+    "parent_page_url": "https://www.city.yokohama.lg.jp/business/bunyabetsu/fukushi-kaigo/kaigo/shinsei/sogo/tetsuzuki/shinki/shinki.html",
     "direct_file_url": null,
     "priority": 20,
     "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。指導監査メインページ配下をご確認ください。"
+    "memo": "訪問介護相当・訪問型生活援助サービスの新規指定入口。関連: 訪問介護相当 https://www.city.yokohama.lg.jp/business/bunyabetsu/fukushi-kaigo/kaigo/shinsei/sogo/tetsuzuki/shinki/houmon.html"
   },
   {
     "source_key": "JP-14-14100:訪問介護:事故報告",
     "jurisdiction_code": "JP-14-14100",
-    "title": "横浜市 事故報告 参照資料",
+    "title": "横浜市 介護保険事業者からの事故報告",
     "service_type": "訪問介護",
     "material_category": "事故報告",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.yokohama.lg.jp/business/bunyabetsu/fukushi-kaigo/kaigo/shinsei/kaigoshidokansa.html",
+    "parent_page_url": "https://www.city.yokohama.lg.jp/business/bunyabetsu/fukushi-kaigo/kaigo/hoken/unei/jiko.html",
     "direct_file_url": null,
     "priority": 30,
     "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。指導監査メインページ配下をご確認ください。"
+    "memo": "横浜市電子申請・届出システム経由で第一報・本報告を提出。"
   },
   {
     "source_key": "JP-14-14100:訪問介護:過誤申立",
     "jurisdiction_code": "JP-14-14100",
-    "title": "横浜市 過誤申立 参照資料",
+    "title": "横浜市 介護報酬請求関連資料（過誤調整）",
     "service_type": "訪問介護",
     "material_category": "過誤申立",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.yokohama.lg.jp/business/bunyabetsu/fukushi-kaigo/kaigo/shinsei/kaigoshidokansa.html",
+    "parent_page_url": "https://www.city.yokohama.lg.jp/business/bunyabetsu/fukushi-kaigo/kaigo/shinsei/houshu.html",
     "direct_file_url": null,
     "priority": 40,
     "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。指導監査メインページ配下をご確認ください。"
+    "memo": "過誤取下依頼は横浜市電子申請・届出システムから。総合事業費の過誤取下も同ページから案内あり。"
   },
   {
     "source_key": "JP-14-14100:訪問介護:加算届",
     "jurisdiction_code": "JP-14-14100",
-    "title": "横浜市 加算届 参照資料",
+    "title": "横浜市 訪問介護【加算】",
     "service_type": "訪問介護",
     "material_category": "加算届",
     "source_kind": "notification",
-    "parent_page_url": "https://www.city.yokohama.lg.jp/business/bunyabetsu/fukushi-kaigo/kaigo/shinsei/kaigoshidokansa.html",
+    "parent_page_url": "https://www.city.yokohama.lg.jp/business/bunyabetsu/fukushi-kaigo/kaigo/shinsei/kyotaku/3kasan/02.html",
     "direct_file_url": null,
     "priority": 50,
     "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。指導監査メインページ配下をご確認ください。"
+    "memo": "訪問介護の加算届。総合事業（訪問型）の加算は https://www.city.yokohama.lg.jp/business/bunyabetsu/fukushi-kaigo/kaigo/shinsei/sogo/tetsuzuki/kasan/houmon.html"
   },
   {
     "source_key": "JP-14-14100:訪問介護:サービスコード表",
     "jurisdiction_code": "JP-14-14100",
-    "title": "横浜市 サービスコード表",
+    "title": "横浜市 サービスコード表（国基準・参照）",
     "service_type": "訪問介護",
     "material_category": "サービスコード表",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.yokohama.lg.jp/business/bunyabetsu/fukushi-kaigo/kaigo/shinsei/kaigoshidokansa.html",
+    "parent_page_url": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000044780.html",
     "direct_file_url": null,
     "priority": 60,
     "file_type": "html",
-    "memo": "市独自のコード表URL未確認。国・WAM NET等を参照する可能性があります。"
+    "memo": "市独自のコード表は公開されていないため、厚労省の報酬算定構造・サービスコード表等を正本参照。単位数の地域差は WAM NET も併用。"
+  },
+  {
+    "source_key": "JP-14-14130:訪問介護:訪問介護",
+    "jurisdiction_code": "JP-14-14130",
+    "title": "川崎市 介護保険事業者向け（指導・監査等）",
+    "service_type": "訪問介護",
+    "material_category": "訪問介護",
+    "source_kind": "manual",
+    "parent_page_url": "https://www.city.kawasaki.jp/350/page/0000031707.html",
+    "direct_file_url": null,
+    "priority": 10,
+    "file_type": "html",
+    "memo": "川崎市の介護保険事業者向け案内入口。詳細PDFはページ内リンクを確認。"
+  },
+  {
+    "source_key": "JP-14-14130:訪問介護:総合事業訪問型",
+    "jurisdiction_code": "JP-14-14130",
+    "title": "川崎市 総合事業（訪問型）参照",
+    "service_type": "訪問介護",
+    "material_category": "総合事業訪問型",
+    "source_kind": "manual",
+    "parent_page_url": "https://www.city.kawasaki.jp/350/page/0000031707.html",
+    "direct_file_url": null,
+    "priority": 20,
+    "file_type": "html",
+    "memo": "総合事業関連は市の事業者向けページから辿る。URLは運営確認後に精緻化。"
+  },
+  {
+    "source_key": "JP-14-14130:訪問介護:事故報告",
+    "jurisdiction_code": "JP-14-14130",
+    "title": "川崎市 事故報告（参照）",
+    "service_type": "訪問介護",
+    "material_category": "事故報告",
+    "source_kind": "manual",
+    "parent_page_url": "https://www.city.kawasaki.jp/350/page/0000031707.html",
+    "direct_file_url": null,
+    "priority": 30,
+    "file_type": "html",
+    "memo": "事故報告様式は市案内に従う。詳細URLは運営確認後に精緻化。"
+  },
+  {
+    "source_key": "JP-14-14130:訪問介護:過誤申立",
+    "jurisdiction_code": "JP-14-14130",
+    "title": "川崎市 過誤申立（参照）",
+    "service_type": "訪問介護",
+    "material_category": "過誤申立",
+    "source_kind": "manual",
+    "parent_page_url": "https://www.city.kawasaki.jp/350/page/0000031707.html",
+    "direct_file_url": null,
+    "priority": 40,
+    "file_type": "html",
+    "memo": "過誤申立の詳細は市・国保連案内に従う。"
+  },
+  {
+    "source_key": "JP-14-14130:訪問介護:加算届",
+    "jurisdiction_code": "JP-14-14130",
+    "title": "川崎市 加算届（参照）",
+    "service_type": "訪問介護",
+    "material_category": "加算届",
+    "source_kind": "notification",
+    "parent_page_url": "https://www.city.kawasaki.jp/350/page/0000031707.html",
+    "direct_file_url": null,
+    "priority": 50,
+    "file_type": "html",
+    "memo": "加算届の詳細URLは運営確認後に精緻化。"
+  },
+  {
+    "source_key": "JP-14-14130:訪問介護:サービスコード表",
+    "jurisdiction_code": "JP-14-14130",
+    "title": "川崎市 サービスコード表（国基準・参照）",
+    "service_type": "訪問介護",
+    "material_category": "サービスコード表",
+    "source_kind": "manual",
+    "parent_page_url": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000044780.html",
+    "direct_file_url": null,
+    "priority": 60,
+    "file_type": "html",
+    "memo": "市独自のコード表がない場合は厚労省のサービスコード表を正本参照。"
   },
   {
     "source_key": "JP-14-14204:訪問介護:訪問介護",
@@ -206,23 +284,23 @@
     "material_category": "事故報告",
     "source_kind": "manual",
     "parent_page_url": "https://www.city.kamakura.kanagawa.jp/kaigo/kaigo-jigyo-kyotu.html",
-    "direct_file_url": null,
+    "direct_file_url": "https://www.city.kamakura.kanagawa.jp/kaigo/documents/r070401zikoyouryou.pdf",
     "priority": 30,
-    "file_type": "html",
-    "memo": "事故報告取扱要領は事業者向け共通ページ配下に掲載。"
+    "file_type": "pdf",
+    "memo": "e-kanagawa電子申請で報告。手順書: https://www.city.kamakura.kanagawa.jp/kaigo/documents/zikotezyun240612.pdf"
   },
   {
     "source_key": "JP-14-14204:訪問介護:過誤申立",
     "jurisdiction_code": "JP-14-14204",
-    "title": "鎌倉市 過誤申立 参照資料",
+    "title": "鎌倉市 介護給付費過誤連絡",
     "service_type": "訪問介護",
     "material_category": "過誤申立",
     "source_kind": "manual",
     "parent_page_url": "https://www.city.kamakura.kanagawa.jp/kaigo/kaigo-jigyo-kyotu.html",
-    "direct_file_url": null,
+    "direct_file_url": "https://www.city.kamakura.kanagawa.jp/kaigo/documents/kaigokago.pdf",
     "priority": 40,
-    "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。事業者向け共通ページ配下をご確認ください。"
+    "file_type": "pdf",
+    "memo": "過誤連絡票様式: https://www.city.kamakura.kanagawa.jp/kaigo/documents/kamakurakagorenrakuhyo.pdf。e-kanagawaで提出。"
   },
   {
     "source_key": "JP-14-14204:訪問介護:加算届",
@@ -235,20 +313,20 @@
     "direct_file_url": null,
     "priority": 50,
     "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。事業者向け共通ページ配下をご確認ください。"
+    "memo": "加算届の専用ページ未確認。ケアプランデータ連携導入時の加算届言及あり。厚労省電子申請届出システムまたは市へ要確認。"
   },
   {
     "source_key": "JP-14-14204:訪問介護:サービスコード表",
     "jurisdiction_code": "JP-14-14204",
-    "title": "鎌倉市 サービスコード表",
+    "title": "鎌倉市 サービスコード表（国基準・参照）",
     "service_type": "訪問介護",
     "material_category": "サービスコード表",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.kamakura.kanagawa.jp/kaigo/kaigo-jigyo-kyotu.html",
+    "parent_page_url": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000044780.html",
     "direct_file_url": null,
     "priority": 60,
     "file_type": "html",
-    "memo": "市独自のコード表URL未確認。国・WAM NET等を参照する可能性があります。"
+    "memo": "市独自のコード表は公開されていないため、厚労省の報酬算定構造・サービスコード表等を正本参照。"
   },
   {
     "source_key": "JP-14-14205:訪問介護:訪問介護",
@@ -266,67 +344,67 @@
   {
     "source_key": "JP-14-14205:訪問介護:総合事業訪問型",
     "jurisdiction_code": "JP-14-14205",
-    "title": "藤沢市 総合事業（訪問型）参照資料",
+    "title": "藤沢市 総合事業（訪問型）指定手続き",
     "service_type": "訪問介護",
     "material_category": "総合事業訪問型",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.fujisawa.kanagawa.jp/kaigo-j/kenko/fukushi/kaigohoken/jigyosha/tekiseinajigyouuneinotamenochecksheet.html",
+    "parent_page_url": "https://www.city.fujisawa.kanagawa.jp/kaigo-j/sougoujigyou/shitei.html",
     "direct_file_url": null,
     "priority": 20,
     "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。チェックシート索引ページ配下をご確認ください。"
+    "memo": "介護予防訪問型サービス・通所型サービスの指定・加算届等。"
   },
   {
     "source_key": "JP-14-14205:訪問介護:事故報告",
     "jurisdiction_code": "JP-14-14205",
-    "title": "藤沢市 事故報告 参照資料",
+    "title": "藤沢市 事故報告",
     "service_type": "訪問介護",
     "material_category": "事故報告",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.fujisawa.kanagawa.jp/kaigo-j/kenko/fukushi/kaigohoken/jigyosha/tekiseinajigyouuneinotamenochecksheet.html",
+    "parent_page_url": "https://www.city.fujisawa.kanagawa.jp/kaigo-j/kenko/fukushi/kaigohoken/jigyosha/jikohokoku.html",
     "direct_file_url": null,
     "priority": 30,
     "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。運営指導での主な指摘事項集は同エリアをご確認ください。"
+    "memo": "原則 e-kanagawa 電子申請。事故発生後1週間以内の提出。"
   },
   {
     "source_key": "JP-14-14205:訪問介護:過誤申立",
     "jurisdiction_code": "JP-14-14205",
-    "title": "藤沢市 過誤申立 参照資料",
+    "title": "藤沢市 介護給付費等の取下げ（過誤申立）",
     "service_type": "訪問介護",
     "material_category": "過誤申立",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.fujisawa.kanagawa.jp/kaigo-j/kenko/fukushi/kaigohoken/jigyosha/tekiseinajigyouuneinotamenochecksheet.html",
+    "parent_page_url": "https://www.city.fujisawa.kanagawa.jp/kaigo-j/kenko/fukushi/kaigohoken/jigyosha/kagochose.html",
     "direct_file_url": null,
     "priority": 40,
     "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。チェックシート索引ページ配下をご確認ください。"
+    "memo": "国保連審査決定後、原則 e-kanagawa で過誤申立書を提出。"
   },
   {
     "source_key": "JP-14-14205:訪問介護:加算届",
     "jurisdiction_code": "JP-14-14205",
-    "title": "藤沢市 加算届 参照資料",
+    "title": "藤沢市 指定申請等の電子申請（加算届）",
     "service_type": "訪問介護",
     "material_category": "加算届",
     "source_kind": "notification",
-    "parent_page_url": "https://www.city.fujisawa.kanagawa.jp/kaigo-j/kenko/fukushi/kaigohoken/jigyosha/tekiseinajigyouuneinotamenochecksheet.html",
+    "parent_page_url": "https://www.city.fujisawa.kanagawa.jp/kaigo-j/jigyosyodennsisinnsei.html",
     "direct_file_url": null,
     "priority": 50,
     "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。チェックシート索引ページ配下をご確認ください。"
+    "memo": "加算届は厚労省電子申請届出システム経由。サービス別様式は各指定手続きページも参照。"
   },
   {
     "source_key": "JP-14-14205:訪問介護:サービスコード表",
     "jurisdiction_code": "JP-14-14205",
-    "title": "藤沢市 サービスコード表",
+    "title": "藤沢市 サービスコード表（国基準・参照）",
     "service_type": "訪問介護",
     "material_category": "サービスコード表",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.fujisawa.kanagawa.jp/kaigo-j/kenko/fukushi/kaigohoken/jigyosha/tekiseinajigyouuneinotamenochecksheet.html",
+    "parent_page_url": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000044780.html",
     "direct_file_url": null,
     "priority": 60,
     "file_type": "html",
-    "memo": "市独自のコード表URL未確認。国・WAM NET等を参照する可能性があります。"
+    "memo": "市独自のコード表は公開されていないため、厚労省の報酬算定構造・サービスコード表等を正本参照。"
   },
   {
     "source_key": "JP-14-14207:訪問介護:訪問介護",
@@ -344,66 +422,66 @@
   {
     "source_key": "JP-14-14207:訪問介護:総合事業訪問型",
     "jurisdiction_code": "JP-14-14207",
-    "title": "茅ヶ崎市 総合事業（訪問型）参照資料",
+    "title": "茅ヶ崎市 指定第1号事業（訪問型）",
     "service_type": "訪問介護",
     "material_category": "総合事業訪問型",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.chigasaki.kanagawa.jp/otoshiyori/chiiki/1037314.html",
+    "parent_page_url": "https://www.city.chigasaki.kanagawa.jp/otoshiyori/1051673/1014544/1057211.html",
     "direct_file_url": null,
     "priority": 20,
     "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。チェックシート索引ページ配下をご確認ください。"
+    "memo": "総合事業（第1号事業）の指定・更新・変更等。索引: https://www.city.chigasaki.kanagawa.jp/otoshiyori/1051673/1014544/index.html"
   },
   {
     "source_key": "JP-14-14207:訪問介護:事故報告",
     "jurisdiction_code": "JP-14-14207",
-    "title": "茅ヶ崎市 事故報告 参照資料",
+    "title": "茅ヶ崎市 介護保険事業者等 事故報告",
     "service_type": "訪問介護",
     "material_category": "事故報告",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.chigasaki.kanagawa.jp/otoshiyori/chiiki/1037314.html",
-    "direct_file_url": null,
+    "parent_page_url": "https://www.city.chigasaki.kanagawa.jp/shinseisho/kourei/1002066.html",
+    "direct_file_url": "https://www.city.chigasaki.kanagawa.jp/_res/projects/default_project/_page_/001/002/066/20230510.pdf",
     "priority": 30,
-    "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。チェックシート索引ページ配下をご確認ください。"
+    "file_type": "pdf",
+    "memo": "e-kanagawa電子申請。事業者向け索引: https://www.city.chigasaki.kanagawa.jp/otoshiyori/jigyosha/1004249.html"
   },
   {
     "source_key": "JP-14-14207:訪問介護:過誤申立",
     "jurisdiction_code": "JP-14-14207",
-    "title": "茅ヶ崎市 過誤申立 参照資料",
+    "title": "茅ヶ崎市 過誤申立書",
     "service_type": "訪問介護",
     "material_category": "過誤申立",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.chigasaki.kanagawa.jp/otoshiyori/chiiki/1037314.html",
+    "parent_page_url": "https://www.city.chigasaki.kanagawa.jp/shinseisho/kourei/1002072.html",
     "direct_file_url": null,
     "priority": 40,
     "file_type": "html",
-    "memo": "カテゴリ別専用ページ未確認。チェックシート索引ページ配下をご確認ください。"
+    "memo": "毎月10日が保険者受付締切。持参・郵送のみ（FAX不可）。"
   },
   {
     "source_key": "JP-14-14207:訪問介護:加算届",
     "jurisdiction_code": "JP-14-14207",
-    "title": "茅ヶ崎市 加算届",
+    "title": "茅ヶ崎市 加算届（地域密着型・第1号事業）",
     "service_type": "訪問介護",
     "material_category": "加算届",
     "source_kind": "notification",
-    "parent_page_url": "https://www.city.chigasaki.kanagawa.jp/otoshiyori/chiiki/1004223.html",
+    "parent_page_url": "https://www.city.chigasaki.kanagawa.jp/otoshiyori/jigyosha/1004249.html",
     "direct_file_url": null,
     "priority": 50,
     "file_type": "html",
-    "memo": "加算届出関連ページ。"
+    "memo": "地域密着型: https://www.city.chigasaki.kanagawa.jp/otoshiyori/1051673/chiiki/1057514.html / 第1号事業: https://www.city.chigasaki.kanagawa.jp/otoshiyori/1051673/1014544/1021601.html"
   },
   {
     "source_key": "JP-14-14207:訪問介護:サービスコード表",
     "jurisdiction_code": "JP-14-14207",
-    "title": "茅ヶ崎市 サービスコード表",
+    "title": "茅ヶ崎市 サービスコード表（国基準・参照）",
     "service_type": "訪問介護",
     "material_category": "サービスコード表",
     "source_kind": "manual",
-    "parent_page_url": "https://www.city.chigasaki.kanagawa.jp/otoshiyori/chiiki/1037314.html",
+    "parent_page_url": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000044780.html",
     "direct_file_url": null,
     "priority": 60,
     "file_type": "html",
-    "memo": "市独自のコード表URL未確認。国・WAM NET等を参照する可能性があります。"
+    "memo": "市独自のコード表は公開されていないため、厚労省の報酬算定構造・サービスコード表等を正本参照。"
   }
 ]
