@@ -281,9 +281,6 @@ export function DashboardView({ data }: { data: DashboardData }) {
                               期限 {item.due_date}
                             </p>
                           </div>
-                          <Button asChild variant="outline" className="shrink-0">
-                            <Link href="/alerts">詳細</Link>
-                          </Button>
                         </CardContent>
                       </Card>
                     )

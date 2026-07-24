@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { PHASE1_MUNICIPALITIES } from "@/lib/phase1-audit"
+import { FacilityMunicipalityForm } from "@/components/features/setup/facility-municipality-form"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Info } from "lucide-react"
 
@@ -22,6 +23,7 @@ export default async function SetupPage() {
   const org = Array.isArray(profile?.organizations)
     ? profile?.organizations[0]
     : profile?.organizations
+  const isAdmin = profile?.role === "admin"
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -30,7 +32,7 @@ export default async function SetupPage() {
           初期設定
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          どのサービスを、どの自治体で提供しているかを確認します。第1フェーズは訪問介護と神奈川の対象市が中心です。
+          どのサービスを、どの自治体で提供しているかを確認・変更します。第1フェーズは訪問介護と神奈川の対象市が中心です。
         </p>
       </div>
 
@@ -38,10 +40,10 @@ export default async function SetupPage() {
         <CardHeader>
           <CardTitle className="text-lg">事業所の設定</CardTitle>
           <CardDescription className="text-base leading-relaxed">
-            オンボーディングで登録した内容です。変更が必要な場合は設定からご確認ください。
+            オンボーディングで登録した内容です。自治体は下から変更できます。
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 text-base leading-relaxed">
+        <CardContent className="space-y-4 text-base leading-relaxed">
           <p>
             <span className="text-muted-foreground">事業所名：</span>
             <span className="font-semibold">
@@ -55,13 +57,17 @@ export default async function SetupPage() {
             </span>
           </p>
           <p>
-            <span className="text-muted-foreground">自治体：</span>
+            <span className="text-muted-foreground">現在の自治体：</span>
             <span className="font-semibold">
               {org?.municipality ?? "（未設定・全国ルール）"}
             </span>
           </p>
+          <FacilityMunicipalityForm
+            canEdit={Boolean(isAdmin)}
+            currentMunicipality={org?.municipality ?? null}
+          />
           <Button asChild size="lg" variant="outline">
-            <Link href="/settings">設定を開く</Link>
+            <Link href="/settings">その他の設定を開く</Link>
           </Button>
         </CardContent>
       </Card>

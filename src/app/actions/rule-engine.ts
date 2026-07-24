@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { requireOperator } from "@/lib/operator"
 import { toUserErrorMessage } from "@/lib/auth-errors"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
+import { PHASE1_AI_RULE_SEEDS } from "@/lib/phase1-ai-rules-seed"
 import type {
   AiCheckRule,
   AiCheckRuleVersion,
@@ -748,6 +749,137 @@ export async function createHomeVisitAuditTemplateAction(input: {
     data: {
       insertedCount: rows.length,
       skippedCount: HOME_VISIT_AUDIT_TEMPLATE_ITEMS.length - rows.length,
+    },
+  }
+}
+
+/**
+ * Phase1（1・3・7・8）の AI 判定ルールを一括登録し、初版を承認済みにする。
+ * 前提: 訪問介護テンプレートの監査項目が登録済みであること。
+ */
+export async function seedPhase1AiRulesAction(input?: {
+  /** 未指定時は今日（YYYY-MM-DD） */
+  effectiveFrom?: string
+}): Promise<
+  ActionResult<{
+    insertedCount: number
+    skippedCount: number
+    missingAuditItems: string[]
+  }>
+> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  const today = new Date()
+  const effectiveFrom =
+    input?.effectiveFrom?.trim() ||
+    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+
+  const auditCodes = Array.from(
+    new Set(PHASE1_AI_RULE_SEEDS.map((s) => s.auditItemCode))
+  )
+  const { data: auditRows, error: auditError } = await op.service
+    .from("audit_items")
+    .select("id, code")
+    .in("code", auditCodes)
+    .eq("status", "active")
+
+  if (auditError) return { ok: false, error: toUserErrorMessage(auditError) }
+
+  const auditByCode = new Map<string, string>()
+  for (const row of auditRows ?? []) {
+    const code = String(row.code)
+    if (!auditByCode.has(code)) {
+      auditByCode.set(code, String(row.id))
+    }
+  }
+
+  const seedCodes = PHASE1_AI_RULE_SEEDS.map((s) => s.code)
+  const { data: existingRules, error: existingError } = await op.service
+    .from("ai_check_rules")
+    .select("code")
+    .in("code", seedCodes)
+
+  if (existingError) {
+    return { ok: false, error: toUserErrorMessage(existingError) }
+  }
+  const existingCodes = new Set(
+    (existingRules ?? []).map((r) => String(r.code))
+  )
+
+  const missingAuditItems: string[] = []
+  let insertedCount = 0
+  let skippedCount = 0
+
+  for (const seed of PHASE1_AI_RULE_SEEDS) {
+    if (existingCodes.has(seed.code)) {
+      skippedCount += 1
+      continue
+    }
+    const auditItemId = auditByCode.get(seed.auditItemCode)
+    if (!auditItemId) {
+      missingAuditItems.push(seed.auditItemCode)
+      skippedCount += 1
+      continue
+    }
+
+    const { data: rule, error: ruleError } = await op.service
+      .from("ai_check_rules")
+      .insert({
+        audit_item_id: auditItemId,
+        code: seed.code,
+        title: seed.title,
+        target_doc_types: seed.targetDocTypes,
+        status: "active",
+      })
+      .select("id")
+      .single()
+
+    if (ruleError || !rule) {
+      return { ok: false, error: toUserErrorMessage(ruleError) }
+    }
+
+    const { error: verError } = await op.service
+      .from("ai_check_rule_versions")
+      .insert({
+        rule_id: rule.id,
+        version_no: 1,
+        check_logic: {
+          type: "heuristic",
+          notes: seed.guidanceText,
+          phase1: true,
+        },
+        guidance_text: seed.guidanceText,
+        severity: seed.severity,
+        effective_from: effectiveFrom,
+        review_status: "approved",
+        change_summary:
+          "Phase1初期シード（要目視確認。必要なら版を増やして差し替えてください）",
+        review_reason:
+          "Phase1運用開始のための初期シード。内容は運営が後日見直し可能です。",
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: op.userId,
+      })
+
+    if (verError) {
+      return { ok: false, error: toUserErrorMessage(verError) }
+    }
+
+    existingCodes.add(seed.code)
+    insertedCount += 1
+  }
+
+  revalidateRules("/admin/rules/ai-rules")
+  revalidateRules("/admin/rules/pending")
+  revalidateRules("/admin/rules/history")
+  revalidateRules("/admin/rules")
+
+  return {
+    ok: true,
+    data: {
+      insertedCount,
+      skippedCount,
+      missingAuditItems: Array.from(new Set(missingAuditItems)),
     },
   }
 }

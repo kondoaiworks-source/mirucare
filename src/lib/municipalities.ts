@@ -38,8 +38,10 @@ export const MUNICIPALITIES: MunicipalityOption[] = [
   { prefecture: "東京都", name: "町田市", label: "東京都 町田市" },
   { prefecture: "神奈川県", name: "横浜市", label: "神奈川県 横浜市" },
   { prefecture: "神奈川県", name: "川崎市", label: "神奈川県 川崎市" },
-  { prefecture: "神奈川県", name: "相模原市", label: "神奈川県 相模原市" },
   { prefecture: "神奈川県", name: "藤沢市", label: "神奈川県 藤沢市" },
+  { prefecture: "神奈川県", name: "鎌倉市", label: "神奈川県 鎌倉市" },
+  { prefecture: "神奈川県", name: "茅ヶ崎市", label: "神奈川県 茅ヶ崎市" },
+  { prefecture: "神奈川県", name: "相模原市", label: "神奈川県 相模原市" },
   { prefecture: "埼玉県", name: "さいたま市", label: "埼玉県 さいたま市" },
   { prefecture: "埼玉県", name: "川口市", label: "埼玉県 川口市" },
   { prefecture: "千葉県", name: "千葉市", label: "千葉県 千葉市" },
@@ -73,6 +75,29 @@ export function prefectureFromMunicipality(
   municipality: string | null | undefined
 ): string {
   return findMunicipalityByName(municipality)?.prefecture ?? ""
+}
+
+const PHASE1_CITY_NAMES = [
+  "横浜市",
+  "川崎市",
+  "藤沢市",
+  "鎌倉市",
+  "茅ヶ崎市",
+] as const
+
+/** Phase1 優先表示用（オンボーディング先頭） */
+export const PHASE1_MUNICIPALITY_OPTIONS: MunicipalityOption[] =
+  PHASE1_CITY_NAMES.map((name) => ({
+    prefecture: "神奈川県",
+    name,
+    label: `神奈川県 ${name}`,
+  }))
+
+/** Phase1 市を先頭にしたオンボーディング用リスト */
+export function municipalitiesForOnboarding(): MunicipalityOption[] {
+  const phase1 = new Set<string>(PHASE1_CITY_NAMES)
+  const rest = MUNICIPALITIES.filter((m) => !phase1.has(m.name))
+  return [...PHASE1_MUNICIPALITY_OPTIONS, ...rest]
 }
 
 export const SERVICE_TYPE_OPTIONS = [

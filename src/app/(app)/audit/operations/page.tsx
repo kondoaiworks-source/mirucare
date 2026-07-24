@@ -8,6 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Info } from "lucide-react"
 import { PHASE1_OPERATION_CHECKS } from "@/lib/phase1-audit"
 
 export const metadata: Metadata = {
@@ -52,14 +54,35 @@ export default function AuditOperationsPage() {
 
       <Card className="rounded-lg border-primary/20 bg-primary/5 shadow-subtle">
         <CardHeader>
-          <CardTitle className="text-lg">監査を始める</CardTitle>
+          <CardTitle className="text-lg">書類で監査する（項目1・3・7）</CardTitle>
           <CardDescription className="text-base leading-relaxed">
-            書類をアップロードし、同意のうえで監査を開始します。原本は完了後に削除されます（再確認用に最大7日残すことも選べます）。結果は匿名表記で残ります。
+            ケアプラン・計画書・提供記録・シフトなどをアップロードし、同意のうえで監査を開始します。原本は完了後に削除されます（再確認用に最大7日残すことも選べます）。結果は匿名表記で残ります。
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild size="lg">
             <Link href="/check/upload">監査書類をアップロードする</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-lg shadow-subtle">
+        <CardHeader>
+          <CardTitle className="text-lg">項目8：請求と実績の突合</CardTitle>
+          <CardDescription className="text-base leading-relaxed">
+            国保連請求CSVと実績の食い違い候補を、ブラウザ上で確認します。請求CSVはサーバに保存しません。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert className="rounded-lg">
+            <Info />
+            <AlertTitle>個人情報の取り扱い</AlertTitle>
+            <AlertDescription className="text-base leading-relaxed">
+              突合はお使いの端末内で行います。終わったらブラウザのデータを閉じ、請求CSVをサーバへ残さない運用にしてください。
+            </AlertDescription>
+          </Alert>
+          <Button asChild size="lg" variant="outline">
+            <Link href="/billing-reconcile">請求CSVの突合を開く</Link>
           </Button>
         </CardContent>
       </Card>

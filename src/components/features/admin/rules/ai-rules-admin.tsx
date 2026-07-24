@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import {
   createAiCheckRuleWithVersionAction,
   listAiRulesAction,
+  seedPhase1AiRulesAction,
 } from "@/app/actions/rule-engine"
 import type {
   AiCheckRule,
@@ -178,6 +179,52 @@ export function AiRulesAdmin({
           "保存",
         ]}
       />
+
+      <Card className="rounded-lg shadow-subtle">
+        <CardHeader>
+          <CardTitle className="text-lg">Phase1 ルールを一括登録</CardTitle>
+          <CardDescription className="text-base leading-relaxed">
+            運用AI監査の項目1・3・7・8向けの判定ルールを登録し、初版を承認済みにします。先に「監査項目」で訪問介護テンプレートを登録してください。既存コードはスキップします。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            type="button"
+            size="lg"
+            variant="outline"
+            disabled={pending}
+            onClick={() => {
+              startTransition(async () => {
+                const result = await seedPhase1AiRulesAction()
+                if (!result.ok) {
+                  toast.error(result.error ?? "Phase1ルールの登録に失敗しました。")
+                  return
+                }
+                const inserted = result.data?.insertedCount ?? 0
+                const skipped = result.data?.skippedCount ?? 0
+                const missing = result.data?.missingAuditItems ?? []
+                if (missing.length > 0) {
+                  toast.message(
+                    `登録${inserted}件・スキップ${skipped}件。監査項目不足: ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? "…" : ""}`
+                  )
+                } else if (inserted === 0) {
+                  toast.success("Phase1ルールは登録済みです。")
+                } else {
+                  toast.success(
+                    `Phase1ルールを${inserted}件登録しました（スキップ${skipped}件）。`
+                  )
+                }
+                await refresh()
+              })
+            }}
+          >
+            {pending ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : null}
+            Phase1ルール（1・3・7・8）を登録する
+          </Button>
+        </CardContent>
+      </Card>
 
       <h2 className="text-xl font-bold text-primary-dark">管理一覧</h2>
 

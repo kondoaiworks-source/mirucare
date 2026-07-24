@@ -465,7 +465,13 @@ npm install -D @types/papaparse
 9. `/setup` で Phase1 対象市（横浜・川崎・藤沢・鎌倉・茅ヶ崎）が表示されること
 10. （モック時）指摘に氏名・電話が残らず「利用者A」「[電話番号]」等になること（`DIFY_MOCK=1`）
 11. 適用ルール版パネルの件数が Phase1 対象に寄っていること（`CHECK_RULES_SCOPE=all` でないこと）
-12. 原本削除 Cron（任意）:
+12. 運営で Phase1 AIルールを投入する:
+    - `/admin/rules/ai-rules` →「Phase1ルール（1・3・7・8）を登録する」
+    - または `SEED_OPERATOR_PROFILE_ID=<profiles.id> npm run seed:phase1-ai-rules`
+    - 先に監査項目の訪問介護テンプレート登録が必要
+13. `/setup` で Phase1 5市を保存できること（管理者）
+14. `/audit/operations` から請求CSV突合（項目8）へ進めること
+15. 原本削除 Cron（任意）:
     ```bash
     curl -X POST "http://localhost:3000/api/cron/purge-document-originals" \
       -H "Authorization: Bearer $CRON_SECRET"

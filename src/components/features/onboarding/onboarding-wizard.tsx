@@ -11,7 +11,7 @@ import {
   FileCheck2,
 } from "lucide-react"
 import { completeOnboardingAction } from "@/app/actions/auth"
-import { SERVICE_TYPE_OPTIONS, MUNICIPALITIES } from "@/lib/municipalities"
+import { SERVICE_TYPE_OPTIONS, municipalitiesForOnboarding } from "@/lib/municipalities"
 import type { ServiceType } from "@/types/database"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,8 +43,9 @@ export function OnboardingWizard() {
 
   const filteredMunicipalities = useMemo(() => {
     const q = municipalityQuery.trim()
-    if (!q) return MUNICIPALITIES.slice(0, 12)
-    return MUNICIPALITIES.filter((m) => m.label.includes(q)).slice(0, 20)
+    const list = municipalitiesForOnboarding()
+    if (!q) return list.slice(0, 12)
+    return list.filter((m) => m.label.includes(q)).slice(0, 20)
   }, [municipalityQuery])
 
   function goNextFromStep1() {
