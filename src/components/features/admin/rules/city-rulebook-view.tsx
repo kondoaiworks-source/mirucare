@@ -4,6 +4,8 @@ import type { CityRulebookData } from "@/app/actions/city-rulebook"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { PurposeGuide } from "@/components/features/admin/purpose-guide"
 import { CityRulebookAlertsPanel } from "@/components/features/admin/rules/city-rulebook-alerts-panel"
+import { CityRulebookBookToc } from "@/components/features/admin/rules/city-rulebook-book-toc"
+import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
 import { RulebookServiceSelect } from "@/components/features/admin/rules/rulebook-service-select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,10 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  HUMAN_REVIEW_STATUS_LABEL,
-  primarySourceUrl,
-} from "@/lib/rule-engine/source-urls"
 import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
 
 const LAYER_LABEL = {
@@ -31,14 +29,13 @@ type Props = {
 }
 
 export function CityRulebookView({ data }: Props) {
-  const { city, counts, sources, documents, pendingDrafts, openAlerts } = data
+  const { city, jurisdiction, counts, sources, documents } = data
 
   const citySources = sources.filter((s) => s.layer === "city")
   const sharedSources = sources.filter((s) => s.layer !== "city")
   const cityDocs = documents.filter((d) => d.layer === "city")
   const sharedDocs = documents.filter((d) => d.layer !== "city")
 
-  const citySourcesHref = `/admin/rules/source-urls?city=${city.slug}`
   const cityDocsHref = `/admin/rules/documents?city=${city.slug}`
 
   return (
@@ -84,19 +81,21 @@ export function CityRulebookView({ data }: Props) {
       <RulebookServiceSelect />
 
       <PurposeGuide
-        purpose={`${city.name}で選んだサービス（いまは訪問介護）を運営するときのルールブックです。更新アラートがあればこの画面で判断し、参照URL・行政資料は絞り込み付きの編集画面へ進めます。`}
+        purpose={`${city.name}で選んだサービス（いまは訪問介護）を運営するときのルールブックです。目次で全体を確認し、更新アラートと参照URLはこの画面で扱えます。`}
         steps={[
+          "確定版の目次で国→県→市の全体を見る",
           "更新アラートを確認して反映／差し戻す",
-          "市／国・県の参照URLと行政資料を見る",
-          "足りなければ編集画面で追加・修正する",
+          "足りない参照URLはこの画面で追加・修正する",
         ]}
       />
+
+      <CityRulebookBookToc data={data} />
 
       <CityRulebookAlertsPanel
         citySlug={city.slug}
         cityName={city.name}
-        pendingDrafts={pendingDrafts}
-        openAlerts={openAlerts}
+        pendingDrafts={data.pendingDrafts}
+        openAlerts={data.openAlerts}
       />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -109,19 +108,12 @@ export function CityRulebookView({ data }: Props) {
         <CountCard label="国・県の行政資料" value={counts.sharedDocuments} />
       </section>
 
-      <ResourceSection
-        title={`${city.name}の参照URL`}
-        description="この市固有の公式ページ・資料URLです。"
-        editHref={citySourcesHref}
-        editLabel="この市の参照URLを編集する"
-        empty="まだ登録がありません。参照URL登録から追加してください。"
-        icon={Link2}
-        itemCount={citySources.length}
-      >
-        {citySources.map((s) => (
-          <SourceRow key={s.id} title={s.title} source={s} layer="city" />
-        ))}
-      </ResourceSection>
+      <CityRulebookSourcesPanel
+        citySlug={city.slug}
+        cityName={city.name}
+        jurisdictionId={jurisdiction.id}
+        sources={citySources}
+      />
 
       <ResourceSection
         title={`${city.name}の行政資料`}
@@ -139,7 +131,7 @@ export function CityRulebookView({ data }: Props) {
 
       <ResourceSection
         title="共有：国・県の参照URL"
-        description={`${city.prefectureName}と国の根拠も、この市のルールブックに含みます。`}
+        description={`${city.prefectureName}と国の根拠も、この市のルールブックに含みます。市固有の追加は上の参照URLから。`}
         editHref="/admin/rules/source-urls"
         editLabel="参照URLを編集する"
         empty="国・県の参照URLはまだありません。"
@@ -147,7 +139,7 @@ export function CityRulebookView({ data }: Props) {
         itemCount={sharedSources.length}
       >
         {sharedSources.map((s) => (
-          <SourceRow key={s.id} title={s.title} source={s} layer={s.layer} />
+          <SharedSourceRow key={s.id} source={s} />
         ))}
       </ResourceSection>
 
@@ -207,7 +199,7 @@ function ResourceSection({
   editHref: string
   editLabel: string
   empty: string
-  icon: typeof Link2
+  icon: typeof FileText | typeof Link2
   children: React.ReactNode
   itemCount: number
 }) {
@@ -238,31 +230,28 @@ function ResourceSection({
   )
 }
 
-function SourceRow({
-  title,
+function SharedSourceRow({
   source,
-  layer,
 }: {
-  title: string
   source: CityRulebookData["sources"][number]
-  layer: keyof typeof LAYER_LABEL
 }) {
-  const url = primarySourceUrl(source)
+  const url =
+    source.direct_file_url?.trim() ||
+    source.parent_page_url?.trim() ||
+    source.official_url?.trim() ||
+    null
   return (
     <li>
       <Card className="rounded-xl shadow-subtle">
         <CardContent className="flex flex-wrap items-center gap-3 py-4">
           <Badge variant="outline" className="rounded-md">
-            {LAYER_LABEL[layer]}
+            {LAYER_LABEL[source.layer]}
           </Badge>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-primary-dark">{title}</p>
+            <p className="font-semibold text-primary-dark">{source.title}</p>
             <p className="text-sm text-muted-foreground">
               {source.jurisdictionName}
               {source.material_category ? `／${source.material_category}` : ""}
-              ／
-              {HUMAN_REVIEW_STATUS_LABEL[source.human_review_status] ??
-                source.human_review_status}
             </p>
           </div>
           {url ? (

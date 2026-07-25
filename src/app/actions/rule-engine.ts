@@ -33,6 +33,8 @@ export type ActionResult<T = undefined> = {
 
 function revalidateRules(path?: string) {
   revalidatePath("/admin/rules")
+  // 市ルールブック（国＋県＋市の合成ビュー）も参照URL・台帳変更で更新する
+  revalidatePath("/admin/rules/regulatory", "layout")
   if (path) revalidatePath(path)
 }
 

@@ -1,0 +1,281 @@
+import Link from "next/link"
+import { BookMarked, ExternalLink, FileText, Link2 } from "lucide-react"
+import type { CityRulebookData } from "@/app/actions/city-rulebook"
+import {
+  HUMAN_REVIEW_STATUS_LABEL,
+  MATERIAL_CATEGORY_LABEL,
+  primarySourceUrl,
+} from "@/lib/rule-engine/source-urls"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+
+const LAYER_ORDER = ["national", "prefecture", "city"] as const
+
+const LAYER_LABEL = {
+  national: "国",
+  prefecture: "県",
+  city: "市",
+} as const
+
+type BookEntry =
+  | {
+      kind: "source"
+      layer: (typeof LAYER_ORDER)[number]
+      id: string
+      title: string
+      subtitle: string
+      reviewLabel: string
+      needsAttention: boolean
+      url: string | null
+    }
+  | {
+      kind: "document"
+      layer: (typeof LAYER_ORDER)[number]
+      id: string
+      title: string
+      subtitle: string
+      reviewLabel: string
+      needsAttention: boolean
+      url: string | null
+    }
+
+type Props = {
+  data: CityRulebookData
+}
+
+/**
+ * 国＋県＋市を「1冊のルールブック」として上から読める目次ビュー。
+ */
+export function CityRulebookBookToc({ data }: Props) {
+  const { city, sources, documents, counts } = data
+
+  const entries: BookEntry[] = []
+
+  for (const layer of LAYER_ORDER) {
+    for (const s of sources.filter((x) => x.layer === layer)) {
+      const needsAttention =
+        s.human_review_status === "needs_review" ||
+        s.human_review_status === "outdated" ||
+        s.human_review_status === "unverified" ||
+        !primarySourceUrl(s)
+      entries.push({
+        kind: "source",
+        layer,
+        id: s.id,
+        title: s.title,
+        subtitle: [
+          s.jurisdictionName,
+          s.material_category
+            ? (MATERIAL_CATEGORY_LABEL[s.material_category] ??
+              s.material_category)
+            : null,
+        ]
+          .filter(Boolean)
+          .join("／"),
+        reviewLabel:
+          HUMAN_REVIEW_STATUS_LABEL[s.human_review_status] ??
+          s.human_review_status,
+        needsAttention,
+        url: primarySourceUrl(s),
+      })
+    }
+    for (const d of documents.filter((x) => x.layer === layer)) {
+      const needsAttention =
+        d.last_sync_status === "failed" ||
+        d.last_sync_status === "suspicious" ||
+        d.last_sync_status === "selector_broken"
+      entries.push({
+        kind: "document",
+        layer,
+        id: d.id,
+        title: d.title,
+        subtitle: [
+          d.jurisdiction_level,
+          d.region_name,
+          `${d.applicable_year}年度`,
+          d.last_sync_status ? `同期:${d.last_sync_status}` : null,
+        ]
+          .filter(Boolean)
+          .join("／"),
+        reviewLabel: "行政資料（台帳）",
+        needsAttention: Boolean(needsAttention),
+        url: d.source_url ?? null,
+      })
+    }
+  }
+
+  const attentionCount = entries.filter((e) => e.needsAttention).length
+  const totalItems =
+    counts.citySources +
+    counts.cityDocuments +
+    counts.sharedSources +
+    counts.sharedDocuments
+
+  return (
+    <section className="space-y-4" aria-labelledby="book-toc-heading">
+      <Card className="rounded-xl border-primary/20 bg-primary/[0.02] shadow-subtle">
+        <CardHeader className="space-y-2">
+          <div className="flex flex-wrap items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <BookMarked className="size-5" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <CardTitle
+                id="book-toc-heading"
+                className="text-xl text-primary-dark"
+              >
+                {city.name}ルールブック（確定版の目次）
+              </CardTitle>
+              <CardDescription className="mt-1 text-base leading-relaxed">
+                国 → {city.prefectureName} → {city.name}{" "}
+                の順で束ねた1冊です。下の一覧が「この自治体で従う根拠」の全体像です。
+              </CardDescription>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Badge variant="secondary" className="rounded-md tabular-nums">
+              合計 {totalItems}件
+            </Badge>
+            <Badge variant="outline" className="rounded-md tabular-nums">
+              国・県 {counts.sharedSources + counts.sharedDocuments}件
+            </Badge>
+            <Badge variant="outline" className="rounded-md tabular-nums">
+              {city.name} {counts.citySources + counts.cityDocuments}件
+            </Badge>
+            {attentionCount > 0 ? (
+              <Badge variant="destructive" className="rounded-md tabular-nums">
+                確認が必要 {attentionCount}件
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="rounded-md border-primary/30 text-primary"
+              >
+                いま確認待ちの項目はありません
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+      </Card>
+
+      {entries.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
+          まだ根拠がありません。下の「参照URLを追加する」か、行政資料から登録してください。
+        </p>
+      ) : (
+        <ol className="space-y-2">
+          {LAYER_ORDER.map((layer) => {
+            const layerEntries = entries.filter((e) => e.layer === layer)
+            if (layerEntries.length === 0) return null
+            const layerTitle =
+              layer === "national"
+                ? "第1部：国"
+                : layer === "prefecture"
+                  ? `第2部：${city.prefectureName}`
+                  : `第3部：${city.name}`
+            return (
+              <li key={layer} className="space-y-2">
+                <h3 className="pt-2 text-base font-bold text-primary-dark">
+                  {layerTitle}
+                  <span className="ml-2 font-normal text-muted-foreground tabular-nums">
+                    （{layerEntries.length}件）
+                  </span>
+                </h3>
+                <ul className="space-y-2">
+                  {layerEntries.map((e, index) => (
+                    <li key={`${e.kind}-${e.id}`}>
+                      <Card className="rounded-xl shadow-subtle">
+                        <CardContent className="flex flex-wrap items-center gap-3 py-3.5">
+                          <span
+                            className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-semibold tabular-nums text-muted-foreground"
+                            aria-hidden
+                          >
+                            {index + 1}
+                          </span>
+                          <Badge variant="outline" className="rounded-md">
+                            {LAYER_LABEL[e.layer]}
+                          </Badge>
+                          <Badge variant="secondary" className="rounded-md">
+                            {e.kind === "source" ? (
+                              <>
+                                <Link2 className="mr-1 size-3.5" aria-hidden />
+                                参照URL
+                              </>
+                            ) : (
+                              <>
+                                <FileText
+                                  className="mr-1 size-3.5"
+                                  aria-hidden
+                                />
+                                行政資料
+                              </>
+                            )}
+                          </Badge>
+                          {e.needsAttention ? (
+                            <Badge
+                              variant="destructive"
+                              className="rounded-md"
+                            >
+                              要確認
+                            </Badge>
+                          ) : null}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-primary-dark">
+                              {e.title}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {e.subtitle}
+                              {e.kind === "source" ? `／${e.reviewLabel}` : ""}
+                            </p>
+                          </div>
+                          {e.url ? (
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="min-h-11"
+                            >
+                              <a
+                                href={e.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                原文を開く
+                                <ExternalLink
+                                  className="size-4"
+                                  aria-hidden
+                                />
+                              </a>
+                            </Button>
+                          ) : null}
+                        </CardContent>
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        目次は「従う根拠の一覧」です。チェックに使う疑い方の変更は{" "}
+        <Link
+          href="/admin/rules/ai-rules"
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
+          詳細設定の判定ルール
+        </Link>
+        と承認待ちで行います。
+      </p>
+    </section>
+  )
+}
