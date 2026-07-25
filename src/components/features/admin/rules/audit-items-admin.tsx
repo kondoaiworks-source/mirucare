@@ -158,7 +158,7 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
           items={[
             ...(isAdditions
               ? [
-                  { label: "その他の設定", href: "/admin/rules/more" },
+                  { label: "詳細設定", href: "/admin/rules/more" },
                   { label: "加算設定" },
                 ]
               : [{ label: "監査項目" }]),

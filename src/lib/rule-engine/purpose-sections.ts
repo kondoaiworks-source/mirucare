@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Bot,
   ClipboardCheck,
   FileText,
@@ -18,46 +19,98 @@ export type PurposeLink = {
 }
 
 /**
- * ホーム「目的から選ぶ」とサイドナビの主要3本。
- * 加算・ジョブ等は more-links 側（その他の設定）。
+ * ホーム「よく使う設定」とルールブックハブ用。
+ * ナビ主要項目は nav.ts 側（ルールブック構想）で定義する。
+ * @see docs/ルールブック構想.md
  */
 export type PurposeSection = {
-  id: "audit" | "ai" | "regulatory"
+  id: "rulebook" | "audit" | "ai"
   href: string
   label: string
-  /** サイドナビの短い説明 */
+  /** サイドナビ／カードの短い説明 */
   navDescription: string
   icon: LucideIcon
   /** 「この画面で行うこと」 */
   purpose: string
   steps: string[]
-  /** ハブに出す管理対象カード（単一対象の画面では空でも可） */
+  /** ハブに出す管理対象カード */
   links: PurposeLink[]
   /** このセクション配下としてアクティブ判定するパス */
   matchPaths: string[]
+  /** ホームの「よく使う」に出すか */
+  showOnHome?: boolean
 }
 
 export const PURPOSE_SECTIONS: PurposeSection[] = [
   {
+    id: "rulebook",
+    href: "/admin/rules/regulatory",
+    label: "ルールブック設定",
+    navDescription: "この自治体で従う確定版を整える",
+    icon: BookOpen,
+    purpose:
+      "国・県・市の参照URLと行政資料を整え、更新アラートを人が確認してルールブックを最新に保ちます。施設は「この自治体ならこのルールブック」に従えばよい、が目標です。",
+    steps: [
+      "サービスはいま訪問介護（Phase1）",
+      "参照URL・行政資料を国／県／市で登録する",
+      "更新アラートが出たら人が確認して反映する",
+    ],
+    links: [
+      {
+        href: "/admin/rules/source-urls",
+        label: "参照URL登録",
+        description: "法令・ルール・加算の公式URL（国・県・市）",
+        icon: Link2,
+      },
+      {
+        href: "/admin/rules/documents",
+        label: "行政資料（監視）",
+        description: "マニュアルPDFの台帳と自動更新アラート",
+        icon: FileText,
+      },
+      {
+        href: "/admin/rules/laws",
+        label: "法令・根拠",
+        description: "法令・通知のメタ情報",
+        icon: Scale,
+      },
+      {
+        href: "/admin/document-changes",
+        label: "更新アラートの確認",
+        description: "差分を人が見て台帳へ反映する",
+        icon: ClipboardCheck,
+      },
+    ],
+    matchPaths: [
+      "/admin/rules/regulatory",
+      "/admin/rules/documents",
+      "/admin/rules/laws",
+      "/admin/rules/source-urls",
+      "/admin/document-changes",
+    ],
+    showOnHome: true,
+  },
+  {
     id: "audit",
     href: "/admin/rules/audit-items",
     label: "監査項目",
-    navDescription: "何を確認するか",
+    navDescription: "ルールブック内の「何を見るか」",
     icon: ShieldCheck,
     purpose:
-      "運営指導で確認されやすい項目を登録します。AI判定ルールの土台になります。",
+      "運営指導で確認されやすい項目（見出し）を登録します。判定ルールの土台です。日常は詳細設定から開きます。",
     steps: ["監査項目を選ぶ／登録する", "内容を確認する", "保存する"],
     links: [],
     matchPaths: ["/admin/rules/audit-items"],
+    showOnHome: false,
   },
   {
     id: "ai",
     href: "/admin/rules/ai-rules",
-    label: "AI判定ルール",
-    navDescription: "どう確認するか",
+    label: "判定ルール（詳細）",
+    navDescription: "ルールブック内の「どう疑うか」",
     icon: Bot,
     purpose:
-      "書類チェックの判定基準を登録し、承認後にチェックへ反映します。",
+      "書類チェック用の見方を登録し、人が承認した版だけを本番に載せます。ルールブックの中身の部品です。",
     steps: [
       "ルールを登録する",
       "承認待ちで確認する",
@@ -66,9 +119,15 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     links: [
       {
         href: "/admin/rules/ai-rules",
-        label: "AI判定ルール",
-        description: "判定基準の登録・編集",
+        label: "判定ルールの登録・編集",
+        description: "チェック用の具体的な見方",
         icon: ClipboardCheck,
+      },
+      {
+        href: "/admin/rules/pending",
+        label: "承認待ち",
+        description: "本番に載せる前の確認",
+        icon: Landmark,
       },
     ],
     matchPaths: [
@@ -76,42 +135,7 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
       "/admin/rules/ai",
       "/admin/rules/pending",
     ],
-  },
-  {
-    id: "regulatory",
-    href: "/admin/rules/regulatory",
-    label: "行政情報",
-    navDescription: "根拠・法改正の更新",
-    icon: Landmark,
-    purpose:
-      "行政マニュアルや参照サイトを整え、法改正時に最新へ更新します。",
-    steps: ["行政資料を確認する", "参照サイトを更新する", "必要なら差分を承認する"],
-    links: [
-      {
-        href: "/admin/rules/documents",
-        label: "行政資料",
-        description: "マニュアルPDFや監視設定",
-        icon: FileText,
-      },
-      {
-        href: "/admin/rules/source-urls",
-        label: "参照サイト",
-        description: "公式URLの一覧",
-        icon: Link2,
-      },
-      {
-        href: "/admin/rules/laws",
-        label: "法令・根拠",
-        description: "法令・通知のメタ情報",
-        icon: Scale,
-      },
-    ],
-    matchPaths: [
-      "/admin/rules/regulatory",
-      "/admin/rules/documents",
-      "/admin/rules/laws",
-      "/admin/rules/source-urls",
-    ],
+    showOnHome: false,
   },
 ]
 
@@ -124,7 +148,6 @@ export function getPurposeSection(
 export function findPurposeSectionByPath(
   pathname: string
 ): PurposeSection | undefined {
-  // より具体的な match を優先
   const scored = PURPOSE_SECTIONS.map((section) => {
     const hit = section.matchPaths.some(
       (p) => pathname === p || pathname.startsWith(`${p}/`)

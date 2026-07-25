@@ -89,8 +89,8 @@ export function RulesJobsAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <AdminBreadcrumb items={[{ label: "ジョブ監視" }]} />
-        <h1 className="mt-2 text-2xl font-bold text-primary-dark">ジョブ監視</h1>
+        <AdminBreadcrumb items={[{ label: "運用監視" }]} />
+        <h1 className="mt-2 text-2xl font-bold text-primary-dark">運用監視</h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
           行政資料の自動同期の結果を確認します。問題があれば行政資料画面で対応してください。
         </p>

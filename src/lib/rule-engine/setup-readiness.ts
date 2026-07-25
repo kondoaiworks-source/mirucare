@@ -67,7 +67,7 @@ export function buildSetupReadiness(
     {
       id: "municipality",
       label: "対応自治体を用意する",
-      description: "チェック対象の市区町村が選べる状態にします。",
+      description: "ルールブック対象の市区町村が選べる状態にします。",
       href: "/admin/rules/municipalities",
       actionLabel: "自治体マスタを開く",
       done: input.supportedMunicipalityCount > 0,
@@ -94,8 +94,8 @@ export function buildSetupReadiness(
     },
     {
       id: "ai",
-      label: "AI判定ルールを承認する",
-      description: "判定基準を登録し、承認済みの版を1件以上用意します。",
+      label: "判定ルールを承認する",
+      description: "ルールブック内の見方を登録し、承認済みの版を1件以上用意します。",
       href:
         input.approvedAiRuleCount > 0
           ? "/admin/rules/ai-rules"
@@ -105,7 +105,7 @@ export function buildSetupReadiness(
       actionLabel:
         input.pendingVersionCount > 0
           ? "承認待ちを確認する"
-          : "AI判定ルールを開く",
+          : "判定ルールを開く（詳細）",
       done: input.approvedAiRuleCount > 0,
       required: true,
       detail:
@@ -113,7 +113,7 @@ export function buildSetupReadiness(
           ? `承認済みルールが ${input.approvedAiRuleCount}件あります`
           : input.pendingVersionCount > 0
             ? `承認待ちが ${input.pendingVersionCount}件あります`
-            : "承認済みのAI判定ルールがありません",
+            : "承認済みの判定ルールがありません",
       icon: Bot,
     },
     {
@@ -125,7 +125,7 @@ export function buildSetupReadiness(
           ? "/admin/rules/pending"
           : input.pendingKnowledgeDraftCount > 0
             ? "/admin/document-changes"
-            : "/admin/rules/more",
+            : "/admin/rules/jobs",
       actionLabel: "要対応を確認する",
       done: queueCount === 0,
       required: true,
@@ -140,7 +140,7 @@ export function buildSetupReadiness(
       label: "加算項目を整える（任意）",
       description: "加算の算定条件・必要書類を登録すると精度が上がります。",
       href: "/admin/rules/additions",
-      actionLabel: "加算設定を開く（その他）",
+      actionLabel: "加算設定を開く（詳細）",
       done: input.additionItemCount > 0,
       required: false,
       detail:
@@ -151,15 +151,16 @@ export function buildSetupReadiness(
     },
     {
       id: "regulatory",
-      label: "行政情報を用意する（任意）",
-      description: "行政資料や参照サイトがあると、根拠確認がしやすくなります。",
+      label: "ルールブックの根拠を用意する（任意）",
+      description:
+        "参照URLや行政資料があると、更新アラートと根拠確認がしやすくなります。",
       href: "/admin/rules/regulatory",
-      actionLabel: "行政情報を開く",
+      actionLabel: "ルールブック設定を開く",
       done: input.knowledgeDocumentCount + input.sourceUrlCount > 0,
       required: false,
       detail:
         input.knowledgeDocumentCount + input.sourceUrlCount > 0
-          ? `行政資料 ${input.knowledgeDocumentCount}件 / 参照サイト ${input.sourceUrlCount}件`
+          ? `行政資料 ${input.knowledgeDocumentCount}件 / 参照URL ${input.sourceUrlCount}件`
           : "未登録でも最低限のチェックは始められます",
       icon: Landmark,
     },
@@ -188,7 +189,7 @@ export function buildSetupReadiness(
   } else {
     statusLabel = "利用可能"
     statusHint =
-      "最低限の設定が整い、致命傷になりやすい矛盾・疑義の洗い出しを始められます（合否・返還は保証しません）。未投入の範囲は未検証です。法改正時は行政情報の更新をご確認ください。"
+      "最低限の設定が整い、致命傷になりやすい矛盾・疑義の洗い出しを始められます（合否・返還は保証しません）。未投入の範囲は未検証です。法改正時はルールブックの更新アラートをご確認ください。"
   }
 
   const nextStep =

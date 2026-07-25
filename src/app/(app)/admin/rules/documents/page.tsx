@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default async function RulesDocumentsPage() {
   const pending = await countPendingChangeDraftsAction()
   const count = pending.ok ? (pending.data?.count ?? 0) : 0
-  const section = getPurposeSection("regulatory")
+  const section = getPurposeSection("rulebook")
 
   return (
     <div className="space-y-6">
@@ -24,7 +24,7 @@ export default async function RulesDocumentsPage() {
           <AdminBreadcrumb
             items={[
               {
-                label: "行政情報",
+                label: "ルールブック設定",
                 href: "/admin/rules/regulatory",
               },
               { label: "行政資料" },
@@ -34,7 +34,7 @@ export default async function RulesDocumentsPage() {
             行政資料
           </h1>
           <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            AIが参照する行政マニュアルを登録・更新します。
+            ルールブック用の行政マニュアルを登録し、更新を自動監視します。
           </p>
         </div>
         <Button asChild variant="outline" className="relative min-h-11">

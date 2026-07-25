@@ -1,11 +1,15 @@
 import {
+  Activity,
+  Bell,
+  BookOpen,
   History,
   Hourglass,
   LayoutDashboard,
+  MapPin,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react"
-import { PURPOSE_SECTIONS } from "@/lib/rule-engine/purpose-sections"
+import { getPurposeSection } from "@/lib/rule-engine/purpose-sections"
 
 export type RulesAdminNavItem = {
   href: string
@@ -23,9 +27,11 @@ export type RulesAdminNavGroup = {
   items: RulesAdminNavItem[]
 }
 
+const rulebook = getPurposeSection("rulebook")
+
 /**
- * シンプル化したサイドナビ（主要6＋その他）。
- * 加算・ジョブ・通知などは /admin/rules/more へ。
+ * ルールブック構想に沿ったサイドナビ。
+ * @see docs/ルールブック構想.md
  */
 export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
   {
@@ -34,24 +40,26 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
       {
         href: "/admin/rules",
         label: "ホーム",
-        description: "準備状況と次にやること",
+        description: "準備状況と更新アラート",
         icon: LayoutDashboard,
       },
     ],
   },
   {
-    id: "main",
-    label: "設定する",
-    items: PURPOSE_SECTIONS.map((section) => ({
-      href: section.href,
-      label: section.label,
-      description: section.navDescription,
-      icon: section.icon,
-      matchPaths: section.matchPaths.filter(
-        // 承認待ちは別メニューなので AI のハイライトから外す
-        (p) => p !== "/admin/rules/pending"
-      ),
-    })),
+    id: "rulebook",
+    label: "ルールブック",
+    items: [
+      {
+        href: rulebook?.href ?? "/admin/rules/regulatory",
+        label: "ルールブック設定",
+        description:
+          rulebook?.navDescription ?? "参照URL・資料を整え確定版を保つ",
+        icon: BookOpen,
+        matchPaths: rulebook?.matchPaths.filter(
+          (p) => p !== "/admin/document-changes"
+        ),
+      },
+    ],
   },
   {
     id: "review",
@@ -60,7 +68,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
       {
         href: "/admin/rules/pending",
         label: "承認待ち",
-        description: "ルール版を本番に載せる前の確認",
+        description: "人がOKするまで本番に載せない",
         icon: Hourglass,
       },
       {
@@ -72,19 +80,43 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
     ],
   },
   {
+    id: "ops",
+    label: "運用",
+    items: [
+      {
+        href: "/admin/rules/municipalities",
+        label: "自治体マスタ",
+        description: "国・県・市の対応設定",
+        icon: MapPin,
+      },
+      {
+        href: "/admin/rules/notifications",
+        label: "通知一覧",
+        description: "更新アラートなどの通知履歴",
+        icon: Bell,
+      },
+      {
+        href: "/admin/rules/jobs",
+        label: "運用監視",
+        description: "同期・監視の実行状況",
+        icon: Activity,
+      },
+    ],
+  },
+  {
     id: "more",
     items: [
       {
         href: "/admin/rules/more",
-        label: "その他の設定",
-        description: "加算・自治体・ジョブなど",
+        label: "詳細設定",
+        description: "監査項目・判定ルール・加算など",
         icon: MoreHorizontal,
         matchPaths: [
           "/admin/rules/more",
           "/admin/rules/additions",
-          "/admin/rules/municipalities",
-          "/admin/rules/jobs",
-          "/admin/rules/notifications",
+          "/admin/rules/audit-items",
+          "/admin/rules/ai-rules",
+          "/admin/rules/ai",
         ],
       },
     ],

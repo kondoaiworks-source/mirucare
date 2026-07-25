@@ -17,15 +17,15 @@ export function RulesAdminShell({ children }: { children: React.ReactNode }) {
       <aside className="lg:w-64 lg:shrink-0">
         <div className="space-y-1">
           <p className="px-2 text-sm font-semibold text-primary-dark">
-            チェック設定
+            ルール設定
           </p>
           <p className="px-2 pb-3 text-sm leading-relaxed text-muted-foreground">
-            監査項目・AIルール・行政情報の3つが中心です
+            この自治体なら、このルールブックに従う
           </p>
         </div>
 
         <nav
-          aria-label="チェック設定メニュー"
+          aria-label="ルール設定メニュー"
           className="-mx-1 flex gap-1 overflow-x-auto pb-2 lg:mx-0 lg:flex-col lg:overflow-visible lg:pb-0"
         >
           {RULES_ADMIN_NAV_GROUPS.map((group) => (

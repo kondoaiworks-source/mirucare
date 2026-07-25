@@ -14,21 +14,21 @@ import {
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 
 export const metadata: Metadata = {
-  title: "その他の設定",
+  title: "詳細設定",
 }
 
-const GROUP_ORDER = ["optional", "master", "ops"] as const
+const GROUP_ORDER = ["core", "optional", "ledger"] as const
 
 export default function RulesMorePage() {
   return (
     <div className="space-y-8">
       <div>
-        <AdminBreadcrumb items={[{ label: "その他の設定" }]} />
+        <AdminBreadcrumb items={[{ label: "詳細設定" }]} />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          その他の設定
+          詳細設定
         </h1>
         <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          普段は使わないマスタや、任意の精度向上・トラブル時の画面です。日常の設定は左メニューの「監査項目」「AI判定ルール」「行政情報」で足ります。
+          ルールブックの中身（監査項目・判定ルール）や台帳の細部です。日常は「ルールブック設定」と「承認待ち」が中心です。
         </p>
       </div>
 

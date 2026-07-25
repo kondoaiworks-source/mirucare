@@ -1,26 +1,38 @@
 import {
-  Activity,
-  Bell,
   Bot,
   ClipboardCheck,
   Coins,
   FileText,
   Link2,
-  MapPin,
   Scale,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react"
 
-/** サイドナビに出さない・「その他」にまとめるリンク */
+/** 「詳細設定」にまとめるリンク（ルールブック構想の裏側部品） */
 export type RulesMoreLink = {
   href: string
   label: string
   description: string
   icon: LucideIcon
-  group: "optional" | "master" | "ops"
+  group: "core" | "optional" | "ledger"
 }
 
 export const RULES_MORE_LINKS: RulesMoreLink[] = [
+  {
+    href: "/admin/rules/audit-items",
+    label: "監査項目",
+    description: "ルールブック内の「何を見るか」（見出し）",
+    icon: ShieldCheck,
+    group: "core",
+  },
+  {
+    href: "/admin/rules/ai-rules",
+    label: "判定ルール",
+    description: "ルールブック内の「どう疑うか」。承認後にチェックへ",
+    icon: Bot,
+    group: "core",
+  },
   {
     href: "/admin/rules/additions",
     label: "加算設定",
@@ -29,65 +41,37 @@ export const RULES_MORE_LINKS: RulesMoreLink[] = [
     group: "optional",
   },
   {
-    href: "/admin/rules/municipalities",
-    label: "自治体マスタ",
-    description: "国・都道府県・市区町村の対応設定",
-    icon: MapPin,
-    group: "master",
+    href: "/admin/rules/source-urls",
+    label: "参照URL（詳細）",
+    description: "通常はルールブック設定から開きます",
+    icon: Link2,
+    group: "ledger",
   },
   {
     href: "/admin/rules/documents",
     label: "行政資料（台帳）",
     description: "マニュアルPDF・監視設定の詳細",
     icon: FileText,
-    group: "master",
+    group: "ledger",
   },
   {
     href: "/admin/rules/laws",
     label: "法令・根拠",
     description: "法令・通知のメタ情報",
     icon: Scale,
-    group: "master",
-  },
-  {
-    href: "/admin/rules/source-urls",
-    label: "参照サイト",
-    description: "厚労省・自治体などの原文URL",
-    icon: Link2,
-    group: "master",
-  },
-  {
-    href: "/admin/rules/ai",
-    label: "AI設定ハブ",
-    description: "AI関連の入口一覧（通常はAI判定ルールへ）",
-    icon: Bot,
-    group: "optional",
+    group: "ledger",
   },
   {
     href: "/admin/document-changes",
     label: "マニュアル変更の承認",
-    description: "監視差分を台帳へ反映する",
+    description: "更新アラートの差分を台帳へ反映",
     icon: ClipboardCheck,
-    group: "ops",
-  },
-  {
-    href: "/admin/rules/notifications",
-    label: "通知一覧",
-    description: "マニュアル変更などの通知履歴",
-    icon: Bell,
-    group: "ops",
-  },
-  {
-    href: "/admin/rules/jobs",
-    label: "ジョブ監視",
-    description: "同期・監視の実行状況（トラブル時）",
-    icon: Activity,
-    group: "ops",
+    group: "ledger",
   },
 ]
 
 export const RULES_MORE_GROUP_LABEL: Record<RulesMoreLink["group"], string> = {
+  core: "ルールブックの中身（詳細）",
   optional: "任意・精度向上",
-  master: "マスタ・詳細",
-  ops: "運用・監視",
+  ledger: "台帳・差分（詳細）",
 }

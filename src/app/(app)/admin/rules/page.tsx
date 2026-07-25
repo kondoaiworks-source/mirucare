@@ -12,11 +12,21 @@ import {
 } from "@/components/ui/card"
 import { PURPOSE_SECTIONS } from "@/lib/rule-engine/purpose-sections"
 import { buildSetupReadiness } from "@/lib/rule-engine/setup-readiness"
-import { AlertCircle, ArrowRight, CheckCircle2 } from "lucide-react"
+import {
+  Activity,
+  AlertCircle,
+  ArrowRight,
+  Bell,
+  BookOpen,
+  CheckCircle2,
+  History,
+  Hourglass,
+  MapPin,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
-  title: "チェック設定",
+  title: "ルール設定",
 }
 
 function StatCard(props: {
@@ -55,29 +65,45 @@ function StatCard(props: {
   return inner
 }
 
-function purposeStatus(
-  sectionId: (typeof PURPOSE_SECTIONS)[number]["id"],
-  readiness: ReturnType<typeof buildSetupReadiness>
-): { label: string; done: boolean } {
-  const byId = Object.fromEntries(readiness.steps.map((s) => [s.id, s]))
-  switch (sectionId) {
-    case "audit":
-      return {
-        label: byId.audit?.done ? "設定あり" : "未設定",
-        done: Boolean(byId.audit?.done),
-      }
-    case "ai":
-      return {
-        label: byId.ai?.done ? "利用可能" : "未完了",
-        done: Boolean(byId.ai?.done),
-      }
-    case "regulatory":
-      return {
-        label: byId.regulatory?.done ? "設定あり" : "任意・未設定",
-        done: Boolean(byId.regulatory?.done),
-      }
-  }
-}
+const HOME_SHORTCUTS = [
+  {
+    href: "/admin/rules/regulatory",
+    label: "ルールブック設定",
+    description:
+      "国・県・市の参照URLと資料を整え、この自治体の確定版を保ちます。",
+    icon: BookOpen,
+  },
+  {
+    href: "/admin/rules/pending",
+    label: "承認待ち",
+    description: "人がOKするまで、チェック基準に載せません。",
+    icon: Hourglass,
+  },
+  {
+    href: "/admin/rules/history",
+    label: "更新履歴",
+    description: "いつの版に変わったかを確認できます。",
+    icon: History,
+  },
+  {
+    href: "/admin/rules/municipalities",
+    label: "自治体マスタ",
+    description: "Phase1市（横浜・川崎・藤沢・鎌倉・茅ヶ崎）などの対応。",
+    icon: MapPin,
+  },
+  {
+    href: "/admin/rules/notifications",
+    label: "通知一覧",
+    description: "更新アラートなどの通知履歴です。",
+    icon: Bell,
+  },
+  {
+    href: "/admin/rules/jobs",
+    label: "運用監視",
+    description: "同期・監視の実行状況（トラブル時）。",
+    icon: Activity,
+  },
+] as const
 
 export default async function RulesDashboardPage() {
   const result = await getRulesDashboardAction()
@@ -97,15 +123,20 @@ export default async function RulesDashboardPage() {
 
   const d = result.data
   const readiness = buildSetupReadiness(d)
+  const homeSections = PURPOSE_SECTIONS.filter((s) => s.showOnHome === true)
+  const rulebookStatus =
+    d.knowledgeDocumentCount + d.sourceUrlCount > 0
+      ? { label: "設定あり", done: true }
+      : { label: "これから", done: false }
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-          チェック設定ホーム
+          ルール設定
         </h1>
         <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          メニューは「監査項目・AI判定ルール・行政情報」の3本が中心です。必須が揃うと「利用可能」になります（合否・返還は保証しません）。
+          この自治体でサービスを運営するなら、このルールブックに従えばよい——が中心です。更新アラートは自動で立ち、人が確認して最新に保ちます（合否・返還は保証しません）。
         </p>
       </div>
 
@@ -116,7 +147,7 @@ export default async function RulesDashboardPage() {
         d.openSyncAlertCount > 0) && (
         <Alert className="rounded-xl border-warning/30 bg-warning/5">
           <AlertCircle className="text-warning" />
-          <AlertTitle>確認が必要なことがあります</AlertTitle>
+          <AlertTitle>更新アラート・確認待ちがあります</AlertTitle>
           <AlertDescription className="flex flex-wrap gap-2 pt-2">
             {d.pendingVersionCount > 0 ? (
               <Link href="/admin/rules/pending">
@@ -143,17 +174,16 @@ export default async function RulesDashboardPage() {
         </Alert>
       )}
 
-      <section className="space-y-4" aria-labelledby="purpose-entry-heading">
+      <section className="space-y-4" aria-labelledby="rulebook-entry-heading">
         <h2
-          id="purpose-entry-heading"
+          id="rulebook-entry-heading"
           className="text-xl font-bold text-primary-dark"
         >
-          よく使う設定
+          ルールブックから始める
         </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {PURPOSE_SECTIONS.map((section) => {
+        <div className="grid gap-4 sm:grid-cols-1">
+          {homeSections.map((section) => {
             const Icon = section.icon
-            const status = purposeStatus(section.id, readiness)
             return (
               <Link
                 key={section.id}
@@ -171,18 +201,18 @@ export default async function RulesDashboardPage() {
                           variant="outline"
                           className={cn(
                             "rounded-md text-xs",
-                            status.done
+                            rulebookStatus.done
                               ? "border-primary/30 bg-primary/10 text-primary-dark"
                               : "border-warning/40 bg-warning/10 text-warning"
                           )}
                         >
-                          {status.done ? (
+                          {rulebookStatus.done ? (
                             <span className="inline-flex items-center gap-1">
                               <CheckCircle2 className="size-3" aria-hidden />
-                              {status.label}
+                              {rulebookStatus.label}
                             </span>
                           ) : (
-                            status.label
+                            rulebookStatus.label
                           )}
                         </Badge>
                         <ArrowRight
@@ -203,15 +233,47 @@ export default async function RulesDashboardPage() {
             )
           })}
         </div>
+      </section>
+
+      <section className="space-y-4" aria-labelledby="menu-heading">
+        <h2 id="menu-heading" className="text-xl font-bold text-primary-dark">
+          メニュー
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {HOME_SHORTCUTS.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Card className="h-full rounded-xl shadow-subtle transition-colors group-hover:border-primary/30">
+                  <CardHeader className="space-y-2">
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Icon className="size-5" aria-hidden />
+                    </span>
+                    <CardTitle className="text-base text-primary-dark">
+                      {item.label}
+                    </CardTitle>
+                    <CardDescription className="text-base leading-relaxed">
+                      {item.description}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+            )
+          })}
+        </div>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          加算・自治体マスタ・ジョブ監視などは{" "}
+          監査項目・判定ルール・加算など細かい編集は{" "}
           <Link
             href="/admin/rules/more"
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
-            その他の設定
+            詳細設定
           </Link>
-          にまとめています。
+          にあります。構想の正は docs/ルールブック構想.md です。
         </p>
       </section>
 
@@ -221,14 +283,15 @@ export default async function RulesDashboardPage() {
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <StatCard
-            label="監査項目"
-            value={d.auditItemCount}
-            href="/admin/rules/audit-items"
+            label="参照URL / 行政資料"
+            value={d.knowledgeDocumentCount + d.sourceUrlCount}
+            hint={`資料 ${d.knowledgeDocumentCount} / URL ${d.sourceUrlCount}`}
+            href="/admin/rules/regulatory"
           />
           <StatCard
-            label="承認済みAIルール"
+            label="承認済み判定ルール"
             value={d.approvedAiRuleCount}
-            hint={`ルール総数 ${d.aiRuleCount} 件`}
+            hint={`ルール総数 ${d.aiRuleCount} 件（詳細設定）`}
             href="/admin/rules/ai-rules"
           />
           <StatCard
@@ -238,13 +301,7 @@ export default async function RulesDashboardPage() {
             warn={d.pendingVersionCount > 0}
           />
           <StatCard
-            label="行政資料 / 参照サイト"
-            value={d.knowledgeDocumentCount + d.sourceUrlCount}
-            hint={`資料 ${d.knowledgeDocumentCount} / URL ${d.sourceUrlCount}`}
-            href="/admin/rules/regulatory"
-          />
-          <StatCard
-            label="マニュアル差分（未承認）"
+            label="更新アラート（未承認差分）"
             value={d.pendingKnowledgeDraftCount}
             href="/admin/document-changes"
             warn={d.pendingKnowledgeDraftCount > 0}
@@ -252,8 +309,13 @@ export default async function RulesDashboardPage() {
           <StatCard
             label="対応自治体"
             value={d.supportedMunicipalityCount}
-            hint="詳細は「その他の設定」"
             href="/admin/rules/municipalities"
+          />
+          <StatCard
+            label="監査項目"
+            value={d.auditItemCount}
+            hint="詳細設定"
+            href="/admin/rules/audit-items"
           />
         </div>
       </section>

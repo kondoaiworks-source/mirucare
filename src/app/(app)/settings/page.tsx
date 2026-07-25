@@ -292,7 +292,7 @@ async function SettingsContent({ searchParams }: PageProps) {
                   <Link href="/admin">レビューコンソールを開く</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                  <Link href="/admin/rules">チェック設定を開く</Link>
+                  <Link href="/admin/rules">ルール設定を開く</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
                   <Link href="/admin/rules/documents">行政資料を開く</Link>
