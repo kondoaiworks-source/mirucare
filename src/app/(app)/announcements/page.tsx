@@ -1,86 +1,101 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/server"
+import { Megaphone, PenLine } from "lucide-react"
+import { getCurrentProfile } from "@/app/actions/auth"
+import { listAnnouncementsAction } from "@/app/actions/announcements"
+import { SectionCard } from "@/components/features/layout/section-card"
+import { FacilityAnnouncementForm } from "@/components/features/announcements/facility-announcement-form"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { OPS_HOME_UI } from "@/lib/copy/home-ui"
 import type { AppAnnouncement } from "@/types/database"
 
 export const metadata: Metadata = {
-  title: "ルールブック更新お知らせ",
+  title: "お知らせ",
+}
+
+function KindLabel({ row }: { row: AppAnnouncement }) {
+  const isFacility = Boolean(row.organization_id)
+  return (
+    <span className="rounded-lg border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+      {isFacility ? OPS_HOME_UI.kindFacility : OPS_HOME_UI.kindRuleUpdate}
+    </span>
+  )
 }
 
 export default async function AnnouncementsPage() {
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from("app_announcements")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(50)
-
-  const rows = (data ?? []) as AppAnnouncement[]
+  const [profile, listed] = await Promise.all([
+    getCurrentProfile(),
+    listAnnouncementsAction(50),
+  ])
+  const isAdmin = profile?.role === "admin"
+  const announcements = listed.data?.announcements ?? []
+  const canPost = Boolean(listed.data?.canPost && isAdmin)
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-          自治体ルールブック更新お知らせ
-        </h1>
-        <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          国・自治体の公開情報の更新を、運営が確認したうえでお知らせします。個人情報は含まれません。
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
+            お知らせ
+          </h1>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            ルール更新と、事業所からの連絡です。
+          </p>
+        </div>
+        <Button asChild variant="outline" size="lg">
+          <Link href="/">運用AI監査に戻る</Link>
+        </Button>
       </div>
 
-      {error ? (
-        <p className="text-base text-danger">
-          お知らせを取得できませんでした。しばらくしてから再度お試しください。
-        </p>
+      {canPost ? (
+        <SectionCard
+          icon={PenLine}
+          title="お知らせを投稿する"
+          description="自分と招待したメンバーに届きます（個人情報は書かないでください）。"
+        >
+          <FacilityAnnouncementForm />
+        </SectionCard>
       ) : null}
 
-      {rows.length === 0 && !error ? (
-        <Card className="rounded-lg shadow-subtle">
-          <CardHeader>
-            <CardTitle className="text-lg">お知らせはまだありません</CardTitle>
-            <CardDescription className="text-base leading-relaxed">
-              ルールブックに反映された更新があると、ここに表示されます。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/">ホームに戻る</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <ul className="space-y-4">
-          {rows.map((row) => (
-            <li key={row.id}>
-              <Card className="rounded-lg shadow-subtle">
-                <CardHeader>
-                  <CardTitle className="text-lg leading-snug">
-                    {row.title}
-                  </CardTitle>
-                  <CardDescription className="text-sm tabular-nums">
+      <SectionCard
+        icon={Megaphone}
+        title="一覧"
+        description="新しい順に表示します。"
+      >
+        {!listed.ok ? (
+          <p className="text-base text-danger">
+            {listed.error ?? "お知らせを取得できませんでした。"}
+          </p>
+        ) : announcements.length === 0 ? (
+          <p className="text-base text-muted-foreground">
+            {OPS_HOME_UI.announcementsEmpty}
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {announcements.map((row) => (
+              <li
+                key={row.id}
+                className="rounded-lg border border-border bg-surface px-4 py-4"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <KindLabel row={row} />
+                  <span className="text-sm tabular-nums text-muted-foreground">
                     {new Date(row.created_at).toLocaleString("ja-JP")}
-                  </CardDescription>
-                </CardHeader>
+                  </span>
+                </div>
+                <p className="mt-2 text-lg font-bold leading-snug text-primary-dark">
+                  {row.title}
+                </p>
                 {row.body ? (
-                  <CardContent>
-                    <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
-                      {row.body}
-                    </p>
-                  </CardContent>
+                  <p className="mt-2 whitespace-pre-wrap text-base leading-relaxed text-foreground">
+                    {row.body}
+                  </p>
                 ) : null}
-              </Card>
-            </li>
-          ))}
-        </ul>
-      )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
     </div>
   )
 }

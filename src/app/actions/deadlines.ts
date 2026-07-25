@@ -64,6 +64,7 @@ async function requireOrgContext() {
     user,
     organizationId: profile.organization_id as string,
     plan: (org?.plan ?? "none") as PlanType,
+    role: profile.role as string,
   } as const
 }
 
@@ -241,6 +242,8 @@ export type DashboardData = {
   announcements: AppAnnouncement[]
   /** お知らせ総数（バッジ用。未読管理はしない） */
   announcementCount: number
+  /** 事業所お知らせを投稿できるか（admin） */
+  canPostAnnouncement: boolean
 }
 
 export async function getDashboardDataAction(): Promise<
@@ -288,9 +291,10 @@ export async function getDashboardDataAction(): Promise<
       )
       .eq("organization_id", ctx.organizationId)
       .eq("review_status", "approved")
+      .in("severity", ["high", "mid"])
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
-      .limit(20),
+      .limit(5),
     ctx.supabase
       .from("app_announcements")
       .select("*")
@@ -338,6 +342,7 @@ export async function getDashboardDataAction(): Promise<
       announcementCount: announcementCountRes.error
         ? 0
         : (announcementCountRes.count ?? 0),
+      canPostAnnouncement: ctx.role === "admin",
     },
   }
 }

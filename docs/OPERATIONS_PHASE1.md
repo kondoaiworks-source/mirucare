@@ -30,7 +30,11 @@
 
 ## 1. マイグレーション（必須）
 
-Supabase **本番** → SQL Editor で、**この順**に実行する。
+Supabase **本番** → SQL Editor で、**この順**に実行する（未適用分）。
+
+- `supabase/migrations/20260725060000_document_original_retention.sql`
+- `supabase/migrations/20260725070000_phase1_kawasaki_jurisdiction.sql`
+- `supabase/migrations/20260726050000_facility_announcements.sql`（事業所お知らせ投稿）
 
 ### 1-A. 原本リテンション列
 
@@ -81,6 +85,24 @@ WHERE code = 'JP-14-14130';
 - [x] 逗子: `is_supported = false`
 - [x] 川崎: `is_supported = true`
 
+### 1-C. 施設お知らせ投稿列
+
+ファイル: `supabase/migrations/20260726050000_facility_announcements.sql`
+
+- [ ] SQL を実行し、エラーなし
+
+確認:
+
+```sql
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'app_announcements'
+  AND column_name IN ('organization_id', 'created_by');
+```
+
+- [ ] `organization_id` / `created_by` が存在する
+
 ---
 
 ## 2. シード（推奨）
@@ -123,12 +145,13 @@ SEED_OPERATOR_PROFILE_ID=<あなたのprofiles.id> npm run seed:phase1-ai-rules
 
 ### 3-A. ナビ・IA
 
-- [ ] ホーム / あとで確認 / 監査結果の履歴 / 運用AI監査（お知らせはホーム内。メニューには出ない）
-- [ ] お知らせがあるとき、ナビ「ホーム」に件数バッジが出ること
-- [ ] ホームに説明3行・お知らせ最大3件・今日やること最大3件・最近の指摘最大20件
+- [ ] 運用AI監査 / あとで確認 / 監査結果の履歴（お知らせは運用AI監査内）
+- [ ] お知らせがあるとき、ナビ「運用AI監査」に件数バッジが出ること
+- [ ] 運用AI監査に白枠でお知らせ／今日やること／最近の指摘（要改善以上・最大5件）
 - [ ] 法令AI・運営AI は「準備中」
 - [ ] 月末の確認・月次レポートが主导線に出ない
-- [ ] ハンバーガーに「初期設定」「監査書類アップロード」
+- [ ] ハンバーガーに「初期設定」「使い方」（設定・アップロードは無し）
+- [ ] `/guide` に使い方要約と注意事項があること
 
 ### 3-B. 初期設定
 
@@ -137,21 +160,24 @@ SEED_OPERATOR_PROFILE_ID=<あなたのprofiles.id> npm run seed:phase1-ai-rules
 
 ### 3-C. 運用AI・同意・結果
 
-- [ ] `/audit/operations` →「監査書類をアップロードする」
-- [ ] 同意チェックなしでは開始できない
+- [ ] 「書類をアップロードする」→ 同意チェックなしでは開始できない
 - [ ] 「原本を最大7日間残す」はデフォルト OFF
 - [ ] 同意して開始 → 結果の優先度が「緊急／要改善／推奨」
 - [ ] 結果に匿名化の注意がある（可能なら氏名が「利用者A」等）
 
-### 3-D. 項目8
+### 3-D. お知らせ・項目8
 
-- [ ] `/audit/operations` から「請求CSVの突合を開く」→ `/billing-reconcile`
-- [ ] 請求 CSV がサーバに上がらないこと（Network で確認）
+- [ ] 管理者は `/announcements` から事業所お知らせを投稿できる
+- [ ] ルール更新お知らせも同じ一覧に出る
+- [ ] `/billing-reconcile` で請求CSV突合（サーバに上がらない）
 
 ### 3-E. ルール絞り込み（任意・深い確認）
 
 - [ ] 結果画面の適用ルール版が Phase1 寄り（`CHECK_RULES_SCOPE=all` でないこと）
 
+### 3-F. DB
+
+- [ ] `supabase/migrations/20260726050000_facility_announcements.sql` を本番に適用済み
 ---
 
 ## 4. Cron（任意だが本番では推奨）

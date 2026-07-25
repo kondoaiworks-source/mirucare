@@ -361,6 +361,8 @@ export type AppAnnouncement = {
   body: string
   kind: AppAnnouncementKind
   knowledge_document_id: string | null
+  organization_id: string | null
+  created_by: string | null
   created_at: string
 }
 

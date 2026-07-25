@@ -452,16 +452,17 @@ npm install -D @types/papaparse
 1. Supabase SQL Editor で次を実行する
    - `supabase/migrations/20260725060000_document_original_retention.sql`
    - `supabase/migrations/20260725070000_phase1_kawasaki_jurisdiction.sql`
+   - `supabase/migrations/20260726050000_facility_announcements.sql`（事業所お知らせ投稿）
 2. （任意）川崎の参照URL seed: `npm run seed:rule-sources`
 3. ログイン後、サイドバーに次があること
-   - ホーム / あとで確認 / 監査結果の履歴 / 運用AI監査
-   - お知らせはホーム内（直近3件）。件数があるとき「ホーム」にバッジ
+   - 運用AI監査 / あとで確認 / 監査結果の履歴
+   - お知らせは運用AI監査内（直近3件）。件数があるとき「運用AI監査」にバッジ
    - 法令AI監査・運営AI監査は「準備中」
    - 初期設定・設定
    - **月末の確認・月次レポートが主导線に出ない**こと
-   - **ルールブック更新お知らせが独立メニューに出ない**こと（ホーム内）
-4. モバイルのハンバーガーに「初期設定」「監査書類アップロード」があること
-5. `/audit/operations` → アップロードへ進み、同意チェックなしでは開始できないこと
+   - **お知らせが独立メニューに出ない**こと
+4. モバイルのハンバーガーに「初期設定」「使い方」があること（設定・アップロードは無し）
+5. 「書類をアップロードする」→ 同意チェックなしでは開始できないこと
 6. 「再確認のため原本を最大7日間残す」はデフォルトOFFであること
 7. 同意して監査開始 → 結果画面の優先度が「緊急／要改善／推奨」であること
 8. 結果画面に匿名化の注意文があること
@@ -473,8 +474,10 @@ npm install -D @types/papaparse
     - または `SEED_OPERATOR_PROFILE_ID=<profiles.id> npm run seed:phase1-ai-rules`
     - 先に監査項目の訪問介護テンプレート登録が必要
 13. `/setup` で Phase1 5市を保存できること（管理者）
-14. `/audit/operations` から請求CSV突合（項目8）へ進めること
-15. 原本削除 Cron（任意）:
+14. 管理者は `/announcements` から事業所お知らせを投稿できること
+15. `/billing-reconcile` で請求CSV突合できること
+16. `/guide` に使い方要約と注意事項があること
+17. 原本削除 Cron（任意）:
     ```bash
     curl -X POST "http://localhost:3000/api/cron/purge-document-originals" \
       -H "Authorization: Bearer $CRON_SECRET"
@@ -519,10 +522,11 @@ npm install -D @types/papaparse
 | `/signup` | アカウント作成 |
 | `/onboarding` | 初回オンボーディング |
 | `/invite/[token]` | 招待受諾 |
-| `/` | ホーム（お知らせ・直近の指摘） |
-| `/announcements` | ルールブック更新お知らせ一覧（ホームから「すべて見る」） |
+| `/` | 運用AI監査（お知らせ・今日やること・最近の指摘） |
+| `/announcements` | お知らせ一覧・事業所投稿（管理者） |
+| `/guide` | 使い方・注意事項 |
 | `/audit-history` | 監査結果の履歴と対応状況 |
-| `/audit/operations` | 運用AI監査（Phase1） |
+| `/audit/operations` | `/` へリダイレクト |
 | `/audit/legal` | 法令AI監査（準備中） |
 | `/audit/management` | 運営AI監査（準備中） |
 | `/setup` | 初期設定 |

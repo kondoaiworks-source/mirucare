@@ -1,13 +1,12 @@
 import {
-  LayoutDashboard,
+  ClipboardCheck,
   Clock,
   History,
   Settings,
-  ClipboardCheck,
   Scale,
   Building2,
   SlidersHorizontal,
-  Upload,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react"
 
@@ -20,13 +19,13 @@ export type NavItem = {
   comingSoon?: boolean
 }
 
-/** PCサイドバー用（施設向け Phase1 IA）— お知らせはホーム内 */
+/** PCサイドバー（お知らせは運用AI監査内。運用AIは `/` に集約） */
 export const NAV_ITEMS: NavItem[] = [
   {
     href: "/",
-    label: "ホーム",
-    shortLabel: "ホーム",
-    icon: LayoutDashboard,
+    label: "運用AI監査",
+    shortLabel: "運用",
+    icon: ClipboardCheck,
   },
   {
     href: "/later",
@@ -39,12 +38,6 @@ export const NAV_ITEMS: NavItem[] = [
     label: "監査結果の履歴",
     shortLabel: "履歴",
     icon: History,
-  },
-  {
-    href: "/audit/operations",
-    label: "運用AI監査",
-    shortLabel: "運用",
-    icon: ClipboardCheck,
   },
   {
     href: "/audit/legal",
@@ -74,16 +67,15 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ]
 
-/** モバイル下部タブ：ホーム・あとで・運用AI・履歴・設定 */
+/** モバイル下部タブ：運用AI・あとで・履歴・設定 */
 export const MOBILE_TAB_ITEMS: NavItem[] = [
-  NAV_ITEMS[0], // ホーム
-  NAV_ITEMS[1], // あとで
-  NAV_ITEMS[3], // 運用AI
-  NAV_ITEMS[2], // 履歴
-  NAV_ITEMS[7], // 設定
+  NAV_ITEMS[0],
+  NAV_ITEMS[1],
+  NAV_ITEMS[2],
+  NAV_ITEMS[6],
 ]
 
-/** ヘッダーハンバーガー（初期設定・アップロード・設定） */
+/** ヘッダーハンバーガー：初期設定・使い方 */
 export const HEADER_MENU_ITEMS: NavItem[] = [
   {
     href: "/setup",
@@ -92,16 +84,10 @@ export const HEADER_MENU_ITEMS: NavItem[] = [
     icon: SlidersHorizontal,
   },
   {
-    href: "/check/upload",
-    label: "監査書類アップロード",
-    shortLabel: "アップロード",
-    icon: Upload,
-  },
-  {
-    href: "/settings",
-    label: "設定",
-    shortLabel: "設定",
-    icon: Settings,
+    href: "/guide",
+    label: "使い方",
+    shortLabel: "使い方",
+    icon: BookOpen,
   },
 ]
 
@@ -110,22 +96,19 @@ export const DEMO_FACILITY_NAME = "みらい訪問介護ステーション"
 
 /** サイドバー／タブのアクティブ判定 */
 export function isNavItemActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/"
+  if (href === "/") {
+    return (
+      pathname === "/" ||
+      pathname.startsWith("/audit/operations") ||
+      pathname.startsWith("/check/upload")
+    )
+  }
   if (href === "/audit-history") {
     return (
       pathname.startsWith("/audit-history") ||
       pathname.startsWith("/documents") ||
       pathname.startsWith("/check/")
     )
-  }
-  if (href === "/audit/operations") {
-    return (
-      pathname.startsWith("/audit/operations") ||
-      pathname.startsWith("/check/upload")
-    )
-  }
-  if (href === "/check/upload") {
-    return pathname.startsWith("/check/upload")
   }
   return pathname.startsWith(href)
 }
