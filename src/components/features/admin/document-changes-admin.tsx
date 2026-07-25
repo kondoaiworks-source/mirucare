@@ -30,6 +30,7 @@ import {
   rejectChangeDraftAction,
   type PendingChangeDraftRow,
 } from "@/app/actions/knowledge-change-drafts"
+import { proposeAiCheckRulesFromDraftAction } from "@/app/actions/propose-check-rules"
 import type { KnowledgeChangeItem } from "@/lib/knowledge/diff-draft"
 import { getPhase1CityBySlug } from "@/lib/rule-engine/phase1-cities"
 
@@ -145,13 +146,7 @@ export function DocumentChangesAdmin() {
       }
       toast.success("台帳に反映しました", {
         description:
-          "AI判定ルールへの自動反映はありません。必要なら次にルール改訂案を作成してください。",
-        action: {
-          label: "AI判定ルールへ",
-          onClick: () => {
-            window.location.href = `/admin/rules/ai-rules?fromDraft=${draft.id}`
-          },
-        },
+          "続けて「判定ルール案を生成する」と、差分からチェック用ルール案が承認待ちに載ります。",
         duration: 10000,
       })
       setReasons((prev) => {
@@ -160,6 +155,35 @@ export function DocumentChangesAdmin() {
         return next
       })
       await refresh()
+    })
+  }
+
+  function onProposeRules(draft: PendingChangeDraftRow) {
+    startTransition(async () => {
+      const result = await proposeAiCheckRulesFromDraftAction({
+        draftId: draft.id,
+      })
+      if (!result.ok) {
+        toast.error(result.error ?? "判定ルール案の生成に失敗しました。")
+        return
+      }
+      if (result.data?.empty) {
+        toast.message("AIは判定ルール案を出しませんでした。原文をご確認ください。")
+        return
+      }
+      toast.success(
+        `判定ルール案を ${result.data?.createdCount ?? 0}件、承認待ちに載せました。`,
+        {
+          description: "了承するまで書類チェックには使われません。",
+          action: {
+            label: "承認待ちを開く",
+            onClick: () => {
+              window.location.href = "/admin/rules/pending"
+            },
+          },
+          duration: 12000,
+        }
+      )
     })
   }
 
@@ -193,7 +217,9 @@ export function DocumentChangesAdmin() {
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
             監視で検知した変更を確認し、問題なければ<strong>行政資料の台帳</strong>
-            へ反映します。チェック用のAI判定ルールへは自動では載りません（次のステップで人が作ります）。
+            へ反映します。チェック用の判定ルールは、差分から
+            <strong>判定ルール案を生成</strong>
+            し、承認待ちで了承してから使います。
           </p>
           {cityFromQuery ? (
             <p className="text-base font-medium text-primary">
@@ -250,10 +276,12 @@ export function DocumentChangesAdmin() {
         <AlertDescription className="space-y-2 text-base leading-relaxed">
           <p>
             ①この画面の承認＝行政資料の<strong>台帳・版履歴</strong>への反映。
-            ②チェックで使うAI判定ルールは、別途「AI判定ルール」で改訂案を作り、承認して初めて参照されます。
+            ②チェック用の判定ルールは「判定ルール案を生成する」→
+            <strong>承認待ち</strong>
+            で了承して初めて使われます（自動では載りません）。
           </p>
           <Button asChild variant="outline" className="min-h-11">
-            <Link href="/admin/rules/ai-rules">AI判定ルールを開く</Link>
+            <Link href="/admin/rules/pending">承認待ちを開く</Link>
           </Button>
         </AlertDescription>
       </Alert>
@@ -485,11 +513,24 @@ export function DocumentChangesAdmin() {
                       <XCircle className="size-4" aria-hidden />
                       差し戻す
                     </Button>
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant="secondary"
+                      className="min-h-11"
+                      disabled={pending}
+                      onClick={() => onProposeRules(draft)}
+                    >
+                      判定ルール案を生成する
+                    </Button>
+                    <Button asChild size="lg" variant="ghost" className="min-h-11">
+                      <Link href="/admin/rules/pending">承認待ちを開く</Link>
+                    </Button>
                     <Button asChild size="lg" variant="ghost" className="min-h-11">
                       <Link
                         href={`/admin/rules/ai-rules?fromDraft=${draft.id}`}
                       >
-                        AI判定ルールの改訂案を作る
+                        手入力で改訂案を作る
                       </Link>
                     </Button>
                   </div>

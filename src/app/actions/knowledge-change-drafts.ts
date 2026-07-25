@@ -224,7 +224,7 @@ export async function approveChangeDraftAction(input: {
       : ""
   await op.service.from("app_announcements").insert({
     title: `${regionLabel}行政マニュアルの更新を反映しました`,
-    body: `「${document.title}」（${document.applicable_year}年度）の内容更新が運営確認のうえ台帳へ反映されました。チェック用のAI判定ルールへの自動反映はありません。必要に応じてルール改訂案を作成・承認してください。`,
+    body: `「${document.title}」（${document.applicable_year}年度）の内容更新が運営確認のうえ台帳へ反映されました。チェック基準を変える場合は、差分から「判定ルール案を生成」し、承認待ちで了承してください。`,
     kind: "knowledge_update",
     knowledge_document_id: document.id,
   })

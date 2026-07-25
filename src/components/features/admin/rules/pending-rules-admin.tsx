@@ -8,6 +8,7 @@ import {
 } from "@/app/actions/rule-engine"
 import type { AiCheckRule, AiCheckRuleVersion } from "@/types/database"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -75,7 +76,7 @@ export function PendingRulesAdmin() {
         <AdminBreadcrumb items={[{ label: "承認待ち" }]} />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark">承認待ち</h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          AI判定ルールの変更を確認し、問題なければ承認します。
+          AIが行政資料から作った判定ルール案（と根拠）を確認し、問題なければ承認します。了承したものだけがチェックに使われ、ルールブックの中身になります。
         </p>
         <p className="mt-2 text-base tabular-nums text-muted-foreground">
           件数{" "}
@@ -98,7 +99,7 @@ export function PendingRulesAdmin() {
           <CardHeader>
             <CardTitle className="text-lg">承認待ちはありません</CardTitle>
             <CardDescription className="text-base">
-              新しいルール版が承認待ちになると、ここに表示されます。
+              差分や行政資料から判定ルール案を生成すると、ここに表示されます。
             </CardDescription>
           </CardHeader>
         </Card>
@@ -108,7 +109,26 @@ export function PendingRulesAdmin() {
         {rows.map((row) => (
           <li key={row.id}>
             <Card className="rounded-xl shadow-subtle">
-              <CardHeader>
+              <CardHeader className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {row.knowledge_change_draft_id ||
+                  row.change_summary?.includes("根拠") ? (
+                    <Badge variant="secondary" className="rounded-md">
+                      AI提案・根拠付き
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="rounded-md">
+                      判定ルール案
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="rounded-md">
+                    {row.severity === "high"
+                      ? "緊急寄り"
+                      : row.severity === "mid"
+                        ? "要改善寄り"
+                        : "推奨寄り"}
+                  </Badge>
+                </div>
                 <CardTitle className="text-lg text-primary-dark">
                   {row.ai_check_rules?.title ?? "（ルール名不明）"}
                 </CardTitle>
@@ -118,13 +138,23 @@ export function PendingRulesAdmin() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-base leading-relaxed whitespace-pre-wrap">
-                  {row.guidance_text || "（案内文なし）"}
-                </p>
-                {row.change_summary ? (
-                  <p className="text-sm text-muted-foreground">
-                    変更概要: {row.change_summary}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    判定の見方（案内文）
                   </p>
+                  <p className="mt-1 text-base leading-relaxed whitespace-pre-wrap">
+                    {row.guidance_text || "（案内文なし）"}
+                  </p>
+                </div>
+                {row.change_summary ? (
+                  <div className="rounded-xl border border-border bg-muted/30 px-4 py-3">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      根拠・変更理由（了承前にご確認ください）
+                    </p>
+                    <p className="mt-1 text-base leading-relaxed whitespace-pre-wrap text-primary-dark">
+                      {row.change_summary}
+                    </p>
+                  </div>
                 ) : null}
                 <div className="space-y-2">
                   <Label htmlFor={`reason-${row.id}`}>確認記録（必須）</Label>

@@ -6,6 +6,7 @@ import { PurposeGuide } from "@/components/features/admin/purpose-guide"
 import { CityRulebookAlertsPanel } from "@/components/features/admin/rules/city-rulebook-alerts-panel"
 import { CityRulebookBookToc } from "@/components/features/admin/rules/city-rulebook-book-toc"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
+import { ProposeRulesFromDocumentButton } from "@/components/features/admin/rules/propose-rules-from-document-button"
 import { RulebookServiceSelect } from "@/components/features/admin/rules/rulebook-service-select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -84,7 +85,7 @@ export function CityRulebookView({ data }: Props) {
         purpose={`${city.name}で選んだサービス（いまは訪問介護）を運営するときのルールブックです。目次で全体を確認し、更新アラートと参照URLはこの画面で扱えます。`}
         steps={[
           "確定版の目次で国→県→市の全体を見る",
-          "更新アラートを確認して反映／差し戻す",
+          "更新アラートを確認し、判定ルール案を生成→承認待ちで了承する",
           "足りない参照URLはこの画面で追加・修正する",
         ]}
       />
@@ -299,6 +300,10 @@ function DocumentRow({
               </a>
             </Button>
           ) : null}
+          <ProposeRulesFromDocumentButton
+            knowledgeDocumentId={doc.id}
+            documentTitle={doc.title}
+          />
         </CardContent>
       </Card>
     </li>

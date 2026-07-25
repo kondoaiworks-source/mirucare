@@ -8,6 +8,7 @@ import {
   approveChangeDraftAction,
   rejectChangeDraftAction,
 } from "@/app/actions/knowledge-change-drafts"
+import { proposeAiCheckRulesFromDraftAction } from "@/app/actions/propose-check-rules"
 import { resolveKnowledgeSyncAlertAction } from "@/app/actions/knowledge-documents"
 import type {
   CityRulebookAlert,
@@ -64,12 +65,42 @@ export function CityRulebookAlertsPanel({
         toast.error(result.error ?? "承認に失敗しました。")
         return
       }
-      toast.success("台帳に反映しました。判定ルールへは自動では載りません。")
+      toast.success("台帳に反映しました。続けて判定ルール案を生成できます。")
       setReasons((prev) => {
         const next = { ...prev }
         delete next[draft.id]
         return next
       })
+      refresh()
+    })
+  }
+
+  function onProposeRules(draft: CityRulebookDraft) {
+    startTransition(async () => {
+      const result = await proposeAiCheckRulesFromDraftAction({
+        draftId: draft.id,
+      })
+      if (!result.ok) {
+        toast.error(result.error ?? "判定ルール案の生成に失敗しました。")
+        return
+      }
+      if (result.data?.empty) {
+        toast.message("AIは判定ルール案を出しませんでした。原文をご確認ください。")
+        return
+      }
+      toast.success(
+        `判定ルール案を ${result.data?.createdCount ?? 0}件、承認待ちに載せました。`,
+        {
+          description: "了承するまで書類チェックには使われません。",
+          action: {
+            label: "承認待ちを開く",
+            onClick: () => {
+              window.location.href = "/admin/rules/pending"
+            },
+          },
+          duration: 12000,
+        }
+      )
       refresh()
     })
   }
@@ -187,6 +218,15 @@ export function CityRulebookAlertsPanel({
                   <Button
                     type="button"
                     size="lg"
+                    variant="secondary"
+                    disabled={pending}
+                    onClick={() => onProposeRules(d)}
+                  >
+                    判定ルール案を生成する
+                  </Button>
+                  <Button
+                    type="button"
+                    size="lg"
                     variant="outline"
                     disabled={pending}
                     onClick={() => onReject(d)}
@@ -200,7 +240,7 @@ export function CityRulebookAlertsPanel({
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  台帳反映後も、チェック用の判定ルールは自動では変わりません。必要なら詳細設定で改訂案を作り、承認待ちへ進めてください。
+                  「判定ルール案を生成する」と、差分からAIが判定ルールと根拠を作り承認待ちへ載せます。了承するまでチェックには使われません。
                 </p>
               </CardContent>
             </Card>
