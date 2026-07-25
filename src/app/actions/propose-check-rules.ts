@@ -71,6 +71,8 @@ async function insertPendingProposals(
     proposals: ProposedCheckRule[]
     sourceTitle: string
     knowledgeChangeDraftId?: string | null
+    regionName?: string | null
+    jurisdictionLevel?: string | null
   }
 ): Promise<ActionResult<{ createdCount: number; codes: string[] }>> {
   const createdCodes: string[] = []
@@ -122,6 +124,8 @@ async function insertPendingProposals(
             evidenceSummary: proposal.evidenceSummary,
             evidenceQuotes: proposal.evidenceQuotes,
             proposedBy: "gemini",
+            regionName: opts.regionName ?? null,
+            jurisdictionLevel: opts.jurisdictionLevel ?? null,
           },
         },
         guidance_text: proposal.guidanceText,
@@ -245,6 +249,8 @@ export async function proposeAiCheckRulesFromDraftAction(input: {
     proposals: proposed.proposals,
     sourceTitle,
     knowledgeChangeDraftId: draftId,
+    regionName: doc?.region_name ?? null,
+    jurisdictionLevel: doc?.jurisdiction_level ?? null,
   })
 
   if (!inserted.ok || !inserted.data) {
@@ -358,6 +364,8 @@ export async function proposeAiCheckRulesFromDocumentAction(input: {
     proposals: proposed.proposals,
     sourceTitle,
     knowledgeChangeDraftId: null,
+    regionName: (doc.region_name as string | null) ?? null,
+    jurisdictionLevel: (doc.jurisdiction_level as string | null) ?? null,
   })
 
   if (!inserted.ok || !inserted.data) {

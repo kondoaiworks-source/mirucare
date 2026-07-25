@@ -112,7 +112,17 @@ export function CityRulebookSourcesPanel({
         toast.error(result.error ?? "登録に失敗しました。")
         return
       }
-      toast.success("参照URLを追加しました。確認済みにするまでは「未確認」です。")
+      toast.success("参照URLを追加しました。", {
+        description:
+          "次に行政資料を登録（または同期）し、「判定ルール案を生成する」とルールブックの中身を提案できます。",
+        action: {
+          label: "行政資料を開く",
+          onClick: () => {
+            window.location.href = `/admin/rules/documents?city=${citySlug}`
+          },
+        },
+        duration: 12000,
+      })
       setNewTitle("")
       setNewParentUrl("")
       setNewDirectUrl("")
@@ -170,7 +180,7 @@ export function CityRulebookSourcesPanel({
             {cityName}の参照URL
           </h2>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            この市固有の公式ページ・資料URLです。この画面で追加・修正できます。
+            この市固有の公式ページ・資料URLです。追加したら、対応する行政資料を登録し「判定ルール案を生成する」へ進みます。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -211,7 +221,7 @@ export function CityRulebookSourcesPanel({
               {cityName}の参照URLを追加
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              公式ページまたはPDFのURLを登録します。人が確認するまで本番チェック基準にはなりません。
+              公式ページまたはPDFのURLを登録します。登録だけではチェック基準になりません。行政資料化のあと「判定ルール案を生成→了承」が必要です。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

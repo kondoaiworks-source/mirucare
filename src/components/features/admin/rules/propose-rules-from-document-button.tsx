@@ -61,7 +61,7 @@ export function ProposeRulesFromDocumentButton({
       onClick={onPropose}
     >
       <Sparkles className="size-4" aria-hidden />
-      {pending ? "生成中…" : "判定ルール案を生成する"}
+      {pending ? "生成中…" : "判定ルール案を生成する（初回・更新）"}
     </Button>
   )
 }

@@ -5,6 +5,7 @@ import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { PurposeGuide } from "@/components/features/admin/purpose-guide"
 import { CityRulebookAlertsPanel } from "@/components/features/admin/rules/city-rulebook-alerts-panel"
 import { CityRulebookBookToc } from "@/components/features/admin/rules/city-rulebook-book-toc"
+import { CityRulebookCheckRulesPanel } from "@/components/features/admin/rules/city-rulebook-check-rules-panel"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
 import { ProposeRulesFromDocumentButton } from "@/components/features/admin/rules/propose-rules-from-document-button"
 import { RulebookServiceSelect } from "@/components/features/admin/rules/rulebook-service-select"
@@ -84,10 +85,16 @@ export function CityRulebookView({ data }: Props) {
       <PurposeGuide
         purpose={`${city.name}で選んだサービス（いまは訪問介護）を運営するときのルールブックです。目次で全体を確認し、更新アラートと参照URLはこの画面で扱えます。`}
         steps={[
-          "確定版の目次で国→県→市の全体を見る",
-          "更新アラートを確認し、判定ルール案を生成→承認待ちで了承する",
-          "足りない参照URLはこの画面で追加・修正する",
+          "チェック用の中身（了承済み判定ルール）を確認する",
+          "更新アラートがあれば判定ルール案を生成→承認待ちで了承する",
+          "足りない参照URL・行政資料を追加する",
         ]}
+      />
+
+      <CityRulebookCheckRulesPanel
+        cityName={city.name}
+        approved={data.approvedCheckRules}
+        pending={data.pendingCheckRules}
       />
 
       <CityRulebookBookToc data={data} />
@@ -99,7 +106,15 @@ export function CityRulebookView({ data }: Props) {
         openAlerts={data.openAlerts}
       />
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <CountCard
+          label="了承済み判定ルール"
+          value={counts.approvedCheckRules}
+        />
+        <CountCard
+          label="承認待ちの判定ルール案"
+          value={counts.pendingCheckRules}
+        />
         <CountCard label={`${city.name}の参照URL`} value={counts.citySources} />
         <CountCard
           label={`${city.name}の行政資料`}
@@ -118,10 +133,10 @@ export function CityRulebookView({ data }: Props) {
 
       <ResourceSection
         title={`${city.name}の行政資料`}
-        description="この市のマニュアルPDFなど（自動監視の対象）。"
+        description="この市のマニュアルPDFなど。スナップショットがある資料は「判定ルール案を生成する」で初回のチェック用中身を提案できます。"
         editHref={cityDocsHref}
         editLabel="この市の行政資料を編集する"
-        empty="まだ登録がありません。行政資料から追加してください。"
+        empty="まだ登録がありません。行政資料から追加し、判定ルール案を生成してください。"
         icon={FileText}
         itemCount={cityDocs.length}
       >

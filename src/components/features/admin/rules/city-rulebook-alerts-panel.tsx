@@ -155,12 +155,14 @@ export function CityRulebookAlertsPanel({
       <Alert className="rounded-xl border-warning/30 bg-warning/5">
         <AlertTriangle className="text-warning" />
         <AlertTitle id="city-alerts-heading">
-          {cityName}の更新アラート（{alertTotal}件）
+          {cityName}の更新アラート（{alertTotal}件）— 今の判定ルールを見直す必要あり
         </AlertTitle>
         <AlertDescription className="space-y-2 pt-2 text-base leading-relaxed">
           <p>
             マニュアル差分 {pendingDrafts.length}件／同期アラート{" "}
-            {openAlerts.length}件。人が確認してから最新にします。
+            {openAlerts.length}件。原文が変わった可能性があるため、
+            <strong>いま了承済みの判定ルールと違う箇所</strong>
+            があれば「判定ルール案を生成する」で更新案を出してください。
           </p>
           <Button asChild variant="outline" className="min-h-11">
             <Link href={`/admin/document-changes?city=${citySlug}`}>
@@ -185,7 +187,7 @@ export function CityRulebookAlertsPanel({
                 </div>
                 <CardDescription className="text-base leading-relaxed whitespace-pre-wrap">
                   {d.ai_summary?.trim() ||
-                    "差分の要約はまだありません。確認記録を書いて反映／差し戻ししてください。"}
+                    "差分の要約はまだありません。原文を確認し、今の判定ルールを変えたい箇所があれば案を生成してください。"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -222,7 +224,7 @@ export function CityRulebookAlertsPanel({
                     disabled={pending}
                     onClick={() => onProposeRules(d)}
                   >
-                    判定ルール案を生成する
+                    判定ルール案を生成する（ここを変えたい）
                   </Button>
                   <Button
                     type="button"
@@ -240,7 +242,7 @@ export function CityRulebookAlertsPanel({
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  「判定ルール案を生成する」と、差分からAIが判定ルールと根拠を作り承認待ちへ載せます。了承するまでチェックには使われません。
+                  「判定ルール案を生成する」＝今のルールと差分を比べ、更新したい案＋根拠を承認待ちへ載せます。了承するまでチェックには使われません。
                 </p>
               </CardContent>
             </Card>

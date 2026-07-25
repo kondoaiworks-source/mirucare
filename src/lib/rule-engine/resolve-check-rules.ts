@@ -2,6 +2,11 @@ import {
   matchesPhase1RuleText,
   shouldScopeCheckRulesToPhase1,
 } from "@/lib/phase1-audit"
+import {
+  classifyRuleScope,
+  isRuleApplicableToCity,
+} from "@/lib/rule-engine/city-rule-scope"
+import { prefectureFromMunicipality } from "@/lib/municipalities"
 import type { DocType, FindingSeverity } from "@/types/database"
 
 /** Dify 入力・書類スナップショット用のコンパクトなルール要約 */
@@ -161,7 +166,21 @@ export async function resolveApprovedRulesForCheck(
   const { data: versionRows, error: versionsError } = await admin
     .from("ai_check_rule_versions")
     .select(
-      "id, rule_id, version_no, guidance_text, severity, effective_from, effective_to, review_status"
+      `
+      id,
+      rule_id,
+      version_no,
+      guidance_text,
+      severity,
+      effective_from,
+      effective_to,
+      review_status,
+      change_summary,
+      check_logic,
+      knowledge_document_change_drafts (
+        knowledge_documents ( region_name, jurisdiction_level, title )
+      )
+    `
     )
     .in("rule_id", ruleIds)
     .eq("review_status", "approved")
@@ -203,6 +222,11 @@ export async function resolveApprovedRulesForCheck(
   }
 
   const resolved: ResolvedCheckRule[] = []
+  const cityName = options.municipality.trim()
+  const prefectureName = cityName
+    ? prefectureFromMunicipality(cityName) || "神奈川県"
+    : ""
+
   for (const [ruleId, ver] of Array.from(bestByRule.entries())) {
     const rule = ruleById.get(ruleId)
     if (!rule) continue
@@ -210,6 +234,44 @@ export async function resolveApprovedRulesForCheck(
     const audit = (
       Array.isArray(auditRaw) ? auditRaw[0] : auditRaw
     ) as Record<string, unknown> | null
+
+    if (cityName) {
+      const draftRaw = ver.knowledge_document_change_drafts
+      const draft = (
+        Array.isArray(draftRaw) ? draftRaw[0] : draftRaw
+      ) as {
+        knowledge_documents:
+          | {
+              region_name: string | null
+              jurisdiction_level: string | null
+              title: string
+            }
+          | Array<{
+              region_name: string | null
+              jurisdiction_level: string | null
+              title: string
+            }>
+          | null
+      } | null
+      const docRaw = draft?.knowledge_documents
+      const doc = (Array.isArray(docRaw) ? docRaw[0] : docRaw) as {
+        region_name: string | null
+        jurisdiction_level: string | null
+        title: string
+      } | null
+      const evidence = extractEvidence(ver.check_logic)
+      const scope = classifyRuleScope({
+        cityName,
+        prefectureName,
+        regionName: doc?.region_name ?? evidence.regionName,
+        jurisdictionLevel:
+          doc?.jurisdiction_level ?? evidence.jurisdictionLevel,
+        evidenceRegionName: evidence.regionName,
+        evidenceJurisdictionLevel: evidence.jurisdictionLevel,
+        changeSummary: (ver.change_summary as string | null) ?? null,
+      })
+      if (!isRuleApplicableToCity(scope)) continue
+    }
 
     resolved.push({
       versionId: ver.id as string,
@@ -251,6 +313,27 @@ export async function resolveApprovedRulesForCheck(
   return { asOf, rules, regulatoryBasis, truncated }
 }
 
+function extractEvidence(logic: unknown): {
+  regionName: string | null
+  jurisdictionLevel: string | null
+} {
+  if (!logic || typeof logic !== "object") {
+    return { regionName: null, jurisdictionLevel: null }
+  }
+  const evidence = (logic as { evidence?: Record<string, unknown> }).evidence
+  if (!evidence || typeof evidence !== "object") {
+    return { regionName: null, jurisdictionLevel: null }
+  }
+  return {
+    regionName:
+      typeof evidence.regionName === "string" ? evidence.regionName : null,
+    jurisdictionLevel:
+      typeof evidence.jurisdictionLevel === "string"
+        ? evidence.jurisdictionLevel
+        : null,
+  }
+}
+
 async function loadRegulatoryBasis(
   admin: AdminClient,
   municipality: string
@@ -274,10 +357,13 @@ async function loadRegulatoryBasis(
     ? rows.filter((r) => {
         const region = String(r.region_name ?? "")
         const level = String(r.jurisdiction_level ?? "")
+        const pref = prefectureFromMunicipality(muni)
         return (
           region.includes(muni) ||
+          (pref && region.includes(pref)) ||
           level === "国" ||
           level === "national" ||
+          level === "都道府県" ||
           !region
         )
       })
