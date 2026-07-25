@@ -446,7 +446,8 @@ npm install -D @types/papaparse
 
 ## 動作確認手順（Phase1 改訂 IA・原本保持）
 
-確定事項の正：[docs/PHASE1_REDESIGN.md](docs/PHASE1_REDESIGN.md)
+確定事項の正：[docs/PHASE1_REDESIGN.md](docs/PHASE1_REDESIGN.md)  
+**本番セットアップの実行チェックリスト**：[docs/OPERATIONS_PHASE1.md](docs/OPERATIONS_PHASE1.md)（マイグレーション → シード → スモーク）
 
 1. Supabase SQL Editor で次を実行する
    - `supabase/migrations/20260725060000_document_original_retention.sql`
