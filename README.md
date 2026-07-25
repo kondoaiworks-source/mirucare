@@ -474,15 +474,17 @@ npm install -D @types/papaparse
     - または `SEED_OPERATOR_PROFILE_ID=<profiles.id> npm run seed:phase1-ai-rules`
     - 先に監査項目の訪問介護テンプレート登録が必要
 13. `/setup` で Phase1 5市を保存できること（管理者）
-14. 管理者は `/announcements` から事業所お知らせを投稿できること
-15. `/billing-reconcile` で請求CSV突合できること
-16. `/guide` に使い方要約と注意事項があること
-17. 運用AI監査（`/`）で次を確認すること
+14. `/setup` で事業所名・サービス種別も変更・保存できること（管理者）。スタッフは閲覧のみ
+15. `/settings` に「あなたの表示名」があり、事業所名とは別に変更できること
+16. 管理者は `/announcements` から事業所お知らせを投稿できること
+17. `/billing-reconcile` で請求CSV突合できること
+18. `/guide` に使い方要約と注意事項があること
+19. 運用AI監査（`/`）で次を確認すること
     - お知らせ・今日やること・最近の指摘に「すべて見る」（枠付きボタン）があり、押せる見た目であること
     - 今日やることの補足が「未完了書類と優先対応を表示」
     - 最近の指摘の補足が「重要な過去の改善指摘を表示」
-18. スマホ実機で下部タブが画面端から少し内側・上にあり、左右端のタブも押しやすいこと
-19. 原本削除 Cron（任意）:
+20. スマホ実機で下部タブが画面端から少し内側・上にあり、左右端のタブも押しやすいこと
+21. 原本削除 Cron（任意）:
     ```bash
     curl -X POST "http://localhost:3000/api/cron/purge-document-originals" \
       -H "Authorization: Bearer $CRON_SECRET"

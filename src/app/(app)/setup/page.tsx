@@ -10,7 +10,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { PHASE1_MUNICIPALITIES } from "@/lib/phase1-audit"
-import { FacilityMunicipalityForm } from "@/components/features/setup/facility-municipality-form"
+import { FacilitySettingsForm } from "@/components/features/setup/facility-settings-form"
+import type { ServiceType } from "@/types/database"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Info } from "lucide-react"
 
@@ -32,7 +33,7 @@ export default async function SetupPage() {
           初期設定
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          どのサービスを、どの自治体で提供しているかを確認・変更します。第1フェーズは訪問介護と神奈川の対象市が中心です。
+          事業所の情報を確認・変更します。第1フェーズは訪問介護と神奈川の対象市が中心です。ご自身のお名前は「設定」から変更できます。
         </p>
       </div>
 
@@ -40,34 +41,18 @@ export default async function SetupPage() {
         <CardHeader>
           <CardTitle className="text-lg">事業所の設定</CardTitle>
           <CardDescription className="text-base leading-relaxed">
-            オンボーディングで登録した内容です。自治体は下から変更できます。
+            事業所名は施設共通です。同じ事業所のスタッフ全員に同じ名前が表示されます。
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 text-base leading-relaxed">
-          <p>
-            <span className="text-muted-foreground">事業所名：</span>
-            <span className="font-semibold">
-              {org?.name ?? "（未設定）"}
-            </span>
-          </p>
-          <p>
-            <span className="text-muted-foreground">サービス種別：</span>
-            <span className="font-semibold">
-              {org?.service_type ?? "（未設定）"}
-            </span>
-          </p>
-          <p>
-            <span className="text-muted-foreground">現在の自治体：</span>
-            <span className="font-semibold">
-              {org?.municipality ?? "（未設定・全国ルール）"}
-            </span>
-          </p>
-          <FacilityMunicipalityForm
+        <CardContent className="space-y-4">
+          <FacilitySettingsForm
             canEdit={Boolean(isAdmin)}
+            currentName={org?.name ?? ""}
+            currentServiceType={(org?.service_type as ServiceType | null) ?? null}
             currentMunicipality={org?.municipality ?? null}
           />
           <Button asChild size="lg" variant="outline">
-            <Link href="/settings">その他の設定を開く</Link>
+            <Link href="/settings">あなたの表示名やその他の設定を開く</Link>
           </Button>
         </CardContent>
       </Card>

@@ -9,6 +9,7 @@ import {
 } from "@/components/features/settings/invite-form"
 import { SkipReviewToggle } from "@/components/features/settings/skip-review-toggle"
 import { UnlockLoginPanel } from "@/components/features/settings/unlock-login-panel"
+import { DisplayNameForm } from "@/components/features/settings/display-name-form"
 import { BillingPortalButton } from "@/components/features/billing/billing-buttons"
 import { SettingsSkeleton } from "@/components/features/skeletons/page-skeletons"
 import {
@@ -30,6 +31,7 @@ import {
   Info,
   Lock,
   ShieldCheck,
+  UserRound,
   type LucideIcon,
 } from "lucide-react"
 
@@ -101,7 +103,7 @@ async function SettingsContent({ searchParams }: PageProps) {
       <div>
         <h1 className="text-2xl font-bold text-primary-dark">設定</h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          事業所情報の確認と、同僚の招待ができます。
+          ご自身の表示名・事業所情報の確認、同僚の招待ができます。
         </p>
       </div>
 
@@ -122,6 +124,23 @@ async function SettingsContent({ searchParams }: PageProps) {
           <AlertDescription>{BILLING_UI.viewOnlyBody}</AlertDescription>
         </Alert>
       ) : null}
+
+      <section className="space-y-4">
+        <SectionHeading icon={UserRound}>あなた自身</SectionHeading>
+        <Card className="rounded-lg shadow-subtle">
+          <CardHeader>
+            <CardTitleWithIcon icon={UserRound}>表示名</CardTitleWithIcon>
+            <CardDescription className="text-base leading-relaxed">
+              事業所名とは別に、ログイン中のスタッフ個人のお名前を保存します。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DisplayNameForm
+              currentDisplayName={profile?.display_name ?? ""}
+            />
+          </CardContent>
+        </Card>
+      </section>
 
       <section className="space-y-4">
         <SectionHeading icon={CreditCard}>契約・事業所</SectionHeading>
@@ -163,12 +182,12 @@ async function SettingsContent({ searchParams }: PageProps) {
           <CardHeader>
             <CardTitleWithIcon icon={Building2}>事業所情報</CardTitleWithIcon>
             <CardDescription className="text-base leading-relaxed">
-              ログイン中のアカウントに紐づく事業所です。
+              施設共通の情報です。変更は「初期設定」から行えます（管理者のみ）。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-base">
             <div>
-              <p className="text-sm text-muted-foreground">事業所名</p>
+              <p className="text-sm text-muted-foreground">事業所名（施設共通）</p>
               <p className="font-semibold">{org?.name ?? "未設定"}</p>
             </div>
             <div>
@@ -193,6 +212,9 @@ async function SettingsContent({ searchParams }: PageProps) {
                 {isAdmin ? "管理者" : "スタッフ"}
               </p>
             </div>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/setup">事業所の設定を変更する</Link>
+            </Button>
           </CardContent>
         </Card>
       </section>
