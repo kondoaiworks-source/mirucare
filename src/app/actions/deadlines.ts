@@ -215,18 +215,23 @@ export type DashboardIncompleteDocument = {
   created_at: string
 }
 
+export type DashboardTodayDocumentItem = {
+  kind: "document"
+  document: DashboardIncompleteDocument
+}
+
+export type DashboardTodayDeadlineItem = {
+  kind: "deadline"
+  deadline: Deadline & { daysLeft: number }
+}
+
+export type DashboardTodayItem =
+  | DashboardTodayDocumentItem
+  | DashboardTodayDeadlineItem
+
 export type DashboardData = {
-  /** 未完了の書類チェック（今日やることの先頭） */
-  incompleteDocuments: DashboardIncompleteDocument[]
-  /** まもなく／超過の期限アラート（書類とは別） */
-  upcomingDeadlines: Array<Deadline & { daysLeft: number }>
-  /** @deprecated upcomingDeadlines を使う */
-  todayTodos: Array<Deadline & { daysLeft: number }>
-  weekly: {
-    uploads: number
-    findings: number
-    fixed: number
-  }
+  /** 今日やること（未完了書類優先 → 期限、最大3件） */
+  todayItems: DashboardTodayItem[]
   recentFindings: Array<
     Finding & {
       documents: { id: string; original_name: string; doc_type: string } | null
@@ -234,6 +239,8 @@ export type DashboardData = {
   >
   /** アプリ内お知らせ（最新3件） */
   announcements: AppAnnouncement[]
+  /** お知らせ総数（バッジ用。未読管理はしない） */
+  announcementCount: number
 }
 
 export async function getDashboardDataAction(): Promise<
@@ -243,18 +250,13 @@ export async function getDashboardDataAction(): Promise<
   if ("error" in ctx) return { ok: false, error: ctx.error }
 
   const today = toDateOnly()
-  const weekAgo = new Date()
-  weekAgo.setDate(weekAgo.getDate() - 7)
-  const weekAgoIso = weekAgo.toISOString()
 
   const [
     deadlinesRes,
     incompleteDocsRes,
-    docsRes,
-    findingsRes,
-    fixedRes,
     recentRes,
     announcementsRes,
+    announcementCountRes,
   ] = await Promise.all([
     ctx.supabase
       .from("deadlines")
@@ -273,27 +275,6 @@ export async function getDashboardDataAction(): Promise<
       .order("created_at", { ascending: false })
       .limit(3),
     ctx.supabase
-      .from("documents")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", ctx.organizationId)
-      .is("deleted_at", null)
-      .gte("created_at", weekAgoIso),
-    ctx.supabase
-      .from("findings")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", ctx.organizationId)
-      .eq("review_status", "approved")
-      .is("deleted_at", null)
-      .gte("created_at", weekAgoIso),
-    ctx.supabase
-      .from("findings")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", ctx.organizationId)
-      .eq("review_status", "approved")
-      .eq("status", "fixed")
-      .is("deleted_at", null)
-      .gte("updated_at", weekAgoIso),
-    ctx.supabase
       .from("findings")
       .select(
         `
@@ -309,12 +290,15 @@ export async function getDashboardDataAction(): Promise<
       .eq("review_status", "approved")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
-      .limit(5),
+      .limit(20),
     ctx.supabase
       .from("app_announcements")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(3),
+    ctx.supabase
+      .from("app_announcements")
+      .select("id", { count: "exact", head: true }),
   ])
 
   const deadlines = refreshDeadlineStatuses(
@@ -324,31 +308,36 @@ export async function getDashboardDataAction(): Promise<
     ...((deadlinesRes.data ?? []) as Deadline[]),
   ])
 
-  const upcomingDeadlines = deadlines
-    .filter((d) => d.status !== "done")
-    .map((d) => ({ ...d, daysLeft: daysUntilDue(d.due_date, today) }))
-    .sort((a, b) => a.daysLeft - b.daysLeft)
-    .slice(0, 3)
-
   const incompleteDocuments = (
     (incompleteDocsRes.data ?? []) as DashboardIncompleteDocument[]
   ).filter((d) => d.status !== "done")
 
+  const upcomingDeadlines = deadlines
+    .filter((d) => d.status !== "done")
+    .map((d) => ({ ...d, daysLeft: daysUntilDue(d.due_date, today) }))
+    .sort((a, b) => a.daysLeft - b.daysLeft)
+
+  const todayItems: DashboardTodayItem[] = []
+  for (const document of incompleteDocuments) {
+    if (todayItems.length >= 3) break
+    todayItems.push({ kind: "document", document })
+  }
+  for (const deadline of upcomingDeadlines) {
+    if (todayItems.length >= 3) break
+    todayItems.push({ kind: "deadline", deadline })
+  }
+
   return {
     ok: true,
     data: {
-      incompleteDocuments,
-      upcomingDeadlines,
-      todayTodos: upcomingDeadlines,
-      weekly: {
-        uploads: docsRes.count ?? 0,
-        findings: findingsRes.count ?? 0,
-        fixed: fixedRes.count ?? 0,
-      },
+      todayItems,
       recentFindings: (recentRes.data ?? []) as DashboardData["recentFindings"],
       announcements: announcementsRes.error
         ? []
         : ((announcementsRes.data ?? []) as AppAnnouncement[]),
+      announcementCount: announcementCountRes.error
+        ? 0
+        : (announcementCountRes.count ?? 0),
     },
   }
 }

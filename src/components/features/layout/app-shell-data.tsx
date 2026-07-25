@@ -4,11 +4,13 @@ import { MobileTabBar } from "./mobile-tab-bar"
 import { Sidebar } from "./sidebar"
 
 export async function SidebarWithData() {
-  const { laterCount, incompleteDocumentsCount } = await getAppShellData()
+  const { laterCount, incompleteDocumentsCount, announcementCount } =
+    await getAppShellData()
   return (
     <Sidebar
       laterCount={laterCount}
       incompleteDocumentsCount={incompleteDocumentsCount}
+      announcementCount={announcementCount}
     />
   )
 }
@@ -19,11 +21,13 @@ export async function AppHeaderWithData() {
 }
 
 export async function MobileTabBarWithData() {
-  const { laterCount, incompleteDocumentsCount } = await getAppShellData()
+  const { laterCount, incompleteDocumentsCount, announcementCount } =
+    await getAppShellData()
   return (
     <MobileTabBar
       laterCount={laterCount}
       incompleteDocumentsCount={incompleteDocumentsCount}
+      announcementCount={announcementCount}
     />
   )
 }

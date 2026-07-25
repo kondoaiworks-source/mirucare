@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Clock,
-  Bell,
   History,
   Settings,
   ClipboardCheck,
@@ -21,7 +20,7 @@ export type NavItem = {
   comingSoon?: boolean
 }
 
-/** PCサイドバー用（施設向け Phase1 IA） */
+/** PCサイドバー用（施設向け Phase1 IA）— お知らせはホーム内 */
 export const NAV_ITEMS: NavItem[] = [
   {
     href: "/",
@@ -34,12 +33,6 @@ export const NAV_ITEMS: NavItem[] = [
     label: "あとで確認",
     shortLabel: "あとで",
     icon: Clock,
-  },
-  {
-    href: "/announcements",
-    label: "ルールブック更新お知らせ",
-    shortLabel: "お知らせ",
-    icon: Bell,
   },
   {
     href: "/audit-history",
@@ -81,13 +74,13 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ]
 
-/** モバイル下部タブ（押しやすさのため主要5項目） */
+/** モバイル下部タブ：ホーム・あとで・運用AI・履歴・設定 */
 export const MOBILE_TAB_ITEMS: NavItem[] = [
   NAV_ITEMS[0], // ホーム
   NAV_ITEMS[1], // あとで
-  NAV_ITEMS[4], // 運用AI
-  NAV_ITEMS[3], // 履歴
-  NAV_ITEMS[2], // お知らせ
+  NAV_ITEMS[3], // 運用AI
+  NAV_ITEMS[2], // 履歴
+  NAV_ITEMS[7], // 設定
 ]
 
 /** ヘッダーハンバーガー（初期設定・アップロード・設定） */

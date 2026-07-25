@@ -1,4 +1,5 @@
 import { cache } from "react"
+import { createClient } from "@/lib/supabase/server"
 import { getCurrentProfile } from "@/app/actions/auth"
 import { countLaterFindingsAction } from "@/app/actions/findings"
 import { countIncompleteDocumentsAction } from "@/app/actions/documents"
@@ -7,6 +8,7 @@ export type AppShellData = {
   facilityName: string | undefined
   laterCount: number
   incompleteDocumentsCount: number
+  announcementCount: number
 }
 
 /**
@@ -17,6 +19,7 @@ export const getAppShellData = cache(async (): Promise<AppShellData> => {
   let facilityName: string | undefined
   let laterCount = 0
   let incompleteDocumentsCount = 0
+  let announcementCount = 0
 
   try {
     const profile = await getCurrentProfile()
@@ -25,9 +28,12 @@ export const getAppShellData = cache(async (): Promise<AppShellData> => {
       : profile?.organizations
     facilityName = org?.name
 
-    const [later, incomplete] = await Promise.all([
+    const [later, incomplete, announcements] = await Promise.all([
       countLaterFindingsAction(),
       countIncompleteDocumentsAction(),
+      createClient()
+        .from("app_announcements")
+        .select("id", { count: "exact", head: true }),
     ])
     if (later.ok && later.data) {
       laterCount = later.data.count
@@ -35,9 +41,17 @@ export const getAppShellData = cache(async (): Promise<AppShellData> => {
     if (incomplete.ok && incomplete.data) {
       incompleteDocumentsCount = incomplete.data.count
     }
+    if (!announcements.error) {
+      announcementCount = announcements.count ?? 0
+    }
   } catch {
     // Supabase 未設定時などはバッジなしでシェルを表示
   }
 
-  return { facilityName, laterCount, incompleteDocumentsCount }
+  return {
+    facilityName,
+    laterCount,
+    incompleteDocumentsCount,
+    announcementCount,
+  }
 })

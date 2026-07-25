@@ -454,10 +454,12 @@ npm install -D @types/papaparse
    - `supabase/migrations/20260725070000_phase1_kawasaki_jurisdiction.sql`
 2. （任意）川崎の参照URL seed: `npm run seed:rule-sources`
 3. ログイン後、サイドバーに次があること
-   - ホーム / あとで確認 / ルールブック更新お知らせ / 監査結果の履歴 / 運用AI監査
+   - ホーム / あとで確認 / 監査結果の履歴 / 運用AI監査
+   - お知らせはホーム内（直近3件）。件数があるとき「ホーム」にバッジ
    - 法令AI監査・運営AI監査は「準備中」
    - 初期設定・設定
    - **月末の確認・月次レポートが主导線に出ない**こと
+   - **ルールブック更新お知らせが独立メニューに出ない**こと（ホーム内）
 4. モバイルのハンバーガーに「初期設定」「監査書類アップロード」があること
 5. `/audit/operations` → アップロードへ進み、同意チェックなしでは開始できないこと
 6. 「再確認のため原本を最大7日間残す」はデフォルトOFFであること
@@ -518,7 +520,7 @@ npm install -D @types/papaparse
 | `/onboarding` | 初回オンボーディング |
 | `/invite/[token]` | 招待受諾 |
 | `/` | ホーム（お知らせ・直近の指摘） |
-| `/announcements` | 自治体ルールブック更新お知らせ |
+| `/announcements` | ルールブック更新お知らせ一覧（ホームから「すべて見る」） |
 | `/audit-history` | 監査結果の履歴と対応状況 |
 | `/audit/operations` | 運用AI監査（Phase1） |
 | `/audit/legal` | 法令AI監査（準備中） |

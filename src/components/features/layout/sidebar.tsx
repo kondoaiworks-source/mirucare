@@ -8,9 +8,11 @@ import { NAV_ITEMS, isNavItemActive } from "./nav-items"
 export function Sidebar({
   laterCount = 0,
   incompleteDocumentsCount = 0,
+  announcementCount = 0,
 }: {
   laterCount?: number
   incompleteDocumentsCount?: number
+  announcementCount?: number
 }) {
   const pathname = usePathname()
 
@@ -38,15 +40,18 @@ export function Sidebar({
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
           const isActive = isNavItemActive(pathname, item.href)
+          const showHomeBadge = item.href === "/" && announcementCount > 0
           const showLaterBadge = item.href === "/later" && laterCount > 0
           const showDocsBadge =
             item.href === "/audit-history" && incompleteDocumentsCount > 0
-          const badgeCount = showLaterBadge
-            ? laterCount
-            : showDocsBadge
-              ? incompleteDocumentsCount
-              : 0
-          const showBadge = showLaterBadge || showDocsBadge
+          const badgeCount = showHomeBadge
+            ? announcementCount
+            : showLaterBadge
+              ? laterCount
+              : showDocsBadge
+                ? incompleteDocumentsCount
+                : 0
+          const showBadge = showHomeBadge || showLaterBadge || showDocsBadge
 
           return (
             <Link

@@ -8,9 +8,11 @@ import { MOBILE_TAB_ITEMS, isNavItemActive } from "./nav-items"
 export function MobileTabBar({
   laterCount = 0,
   incompleteDocumentsCount = 0,
+  announcementCount = 0,
 }: {
   laterCount?: number
   incompleteDocumentsCount?: number
+  announcementCount?: number
 }) {
   const pathname = usePathname()
 
@@ -24,15 +26,18 @@ export function MobileTabBar({
         {MOBILE_TAB_ITEMS.map((item) => {
           const Icon = item.icon
           const isActive = isNavItemActive(pathname, item.href)
+          const showHomeBadge = item.href === "/" && announcementCount > 0
           const showLaterBadge = item.href === "/later" && laterCount > 0
           const showDocsBadge =
             item.href === "/audit-history" && incompleteDocumentsCount > 0
-          const badgeCount = showLaterBadge
-            ? laterCount
-            : showDocsBadge
-              ? incompleteDocumentsCount
-              : 0
-          const showBadge = showLaterBadge || showDocsBadge
+          const badgeCount = showHomeBadge
+            ? announcementCount
+            : showLaterBadge
+              ? laterCount
+              : showDocsBadge
+                ? incompleteDocumentsCount
+                : 0
+          const showBadge = showHomeBadge || showLaterBadge || showDocsBadge
 
           return (
             <li key={item.href} className="min-w-0 flex-1 basis-0">

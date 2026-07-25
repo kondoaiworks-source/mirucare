@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import Link from "next/link"
 import {
   AlertTriangle,
@@ -7,6 +8,7 @@ import {
   CheckCircle2,
   Clock,
   FileCheck2,
+  Info,
   Megaphone,
 } from "lucide-react"
 import {
@@ -18,14 +20,14 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RiskBadge, type RiskLevel } from "@/components/features/risk-badge"
-import { ProductCharterBanner } from "@/components/features/product-charter-banner"
 import { DEADLINE_UI, toPrivacySubject } from "@/lib/deadlines"
+import { HOME_UI } from "@/lib/copy/home-ui"
 import { annotateTerms } from "@/lib/copy/check-ui"
 import { anonymizeText } from "@/lib/privacy/anonymize"
-import { PRODUCT_CHARTER } from "@/lib/copy/product-charter"
 import type {
   DashboardData,
   DashboardIncompleteDocument,
+  DashboardTodayItem,
 } from "@/app/actions/deadlines"
 import type { FindingSeverity } from "@/types/database"
 import { cn } from "@/lib/utils"
@@ -93,243 +95,262 @@ function documentTodoCopy(doc: DashboardIncompleteDocument): {
   }
 }
 
-export function DashboardView({ data }: { data: DashboardData }) {
-  const incompleteDocuments = data.incompleteDocuments ?? []
-  const upcomingDeadlines =
-    data.upcomingDeadlines ?? data.todayTodos ?? []
-  const announcements = data.announcements ?? []
-  const hasTodayWork =
-    incompleteDocuments.length > 0 || upcomingDeadlines.length > 0
+function SectionHeading({
+  id,
+  icon: Icon,
+  title,
+  hint,
+  badgeCount,
+  action,
+}: {
+  id: string
+  icon: typeof Megaphone
+  title: string
+  hint: string
+  badgeCount?: number
+  action?: ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0 space-y-1">
+        <h2
+          id={id}
+          className="flex flex-wrap items-center gap-2 text-lg font-bold text-primary-dark"
+        >
+          <Icon className="size-5 shrink-0 text-primary" aria-hidden />
+          <span>{title}</span>
+          {typeof badgeCount === "number" && badgeCount > 0 ? (
+            <span className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-lg bg-primary px-1.5 text-xs font-bold tabular-nums text-primary-foreground">
+              {badgeCount > 99 ? "99+" : badgeCount}
+            </span>
+          ) : null}
+        </h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">{hint}</p>
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  )
+}
+
+function TodayItemCard({ item }: { item: DashboardTodayItem }) {
+  if (item.kind === "document") {
+    const todo = documentTodoCopy(item.document)
+    return (
+      <Card className="rounded-lg shadow-subtle">
+        <CardContent className="flex items-center gap-4 py-4">
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <FileCheck2 className="size-6" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-sm font-medium text-warning">{todo.label}</p>
+            <p className="truncate text-base font-semibold text-primary-dark">
+              {item.document.original_name}
+            </p>
+          </div>
+          <Button asChild variant="outline" className="shrink-0">
+            <Link href={todo.href}>{todo.cta}</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const { deadline } = item
+  const daysLabel =
+    deadline.daysLeft < 0
+      ? DEADLINE_UI.daysOverdue(Math.abs(deadline.daysLeft))
+      : DEADLINE_UI.daysLeft(deadline.daysLeft)
+  const bigNumber =
+    deadline.daysLeft < 0 ? Math.abs(deadline.daysLeft) : deadline.daysLeft
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-            ホーム
-          </h1>
-          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-            運用AI監査の入口と、ルールブック更新・あとで確認をまとめて確認できます。
+    <Card className="rounded-lg shadow-subtle">
+      <CardContent className="flex items-center gap-4 py-4">
+        <div className="min-w-[5.5rem] text-center">
+          <p className="text-sm font-medium text-muted-foreground">
+            {deadline.daysLeft < 0
+              ? "超過"
+              : deadline.daysLeft === 0
+                ? "本日"
+                : "残り"}
           </p>
-        </div>
-        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
-          <Button asChild size="lg" className="w-full sm:w-auto">
-            <Link href="/audit/operations">運用AI監査を始める</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
-            <Link href="/check/upload">監査書類をアップロードする</Link>
-          </Button>
-        </div>
-      </div>
-
-      <ProductCharterBanner compact extra={PRODUCT_CHARTER.unverifiedScope} />
-
-      {announcements.length > 0 ? (
-        <section className="space-y-3" aria-labelledby="app-announcements">
-          <h2
-            id="app-announcements"
-            className="flex items-center gap-2 text-lg font-bold text-primary-dark"
+          <p
+            className={cn(
+              "mt-1 text-3xl font-bold tabular-nums leading-none",
+              deadline.daysLeft < 0 ? "text-danger" : "text-primary-dark"
+            )}
           >
-            <Megaphone className="size-5 text-primary" aria-hidden />
-            ルールブック更新お知らせ
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            <Link
-              href="/announcements"
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              すべて見る
-            </Link>
+            {deadline.daysLeft === 0 ? "—" : bigNumber}
           </p>
-          <ul className="space-y-3">
-            {announcements.slice(0, 3).map((a) => (
-              <li key={a.id}>
-                <Card className="rounded-lg shadow-subtle">
-                  <CardHeader className="gap-1 pb-2">
-                    <CardTitle className="text-base font-bold text-primary-dark">
-                      {a.title}
-                    </CardTitle>
-                    <CardDescription className="text-sm tabular-nums">
-                      {new Date(a.created_at).toLocaleString("ja-JP", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-base leading-relaxed text-muted-foreground">
-                      {a.body}
-                    </p>
-                  </CardContent>
-                </Card>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+          <p className="mt-1 text-sm text-muted-foreground">
+            {deadline.daysLeft === 0 ? "" : "日"}
+          </p>
+          <p className="sr-only">{daysLabel}</p>
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <DaysBadge daysLeft={deadline.daysLeft} />
+            <span className="text-sm text-muted-foreground">{deadline.kind}</span>
+          </div>
+          <p className="truncate text-base font-semibold text-primary-dark">
+            {toPrivacySubject(deadline.subject)}
+          </p>
+          <p className="text-sm tabular-nums text-muted-foreground">
+            期限 {deadline.due_date}
+          </p>
+        </div>
+        <Button asChild variant="outline" className="shrink-0">
+          <Link href="/alerts">確認する</Link>
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
 
-      {/* 1. 今日やること — 未完了書類を優先 */}
-      <section className="space-y-3" aria-labelledby="today-todos">
-        <h2 id="today-todos" className="text-lg font-bold text-primary-dark">
-          {DEADLINE_UI.todayTitle}
-        </h2>
+export function DashboardView({ data }: { data: DashboardData }) {
+  const todayItems = data.todayItems ?? []
+  const announcements = data.announcements ?? []
+  const announcementCount = data.announcementCount ?? announcements.length
 
-        {!hasTodayWork ? (
+  return (
+    <div className="mx-auto max-w-3xl space-y-10">
+      {/* 1. アプリ説明（3行） */}
+      <section className="space-y-4" aria-labelledby="home-summary">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1
+              id="home-summary"
+              className="text-2xl font-bold text-primary-dark md:text-3xl"
+            >
+              {HOME_UI.title}
+            </h1>
+            <div className="mt-3 space-y-2 text-base leading-relaxed text-muted-foreground">
+              {HOME_UI.summaryLines.map((line) => (
+                <p key={line} className="flex gap-2">
+                  <Info
+                    className="mt-0.5 size-4 shrink-0 text-primary"
+                    aria-hidden
+                  />
+                  <span>{line}</span>
+                </p>
+              ))}
+            </div>
+          </div>
+          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
+            <Button asChild size="lg" className="w-full sm:w-auto">
+              <Link href="/audit/operations">{HOME_UI.ctaOperations}</Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              <Link href="/check/upload">{HOME_UI.ctaUpload}</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. お知らせ（直近3件） */}
+      <section className="space-y-3" aria-labelledby="home-announcements">
+        <SectionHeading
+          id="home-announcements"
+          icon={Megaphone}
+          title={HOME_UI.announcementsTitle}
+          hint={HOME_UI.announcementsHint}
+          badgeCount={announcementCount}
+          action={
+            <Button asChild variant="ghost" className="min-h-11 px-3">
+              <Link href="/announcements">{HOME_UI.announcementsAll}</Link>
+            </Button>
+          }
+        />
+        {announcements.length === 0 ? (
           <Card className="rounded-lg shadow-subtle">
             <CardContent className="flex items-center gap-3 py-6 text-base leading-relaxed text-muted-foreground">
               <CheckCircle2
                 className="size-6 shrink-0 text-primary"
                 aria-hidden
               />
-              {DEADLINE_UI.todayEmpty}
+              {HOME_UI.announcementsEmpty}
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
-            {incompleteDocuments.length > 0 ? (
-              <div className="space-y-3">
-                <h3 className="text-base font-semibold text-primary-dark">
-                  {DEADLINE_UI.todayDocsTitle}
-                </h3>
-                <div className="grid gap-3">
-                  {incompleteDocuments.map((doc) => {
-                    const todo = documentTodoCopy(doc)
-                    return (
-                      <Card key={doc.id} className="rounded-lg shadow-subtle">
-                        <CardContent className="flex items-center gap-4 py-4">
-                          <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                            <FileCheck2 className="size-6" aria-hidden />
-                          </span>
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <p className="text-sm font-medium text-warning">
-                              {todo.label}
-                            </p>
-                            <p className="truncate text-base font-semibold text-primary-dark">
-                              {doc.original_name}
-                            </p>
-                          </div>
-                          <Button asChild variant="outline" className="shrink-0">
-                            <Link href={todo.href}>{todo.cta}</Link>
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
-                </div>
-              </div>
-            ) : null}
+          <ul className="space-y-2">
+            {announcements.slice(0, 3).map((a) => (
+              <li key={a.id}>
+                <Link
+                  href="/announcements"
+                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Card className="rounded-lg shadow-subtle transition-colors hover:bg-muted/40">
+                    <CardHeader className="gap-1 py-4">
+                      <CardTitle className="line-clamp-1 text-base font-bold text-primary-dark">
+                        {a.title}
+                      </CardTitle>
+                      <CardDescription className="text-sm tabular-nums">
+                        {new Date(a.created_at).toLocaleString("ja-JP", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-            {upcomingDeadlines.length > 0 ? (
-              <div className="space-y-3">
-                <div>
-                  <h3 className="text-base font-semibold text-primary-dark">
-                    {DEADLINE_UI.upcomingDeadlinesTitle}
-                  </h3>
-                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                    {DEADLINE_UI.upcomingDeadlinesHint}
-                  </p>
-                </div>
-                <div className="grid gap-3">
-                  {upcomingDeadlines.map((item) => {
-                    const daysLabel =
-                      item.daysLeft < 0
-                        ? DEADLINE_UI.daysOverdue(Math.abs(item.daysLeft))
-                        : DEADLINE_UI.daysLeft(item.daysLeft)
-                    const bigNumber =
-                      item.daysLeft < 0
-                        ? Math.abs(item.daysLeft)
-                        : item.daysLeft
-                    return (
-                      <Card key={item.id} className="rounded-lg shadow-subtle">
-                        <CardContent className="flex items-center gap-4 py-4">
-                          <div className="min-w-[6rem] text-center">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              {item.daysLeft < 0
-                                ? "超過"
-                                : item.daysLeft === 0
-                                  ? "本日"
-                                  : "残り"}
-                            </p>
-                            <p
-                              className={cn(
-                                "mt-1 text-4xl font-bold tabular-nums leading-none",
-                                item.daysLeft < 0
-                                  ? "text-danger"
-                                  : "text-primary-dark"
-                              )}
-                            >
-                              {item.daysLeft === 0 ? "—" : bigNumber}
-                            </p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              {item.daysLeft === 0 ? "" : "日"}
-                            </p>
-                            <p className="sr-only">{daysLabel}</p>
-                          </div>
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <DaysBadge daysLeft={item.daysLeft} />
-                              <span className="text-sm text-muted-foreground">
-                                {item.kind}
-                              </span>
-                            </div>
-                            <p className="truncate text-base font-semibold text-primary-dark">
-                              {toPrivacySubject(item.subject)}
-                            </p>
-                            <p className="text-sm tabular-nums text-muted-foreground">
-                              期限 {item.due_date}
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
-                </div>
-              </div>
-            ) : null}
+      {/* 3. 今日やること（最大3件） */}
+      <section className="space-y-3" aria-labelledby="home-today">
+        <SectionHeading
+          id="home-today"
+          icon={Clock}
+          title={HOME_UI.todayTitle}
+          hint={HOME_UI.todayHint}
+        />
+        {todayItems.length === 0 ? (
+          <Card className="rounded-lg shadow-subtle">
+            <CardContent className="flex items-center gap-3 py-6 text-base leading-relaxed text-muted-foreground">
+              <CheckCircle2
+                className="size-6 shrink-0 text-primary"
+                aria-hidden
+              />
+              {HOME_UI.todayEmpty}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-3">
+            {todayItems.map((item) => (
+              <TodayItemCard
+                key={
+                  item.kind === "document"
+                    ? `doc-${item.document.id}`
+                    : `dl-${item.deadline.id}`
+                }
+                item={item}
+              />
+            ))}
           </div>
         )}
       </section>
 
-      {/* 2. 今週のチェック状況 */}
-      <section className="space-y-3" aria-labelledby="weekly-stats">
-        <h2 id="weekly-stats" className="text-lg font-bold text-primary-dark">
-          {DEADLINE_UI.weeklyTitle}
-        </h2>
-        <div className="grid grid-cols-3 gap-3">
-          {(
-            [
-              [DEADLINE_UI.weeklyUploads, data.weekly.uploads],
-              [DEADLINE_UI.weeklyFindings, data.weekly.findings],
-              [DEADLINE_UI.weeklyFixed, data.weekly.fixed],
-            ] as const
-          ).map(([label, value]) => (
-            <Card key={label} className="rounded-lg shadow-subtle">
-              <CardContent className="px-3 py-5 text-center">
-                <p className="text-3xl font-bold tabular-nums text-primary-dark md:text-4xl">
-                  {value}
-                </p>
-                <p className="mt-2 text-sm leading-snug text-muted-foreground">
-                  {label}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* 3. 最近の指摘 */}
-      <section className="space-y-3" aria-labelledby="recent-findings">
-        <h2
-          id="recent-findings"
-          className="text-lg font-bold text-primary-dark"
-        >
-          {DEADLINE_UI.recentFindings}
-        </h2>
+      {/* 4. 最近の指摘（最大20件） */}
+      <section className="space-y-3" aria-labelledby="home-recent">
+        <SectionHeading
+          id="home-recent"
+          icon={AlertTriangle}
+          title={HOME_UI.recentTitle}
+          hint={HOME_UI.recentHint}
+        />
         {data.recentFindings.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border bg-surface px-4 py-6 text-base text-muted-foreground">
-            {DEADLINE_UI.recentEmpty}
+            {HOME_UI.recentEmpty}
           </p>
         ) : (
           <div className="grid gap-3">
