@@ -477,7 +477,12 @@ npm install -D @types/papaparse
 14. 管理者は `/announcements` から事業所お知らせを投稿できること
 15. `/billing-reconcile` で請求CSV突合できること
 16. `/guide` に使い方要約と注意事項があること
-17. 原本削除 Cron（任意）:
+17. 運用AI監査（`/`）で次を確認すること
+    - お知らせ・今日やること・最近の指摘に「すべて見る」（枠付きボタン）があり、押せる見た目であること
+    - 今日やることの補足が「未完了書類と優先対応を表示」
+    - 最近の指摘の補足が「重要な過去の改善指摘を表示」
+18. スマホ実機で下部タブが画面端から少し内側・上にあり、左右端のタブも押しやすいこと
+19. 原本削除 Cron（任意）:
     ```bash
     curl -X POST "http://localhost:3000/api/cron/purge-document-originals" \
       -H "Authorization: Bearer $CRON_SECRET"

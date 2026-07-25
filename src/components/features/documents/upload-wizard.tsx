@@ -383,10 +383,10 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
 
       {/*
         片手操作：下部固定CTA。
-        モバイルはタブバー（z-40・bottom-0）の上に載せ、隠れないようにする。
+        モバイルは浮かせたタブバーの上に載せ、隠れないようにする。
       */}
       {step === 2 && !resuming ? (
-        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-50 border-t border-border bg-background px-4 py-3 md:bottom-0 md:left-60 md:z-30 md:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+        <div className="fixed inset-x-0 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] z-50 border-t border-border bg-background px-4 py-3 md:bottom-0 md:left-60 md:z-30 md:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
           <div className="mx-auto flex max-w-2xl flex-col gap-2">
             <Button
               type="button"

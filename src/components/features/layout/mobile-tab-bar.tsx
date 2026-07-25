@@ -18,11 +18,13 @@ export function MobileTabBar({
 
   return (
     <nav
-      className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background md:hidden"
+      className="no-print pointer-events-none fixed inset-x-0 bottom-0 z-50 md:hidden"
       aria-label="モバイルメニュー"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      style={{
+        paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
+      }}
     >
-      <ul className="flex w-full min-w-0 gap-0.5 px-1 pt-1">
+      <ul className="pointer-events-auto mx-3 flex min-w-0 gap-1 rounded-xl border border-border bg-background px-1.5 pb-1.5 pt-1 shadow-subtle">
         {MOBILE_TAB_ITEMS.map((item) => {
           const Icon = item.icon
           const isActive = isNavItemActive(pathname, item.href)
@@ -44,7 +46,7 @@ export function MobileTabBar({
               <Link
                 href={item.href}
                 className={cn(
-                  "relative flex min-h-14 w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 py-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                  "relative flex min-h-14 w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                   isActive
                     ? "bg-primary/15 font-bold text-primary"
                     : "font-medium text-muted-foreground hover:bg-muted/60"

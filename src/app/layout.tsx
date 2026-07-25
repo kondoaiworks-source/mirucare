@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Noto_Sans_JP } from "next/font/google"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
@@ -19,6 +19,13 @@ export const metadata: Metadata = {
   },
   description:
     "介護事業所向けAI書類Wチェック。実地指導で指摘されやすい不備を根拠付きで確認できます。",
+}
+
+/** iPhone ホームインジケータ等で下部タブが押しにくくならないようにする */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 }
 
 export default function RootLayout({

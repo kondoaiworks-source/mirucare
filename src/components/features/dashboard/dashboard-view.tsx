@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CalendarClock,
   CheckCircle2,
+  ChevronRight,
   Clock,
   FileCheck2,
   Megaphone,
@@ -94,6 +95,17 @@ function KindBadge({ announcement }: { announcement: AppAnnouncement }) {
     <span className="rounded-lg border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
       {isFacility ? OPS_HOME_UI.kindFacility : OPS_HOME_UI.kindRuleUpdate}
     </span>
+  )
+}
+
+function ViewAllLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Button asChild variant="outline" size="sm" className="min-h-11 gap-1">
+      <Link href={href}>
+        {label}
+        <ChevronRight className="size-4" aria-hidden />
+      </Link>
+    </Button>
   )
 }
 
@@ -194,7 +206,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
           ) : null
         }
         action={
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-2">
             {canPost ? (
               <Button asChild variant="outline" size="sm" className="min-h-11">
                 <Link href="/announcements#post">
@@ -202,9 +214,10 @@ export function DashboardView({ data }: { data: DashboardData }) {
                 </Link>
               </Button>
             ) : null}
-            <Button asChild variant="ghost" size="sm" className="min-h-11">
-              <Link href="/announcements">{OPS_HOME_UI.announcementsAll}</Link>
-            </Button>
+            <ViewAllLink
+              href="/announcements"
+              label={OPS_HOME_UI.announcementsAll}
+            />
           </div>
         }
       >
@@ -244,6 +257,9 @@ export function DashboardView({ data }: { data: DashboardData }) {
         icon={Clock}
         title={OPS_HOME_UI.todayTitle}
         description={OPS_HOME_UI.todayHint}
+        action={
+          <ViewAllLink href="/audit-history" label={OPS_HOME_UI.todayAll} />
+        }
       >
         {todayItems.length === 0 ? (
           <p className="flex items-center gap-2 text-base text-muted-foreground">
@@ -270,6 +286,9 @@ export function DashboardView({ data }: { data: DashboardData }) {
         icon={AlertTriangle}
         title={OPS_HOME_UI.recentTitle}
         description={OPS_HOME_UI.recentHint}
+        action={
+          <ViewAllLink href="/audit-history" label={OPS_HOME_UI.recentAll} />
+        }
       >
         {data.recentFindings.length === 0 ? (
           <p className="text-base text-muted-foreground">

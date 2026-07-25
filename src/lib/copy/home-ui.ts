@@ -13,12 +13,14 @@ export const OPS_HOME_UI = {
   announcementsPost: "投稿する",
 
   todayTitle: "今日やること",
-  todayHint: "未完了の書類と期限を最大3件。",
+  todayHint: "未完了書類と優先対応を表示",
   todayEmpty: "今日の対応はありません",
+  todayAll: "すべて見る",
 
   recentTitle: "最近の指摘",
-  recentHint: "要改善以上の指摘を最新5件。",
+  recentHint: "重要な過去の改善指摘を表示",
   recentEmpty: "該当する指摘はまだありません",
+  recentAll: "すべて見る",
 
   kindRuleUpdate: "ルール更新",
   kindFacility: "事業所",
