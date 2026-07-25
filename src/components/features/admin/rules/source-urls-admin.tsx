@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import {
   createMunicipalitySourceUrlAction,
@@ -60,6 +61,7 @@ import {
 } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { PurposeGuide } from "@/components/features/admin/purpose-guide"
+import { getPhase1CityBySlug } from "@/lib/rule-engine/phase1-cities"
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—"
@@ -145,6 +147,11 @@ function rowToEdit(row: RuleSourceRow): EditState {
 }
 
 export function SourceUrlsAdmin() {
+  const searchParams = useSearchParams()
+  const citySlug = searchParams.get("city")
+  const jurisdictionParam = searchParams.get("jurisdiction")
+  const cityFromQuery = citySlug ? getPhase1CityBySlug(citySlug) : undefined
+
   const [rows, setRows] = useState<RuleSourceRow[]>([])
   const [municipalities, setMunicipalities] = useState<
     Array<{ id: string; name: string; code: string }>
@@ -161,6 +168,7 @@ export function SourceUrlsAdmin() {
   const [filterReview, setFilterReview] = useState<RuleHumanReviewStatus | "all">(
     "all"
   )
+  const [queryFilterApplied, setQueryFilterApplied] = useState(false)
 
   const [editing, setEditing] = useState<EditState | null>(null)
 
@@ -202,6 +210,32 @@ export function SourceUrlsAdmin() {
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  useEffect(() => {
+    if (queryFilterApplied || municipalities.length === 0) return
+    if (jurisdictionParam) {
+      setFilterJurisdiction(jurisdictionParam)
+      setNewJurisdictionId(jurisdictionParam)
+      setQueryFilterApplied(true)
+      return
+    }
+    if (cityFromQuery) {
+      const match = municipalities.find(
+        (m) =>
+          m.code === cityFromQuery.code || m.name === cityFromQuery.name
+      )
+      if (match) {
+        setFilterJurisdiction(match.id)
+        setNewJurisdictionId(match.id)
+      }
+      setQueryFilterApplied(true)
+    }
+  }, [
+    municipalities,
+    jurisdictionParam,
+    cityFromQuery,
+    queryFilterApplied,
+  ])
 
   const stats = useMemo(() => {
     const missingUrl = rows.filter((r) => !primarySourceUrl(r)).length
@@ -297,6 +331,18 @@ export function SourceUrlsAdmin() {
           <p className="mt-1 max-w-3xl text-base leading-relaxed text-muted-foreground">
             自治体・厚労省などの原文URLを管理します。法改正時はリンク切れがないかご確認ください。
           </p>
+          {cityFromQuery ? (
+            <p className="mt-2 text-base font-medium text-primary">
+              {cityFromQuery.name}
+              のルールブックから開いています（自治体フィルタ適用中）。
+              <Link
+                href={`/admin/rules/regulatory/${cityFromQuery.slug}`}
+                className="ml-2 underline-offset-4 hover:underline"
+              >
+                ルールブックに戻る
+              </Link>
+            </p>
+          ) : null}
         </div>
         <Button
           type="button"

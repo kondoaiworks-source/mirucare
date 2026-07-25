@@ -55,9 +55,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
         description:
           rulebook?.navDescription ?? "参照URL・資料を整え確定版を保つ",
         icon: BookOpen,
-        matchPaths: rulebook?.matchPaths.filter(
-          (p) => p !== "/admin/document-changes"
-        ),
+        matchPaths: rulebook?.matchPaths,
       },
     ],
   },

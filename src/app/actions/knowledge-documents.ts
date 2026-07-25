@@ -99,6 +99,7 @@ export async function resolveKnowledgeSyncAlertAction(
 
   revalidatePath("/admin/rules/documents")
   revalidatePath("/admin/documents")
+  revalidatePath("/admin/rules/regulatory")
   return { ok: true }
 }
 

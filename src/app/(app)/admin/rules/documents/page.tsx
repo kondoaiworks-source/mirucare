@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { Suspense } from "react"
 import { countPendingChangeDraftsAction } from "@/app/actions/knowledge-change-drafts"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { PurposeGuide } from "@/components/features/admin/purpose-guide"
@@ -59,7 +60,11 @@ export default async function RulesDocumentsPage() {
         />
       ) : null}
 
-      <KnowledgeDocumentsAdmin hidePageHeader />
+      <Suspense
+        fallback={<p className="text-base text-muted-foreground">読み込み中…</p>}
+      >
+        <KnowledgeDocumentsAdmin hidePageHeader />
+      </Suspense>
     </div>
   )
 }

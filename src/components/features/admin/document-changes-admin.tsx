@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useState, useTransition } from "react"
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import {
   AlertTriangle,
   CheckCircle2,
@@ -30,6 +31,7 @@ import {
   type PendingChangeDraftRow,
 } from "@/app/actions/knowledge-change-drafts"
 import type { KnowledgeChangeItem } from "@/lib/knowledge/diff-draft"
+import { getPhase1CityBySlug } from "@/lib/rule-engine/phase1-cities"
 
 function asChanges(raw: unknown): KnowledgeChangeItem[] {
   if (!Array.isArray(raw)) return []
@@ -60,6 +62,11 @@ function isTruncated(draft: PendingChangeDraftRow): boolean {
 }
 
 export function DocumentChangesAdmin() {
+  const searchParams = useSearchParams()
+  const citySlug = searchParams.get("city")
+  const draftFocusId = searchParams.get("draft")
+  const cityFromQuery = citySlug ? getPhase1CityBySlug(citySlug) : undefined
+
   const [drafts, setDrafts] = useState<PendingChangeDraftRow[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -90,6 +97,36 @@ export function DocumentChangesAdmin() {
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  useEffect(() => {
+    if (!draftFocusId) return
+    const el = document.getElementById(`draft-card-${draftFocusId}`)
+    el?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [draftFocusId, drafts])
+
+  const visibleDrafts = useMemo(() => {
+    if (!cityFromQuery) return drafts
+    const name = cityFromQuery.name
+    const pref = cityFromQuery.prefectureName
+    return drafts.filter((d) => {
+      const doc = d.knowledge_documents
+      if (!doc) return false
+      if (doc.jurisdiction_level === "国") return true
+      if (
+        doc.jurisdiction_level === "都道府県" &&
+        (doc.region_name === pref || doc.region_name?.includes(pref))
+      ) {
+        return true
+      }
+      if (
+        doc.jurisdiction_level === "市区町村" &&
+        (doc.region_name === name || doc.region_name?.includes(name))
+      ) {
+        return true
+      }
+      return false
+    })
+  }, [drafts, cityFromQuery])
 
   function setReason(id: string, value: string) {
     setReasons((prev) => ({ ...prev, [id]: value }))
@@ -158,6 +195,18 @@ export function DocumentChangesAdmin() {
             監視で検知した変更を確認し、問題なければ<strong>行政資料の台帳</strong>
             へ反映します。チェック用のAI判定ルールへは自動では載りません（次のステップで人が作ります）。
           </p>
+          {cityFromQuery ? (
+            <p className="text-base font-medium text-primary">
+              {cityFromQuery.name}
+              のルールブック関連（国・県・市）に絞り込み中。
+              <Link
+                href={`/admin/rules/regulatory/${cityFromQuery.slug}`}
+                className="ml-2 underline-offset-4 hover:underline"
+              >
+                ルールブックに戻る
+              </Link>
+            </p>
+          ) : null}
         </div>
         <Button
           type="button"
@@ -187,9 +236,12 @@ export function DocumentChangesAdmin() {
       <p className="text-base tabular-nums text-muted-foreground">
         承認待ち{" "}
         <span className="text-2xl font-bold text-primary-dark">
-          {drafts.length}
+          {visibleDrafts.length}
         </span>{" "}
         件
+        {cityFromQuery && drafts.length !== visibleDrafts.length ? (
+          <span className="ml-2 text-sm">（全体 {drafts.length}件）</span>
+        ) : null}
       </p>
 
       <Alert className="rounded-xl border-primary/20 bg-primary/[0.03]">
@@ -213,27 +265,35 @@ export function DocumentChangesAdmin() {
         </p>
       ) : null}
 
-      {!loading && drafts.length === 0 && !loadError ? (
+      {!loading && visibleDrafts.length === 0 && !loadError ? (
         <Card className="rounded-xl shadow-subtle">
           <CardHeader>
             <CardTitle className="text-lg">承認待ちはありません</CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              変更が検知されると、ここに確認案件が表示されます。
+              {cityFromQuery
+                ? `${cityFromQuery.name}関連のマニュアル差分はありません。`
+                : "変更が検知されると、ここに確認案件が表示されます。"}
             </CardDescription>
           </CardHeader>
         </Card>
       ) : null}
 
       <ul className="space-y-6">
-        {drafts.map((draft) => {
+        {visibleDrafts.map((draft) => {
           const doc = draft.knowledge_documents
           const changes = asChanges(draft.changes)
           const reviewNeeded = needsReview(draft)
           const truncated = isTruncated(draft)
+          const focused = draftFocusId === draft.id
 
           return (
-            <li key={draft.id}>
-              <Card className="rounded-xl shadow-subtle">
+            <li key={draft.id} id={`draft-card-${draft.id}`}>
+              <Card
+                className={cn(
+                  "rounded-xl shadow-subtle",
+                  focused && "ring-2 ring-primary"
+                )}
+              >
                 <CardHeader className="space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="space-y-1">

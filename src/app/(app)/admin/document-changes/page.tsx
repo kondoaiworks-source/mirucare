@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { Suspense } from "react"
 import { requireOperator } from "@/lib/operator"
 import { DocumentChangesAdmin } from "@/components/features/admin/document-changes-admin"
 import { countPendingChangeDraftsAction } from "@/app/actions/knowledge-change-drafts"
@@ -38,7 +39,11 @@ export default async function AdminDocumentChangesPage() {
           <Link href="/admin">レビューコンソール</Link>
         </Button>
       </div>
-      <DocumentChangesAdmin />
+      <Suspense
+        fallback={<p className="text-base text-muted-foreground">読み込み中…</p>}
+      >
+        <DocumentChangesAdmin />
+      </Suspense>
     </div>
   )
 }

@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState, useTransition, type FormEvent } from "react"
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useDropzone } from "react-dropzone"
 import {
   Archive,
@@ -47,6 +49,7 @@ import {
   resolveKnowledgeSyncAlertAction,
   runKnowledgeSyncNowAction,
 } from "@/app/actions/knowledge-documents"
+import { getPhase1CityBySlug } from "@/lib/rule-engine/phase1-cities"
 import type {
   JurisdictionLevel,
   KnowledgeDocument,
@@ -121,6 +124,12 @@ export function KnowledgeDocumentsAdmin(props?: {
   hidePageHeader?: boolean
 }) {
   const hidePageHeader = props?.hidePageHeader ?? false
+  const searchParams = useSearchParams()
+  const citySlug = searchParams.get("city")
+  const cityFromQuery = citySlug ? getPhase1CityBySlug(citySlug) : undefined
+  const regionFilter =
+    searchParams.get("region")?.trim() || cityFromQuery?.name || ""
+
   const [rows, setRows] = useState<KnowledgeDocument[]>([])
   const [alerts, setAlerts] = useState<KnowledgeSyncAlert[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -129,8 +138,8 @@ export function KnowledgeDocumentsAdmin(props?: {
 
   const [title, setTitle] = useState("")
   const [jurisdictionLevel, setJurisdictionLevel] =
-    useState<JurisdictionLevel>("都道府県")
-  const [regionName, setRegionName] = useState("")
+    useState<JurisdictionLevel>(regionFilter ? "市区町村" : "都道府県")
+  const [regionName, setRegionName] = useState(regionFilter)
   const [applicableYear, setApplicableYear] = useState(defaultFiscalYear)
   const [sourceUrl, setSourceUrl] = useState("")
   const [watchKind, setWatchKind] = useState<KnowledgeWatchKind>("file")
@@ -172,6 +181,12 @@ export function KnowledgeDocumentsAdmin(props?: {
     void refreshList()
   }, [refreshList])
 
+  useEffect(() => {
+    if (!regionFilter) return
+    setJurisdictionLevel("市区町村")
+    setRegionName(regionFilter)
+  }, [regionFilter])
+
   const onDrop = useCallback((accepted: File[]) => {
     const next = accepted[0]
     if (!next) return
@@ -197,21 +212,25 @@ export function KnowledgeDocumentsAdmin(props?: {
     maxSize: 12 * 1024 * 1024,
   })
 
-  const sortedRows = useMemo(
-    () =>
-      [...rows].sort((a, b) => {
-        if (a.status !== b.status) {
-          return a.status === "active" ? -1 : 1
-        }
-        return b.applicable_year - a.applicable_year
-      }),
-    [rows]
-  )
+  const sortedRows = useMemo(() => {
+    const list = [...rows].sort((a, b) => {
+      if (a.status !== b.status) {
+        return a.status === "active" ? -1 : 1
+      }
+      return b.applicable_year - a.applicable_year
+    })
+    if (!regionFilter) return list
+    return list.filter(
+      (d) =>
+        d.region_name === regionFilter ||
+        Boolean(d.region_name?.includes(regionFilter))
+    )
+  }, [rows, regionFilter])
 
   function resetForm() {
     setTitle("")
-    setJurisdictionLevel("都道府県")
-    setRegionName("")
+    setJurisdictionLevel(regionFilter ? "市区町村" : "都道府県")
+    setRegionName(regionFilter)
     setApplicableYear(defaultFiscalYear())
     setSourceUrl("")
     setWatchKind("file")
@@ -355,6 +374,22 @@ export function KnowledgeDocumentsAdmin(props?: {
           </p>
         </div>
       )}
+
+      {cityFromQuery ? (
+        <Alert className="rounded-xl border-primary/20 bg-primary/[0.03]">
+          <FileText className="text-primary" />
+          <AlertTitle>{cityFromQuery.name}向けに絞り込み中</AlertTitle>
+          <AlertDescription className="text-base leading-relaxed">
+            ルールブックから開いています。一覧はこの市の資料に絞り、新規登録の地域名も初期入力しています。{" "}
+            <Link
+              href={`/admin/rules/regulatory/${cityFromQuery.slug}`}
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              ルールブックに戻る
+            </Link>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {alerts.length > 0 ? (
         <Card className="rounded-lg border-warning/40 shadow-subtle">
