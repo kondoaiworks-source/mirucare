@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   DAILY_CHECK_PURPOSES,
   dailyCheckPurposeTitle,
+  dailyCheckPurposeUploadHint,
   findDocTypeMismatches,
   docTypeLabel,
 } from "@/lib/documents"
@@ -180,6 +181,7 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
   }
 
   const purposeTitle = dailyCheckPurposeTitle(selectedDocType)
+  const purposeUploadHint = dailyCheckPurposeUploadHint(selectedDocType)
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col pb-72 md:pb-40">
@@ -224,11 +226,11 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
       {step === 1 && !resuming ? (
         <section className="space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-primary-dark">
+            <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
               何をチェックしますか？
             </h1>
             <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-              まずチェックしたい書類の種類を1つ選びます。次の画面で、その種類の書類だけをまとめてアップロードしてください。
+              チェックしたい種類を1つ選びます。次の画面で、案内どおりの書類をアップロードしてください。
             </p>
           </div>
           <PurposeCards selected={selectedDocType} onSelect={choosePurpose} />
@@ -238,12 +240,12 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
       {step === 2 && !resuming ? (
         <section className="space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-primary-dark">
-              『{docTypeLabel(selectedDocType)}』をアップロード
+            <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
+              {purposeTitle}
             </h1>
             <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-              {purposeTitle}。同じ種類の書類だけをまとめてアップロードしてください（
-              {doneItems.length}件）。
+              {purposeUploadHint}
+              。同じ種類の書類だけをまとめてください（{doneItems.length}件）。
             </p>
           </div>
 
@@ -465,7 +467,7 @@ function PurposeCards({
               <span className="block text-base font-semibold text-foreground">
                 {option.title}
               </span>
-              <span className="mt-0.5 block text-sm text-muted-foreground">
+              <span className="mt-1 block text-base leading-relaxed text-muted-foreground">
                 {option.description}
               </span>
             </span>

@@ -67,7 +67,8 @@ export const DOC_TYPE_OPTIONS: {
 ]
 
 /**
- * 日次チェックの「何をチェックしますか？」用の目的別選択肢。
+ * 「何をチェックしますか？」用の目的別選択肢。
+ * title＝何をするか / description＝何をアップロードするか
  * アップロード前に1つ選び、選んだ種類を全ファイルの doc_type とする。
  */
 export const DAILY_CHECK_PURPOSES: {
@@ -78,32 +79,32 @@ export const DAILY_CHECK_PURPOSES: {
 }[] = [
   {
     value: "提供記録",
-    title: "日報・提供記録をチェック",
-    description: "サービス提供記録・実施記録・日報など",
+    title: "提供記録をチェックする",
+    description: "サービス提供記録・日報をアップロードしてください",
     icon: FileText,
   },
   {
     value: "ケアプラン",
-    title: "ケアプランをチェック",
-    description: "居宅サービス計画・訪問介護計画など",
+    title: "ケアプランをチェックする",
+    description: "居宅サービス計画・訪問介護計画をアップロードしてください",
     icon: ClipboardList,
   },
   {
     value: "勤務表",
-    title: "勤務表をチェック",
-    description: "シフト表・出勤簿など",
+    title: "勤務表をチェックする",
+    description: "シフト表・出勤簿をアップロードしてください",
     icon: CalendarDays,
   },
   {
     value: "請求データ",
-    title: "請求データをチェック",
-    description: "国保連請求・明細CSVなど",
+    title: "請求をチェックする",
+    description: "国保連請求・明細CSVをアップロードしてください",
     icon: Receipt,
   },
   {
     value: "その他",
-    title: "その他の書類をチェック",
-    description: "同意書・写真など上記以外",
+    title: "その他の書類をチェックする",
+    description: "同意書・写真など上記以外をアップロードしてください",
     icon: Files,
   },
 ]
@@ -113,11 +114,19 @@ export function docTypeLabel(docType: DocType): string {
   return DOC_TYPE_OPTIONS.find((o) => o.value === docType)?.title ?? docType
 }
 
-/** 目的別カードのタイトル（例：日報・提供記録をチェック） */
+/** 目的別カードのタイトル（例：提供記録をチェックする） */
 export function dailyCheckPurposeTitle(docType: DocType): string {
   return (
     DAILY_CHECK_PURPOSES.find((p) => p.value === docType)?.title ??
-    `${docTypeLabel(docType)}をチェック`
+    `${docTypeLabel(docType)}をチェックする`
+  )
+}
+
+/** 目的別カードのアップロード案内 */
+export function dailyCheckPurposeUploadHint(docType: DocType): string {
+  return (
+    DAILY_CHECK_PURPOSES.find((p) => p.value === docType)?.description ??
+    `${docTypeLabel(docType)}をアップロードしてください`
   )
 }
 

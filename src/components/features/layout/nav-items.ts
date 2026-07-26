@@ -104,6 +104,8 @@ export function isNavItemActive(pathname: string, href: string): boolean {
     )
   }
   if (href === "/audit-history") {
+    // 結果画面 `/check/[id]` のみ。アップロード `/check/upload` は運用AI監査側
+    if (pathname.startsWith("/check/upload")) return false
     return (
       pathname.startsWith("/audit-history") ||
       pathname.startsWith("/documents") ||
