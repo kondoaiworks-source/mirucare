@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { CheckCircle2, ClipboardList, Hourglass } from "lucide-react"
 import type { CityRulebookCheckRule } from "@/app/actions/city-rulebook"
+import { CityRulebookSection } from "@/components/features/admin/rules/city-rulebook-section"
 import { RULE_SCOPE_LABEL } from "@/lib/rule-engine/city-rule-scope"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -25,24 +26,14 @@ export function CityRulebookCheckRulesPanel({
   pending,
 }: Props) {
   return (
-    <section className="space-y-4" aria-labelledby="check-rules-heading">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2
-            id="check-rules-heading"
-            className="flex items-center gap-2 text-xl font-bold text-primary-dark"
-          >
-            <ClipboardList className="size-5 text-primary" aria-hidden />
-            チェックルール
-            <span className="font-normal text-muted-foreground tabular-nums">
-              （了承済み {approved.length}件）
-            </span>
-          </h2>
-          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            チェックの際に適用されるルールの一覧です
-          </p>
-        </div>
-        {pending.length > 0 ? (
+    <CityRulebookSection
+      headingId="check-rules-heading"
+      icon={<ClipboardList className="size-5" aria-hidden />}
+      title="チェックルール"
+      countLabel={`（了承済み ${approved.length}件）`}
+      description="チェックの際に適用されるルールの一覧です"
+      action={
+        pending.length > 0 ? (
           <Button asChild className="min-h-11">
             <Link href="/admin/rules/pending">
               承認待ちで了承する（{pending.length}件）
@@ -57,9 +48,9 @@ export function CityRulebookCheckRulesPanel({
               更新履歴
             </Link>
           </p>
-        )}
-      </div>
-
+        )
+      }
+    >
       {pending.length > 0 ? (
         <Card className="rounded-xl border-warning/30 bg-warning/5 shadow-subtle">
           <CardHeader className="space-y-1 pb-2">
@@ -86,7 +77,7 @@ export function CityRulebookCheckRulesPanel({
         </Card>
       ) : null}
 
-      <details className="rounded-xl border border-border bg-muted/20 px-4 py-3">
+      <details className="rounded-xl border border-border bg-muted/30 px-4 py-3">
         <summary className="cursor-pointer text-base font-semibold text-primary-dark outline-none focus-visible:ring-2 focus-visible:ring-ring">
           了承済みルールを表示する（{approved.length}件）
         </summary>
@@ -104,7 +95,7 @@ export function CityRulebookCheckRulesPanel({
           )}
         </div>
       </details>
-    </section>
+    </CityRulebookSection>
   )
 }
 

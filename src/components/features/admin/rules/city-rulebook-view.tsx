@@ -21,7 +21,7 @@ export function CityRulebookView({ data }: Props) {
   const { city } = data
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <AdminBreadcrumb
           items={[

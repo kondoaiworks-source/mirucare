@@ -171,6 +171,8 @@ export function SourceUrlsAdmin() {
   const [queryFilterApplied, setQueryFilterApplied] = useState(false)
 
   const [editing, setEditing] = useState<EditState | null>(null)
+  const [editOpenedFromQuery, setEditOpenedFromQuery] = useState(false)
+  const editIdFromQuery = searchParams.get("edit")
 
   const [newJurisdictionId, setNewJurisdictionId] = useState("")
   const [newTitle, setNewTitle] = useState("")
@@ -235,6 +237,36 @@ export function SourceUrlsAdmin() {
     jurisdictionParam,
     cityFromQuery,
     queryFilterApplied,
+  ])
+
+  useEffect(() => {
+    if (editOpenedFromQuery || !editIdFromQuery || loading) return
+
+    const target = rows.find((r) => r.id === editIdFromQuery)
+    if (!target) {
+      // 市フィルタ等で隠れている場合は全件表示にして再取得する
+      if (filterJurisdiction !== "all") {
+        setFilterJurisdiction("all")
+        return
+      }
+      setEditOpenedFromQuery(true)
+      toast.message("指定の参照URLが見つかりませんでした。一覧から選んで修正してください。")
+      return
+    }
+
+    setEditing(rowToEdit(target))
+    setEditOpenedFromQuery(true)
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`source-url-edit-${target.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+  }, [
+    editIdFromQuery,
+    editOpenedFromQuery,
+    filterJurisdiction,
+    loading,
+    rows,
   ])
 
   const stats = useMemo(() => {
@@ -737,7 +769,10 @@ export function SourceUrlsAdmin() {
       </Card>
 
       {editing ? (
-        <Card className="rounded-xl border-primary/30 shadow-subtle">
+        <Card
+          id={`source-url-edit-${editing.id}`}
+          className="rounded-xl border-primary/30 shadow-subtle"
+        >
           <CardHeader>
             <CardTitle className="text-lg">参照URLを編集する</CardTitle>
             <CardDescription>{editing.title}</CardDescription>

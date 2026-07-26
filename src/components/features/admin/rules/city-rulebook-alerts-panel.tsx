@@ -14,6 +14,7 @@ import type {
   CityRulebookAlert,
   CityRulebookDraft,
 } from "@/app/actions/city-rulebook"
+import { CityRulebookSection } from "@/components/features/admin/rules/city-rulebook-section"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -136,26 +137,18 @@ export function CityRulebookAlertsPanel({
   }
 
   return (
-    <section className="space-y-4" aria-labelledby="city-alerts-heading">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2
-            id="city-alerts-heading"
-            className="flex items-center gap-2 text-xl font-bold text-primary-dark"
-          >
-            <Scale className="size-5 text-primary" aria-hidden />
-            新ルール判定
-            <span className="font-normal text-muted-foreground tabular-nums">
-              （{alertTotal}件）
-            </span>
-          </h2>
-          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            {alertTotal === 0
-              ? "現在判定案件は0件です。"
-              : "原文の差分や同期アラートを確認し、必要なら判定ルール案を更新します。"}
-          </p>
-        </div>
-        {alertTotal > 0 ? (
+    <CityRulebookSection
+      headingId="city-alerts-heading"
+      icon={<Scale className="size-5" aria-hidden />}
+      title="新ルール判定"
+      countLabel={`（${alertTotal}件）`}
+      description={
+        alertTotal === 0
+          ? "現在判定案件は0件です。"
+          : "原文の差分や同期アラートを確認し、必要なら判定ルール案を更新します。"
+      }
+      action={
+        alertTotal > 0 ? (
           <p className="text-sm text-muted-foreground">
             <Link
               href={`/admin/document-changes?city=${citySlug}`}
@@ -164,9 +157,9 @@ export function CityRulebookAlertsPanel({
               差分承認の詳細
             </Link>
           </p>
-        ) : null}
-      </div>
-
+        ) : undefined
+      }
+    >
       {alertTotal === 0 ? null : (
         <>
           <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-base leading-relaxed text-primary-dark">
@@ -300,6 +293,6 @@ export function CityRulebookAlertsPanel({
           </ul>
         </>
       )}
-    </section>
+    </CityRulebookSection>
   )
 }

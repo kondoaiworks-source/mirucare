@@ -4,8 +4,10 @@ import {
   ExternalLink,
   FileText,
   Link2,
+  Pencil,
 } from "lucide-react"
 import type { CityRulebookData } from "@/app/actions/city-rulebook"
+import { CityRulebookSection } from "@/components/features/admin/rules/city-rulebook-section"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
 import { ProposeRulesFromDocumentButton } from "@/components/features/admin/rules/propose-rules-from-document-button"
 import {
@@ -30,6 +32,7 @@ type BookEntry =
       kind: "source"
       layer: (typeof LAYER_ORDER)[number]
       id: string
+      jurisdictionId: string
       title: string
       subtitle: string
       reviewLabel: string
@@ -49,6 +52,26 @@ type BookEntry =
 
 type Props = {
   data: CityRulebookData
+}
+
+function sourceEditHref(opts: {
+  citySlug: string
+  sourceId: string
+  jurisdictionId: string
+}) {
+  const params = new URLSearchParams({
+    city: opts.citySlug,
+    jurisdiction: opts.jurisdictionId,
+    edit: opts.sourceId,
+  })
+  return `/admin/rules/source-urls?${params.toString()}`
+}
+
+function documentEditHref(opts: { citySlug: string; layer: string }) {
+  if (opts.layer === "city") {
+    return `/admin/rules/documents?city=${opts.citySlug}`
+  }
+  return `/admin/rules/documents`
 }
 
 /**
@@ -71,6 +94,7 @@ export function CityRulebookBookToc({ data }: Props) {
         kind: "source",
         layer,
         id: s.id,
+        jurisdictionId: s.jurisdiction_id,
         title: s.title,
         subtitle: [
           s.jurisdictionName,
@@ -116,33 +140,28 @@ export function CityRulebookBookToc({ data }: Props) {
   const citySources = sources.filter((s) => s.layer === "city")
 
   return (
-    <section className="space-y-4" aria-labelledby="book-toc-heading">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2
-            id="book-toc-heading"
-            className="flex items-center gap-2 text-xl font-bold text-primary-dark"
-          >
-            <BookMarked className="size-5 text-primary" aria-hidden />
-            自治体ルール設定
-            <span className="font-normal text-muted-foreground tabular-nums">
-              （{entries.length}件）
-            </span>
-          </h2>
-          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            チェックルールの元となる自治体公開情報URLの一覧です
-          </p>
+    <CityRulebookSection
+      headingId="book-toc-heading"
+      icon={<BookMarked className="size-5" aria-hidden />}
+      title="自治体ルール設定"
+      countLabel={`（${entries.length}件）`}
+      description="チェックルールの元となる自治体公開情報URLの一覧です"
+      action={
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={`/admin/rules/source-urls?city=${city.slug}`}>
+              <Pencil className="size-4" aria-hidden />
+              参照URLを修正する
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={`/admin/rules/documents?city=${city.slug}`}>
+              行政資料を編集する
+            </Link>
+          </Button>
         </div>
-        <p className="text-sm text-muted-foreground">
-          <Link
-            href={`/admin/rules/documents?city=${city.slug}`}
-            className="text-primary underline-offset-4 hover:underline"
-          >
-            行政資料を編集する
-          </Link>
-        </p>
-      </div>
-
+      }
+    >
       <div className="space-y-2">
         {LAYER_ORDER.map((layer) => {
           const layerEntries = entries.filter((e) => e.layer === layer)
@@ -155,7 +174,7 @@ export function CityRulebookBookToc({ data }: Props) {
           return (
             <details
               key={layer}
-              className="rounded-xl border border-border bg-muted/20 px-4 py-3"
+              className="rounded-xl border border-border bg-muted/30 px-4 py-3"
             >
               <summary className="cursor-pointer text-base font-semibold text-primary-dark outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 {layerTitle}
@@ -167,12 +186,33 @@ export function CityRulebookBookToc({ data }: Props) {
                 {layerEntries.length === 0 ? (
                   <p className="text-base text-muted-foreground">
                     登録はありません。
+                    {layer === "city" ? null : (
+                      <>
+                        {" "}
+                        <Link
+                          href={
+                            layer === "national"
+                              ? "/admin/rules/source-urls"
+                              : `/admin/rules/source-urls?city=${city.slug}`
+                          }
+                          className="font-medium text-primary underline-offset-4 hover:underline"
+                        >
+                          参照URL画面で追加・修正する
+                        </Link>
+                      </>
+                    )}
                   </p>
                 ) : (
                   <ul className="space-y-2">
                     {layerEntries.map((e, index) => (
                       <li key={`${e.kind}-${e.id}`}>
-                        <Card className="rounded-xl shadow-subtle">
+                        <Card
+                          className={
+                            e.needsAttention || !e.url
+                              ? "rounded-xl border-warning/40 shadow-subtle"
+                              : "rounded-xl shadow-subtle"
+                          }
+                        >
                           <CardContent className="flex flex-wrap items-center gap-3 py-3.5">
                             <span
                               className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-semibold tabular-nums text-muted-foreground"
@@ -202,12 +242,12 @@ export function CityRulebookBookToc({ data }: Props) {
                                 </>
                               )}
                             </Badge>
-                            {e.needsAttention ? (
+                            {e.needsAttention || !e.url ? (
                               <Badge
                                 variant="destructive"
                                 className="rounded-md"
                               >
-                                要確認
+                                {!e.url ? "URLなし／要修正" : "要確認"}
                               </Badge>
                             ) : null}
                             <div className="min-w-0 flex-1">
@@ -242,12 +282,58 @@ export function CityRulebookBookToc({ data }: Props) {
                                   </a>
                                 </Button>
                               ) : null}
-                              {e.kind === "document" ? (
-                                <ProposeRulesFromDocumentButton
-                                  knowledgeDocumentId={e.id}
-                                  documentTitle={e.title}
-                                />
-                              ) : null}
+                              {e.kind === "source" ? (
+                                <Button
+                                  asChild
+                                  variant={
+                                    e.needsAttention || !e.url
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  className="min-h-11"
+                                >
+                                  <Link
+                                    href={sourceEditHref({
+                                      citySlug: city.slug,
+                                      sourceId: e.id,
+                                      jurisdictionId: e.jurisdictionId,
+                                    })}
+                                  >
+                                    <Pencil
+                                      className="size-4"
+                                      aria-hidden
+                                    />
+                                    URLを修正する
+                                  </Link>
+                                </Button>
+                              ) : (
+                                <>
+                                  <Button
+                                    asChild
+                                    variant="outline"
+                                    size="sm"
+                                    className="min-h-11"
+                                  >
+                                    <Link
+                                      href={documentEditHref({
+                                        citySlug: city.slug,
+                                        layer: e.layer,
+                                      })}
+                                    >
+                                      <Pencil
+                                        className="size-4"
+                                        aria-hidden
+                                      />
+                                      資料を修正する
+                                    </Link>
+                                  </Button>
+                                  <ProposeRulesFromDocumentButton
+                                    knowledgeDocumentId={e.id}
+                                    documentTitle={e.title}
+                                  />
+                                </>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
@@ -275,6 +361,6 @@ export function CityRulebookBookToc({ data }: Props) {
           )
         })}
       </div>
-    </section>
+    </CityRulebookSection>
   )
 }
