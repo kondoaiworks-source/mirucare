@@ -13,16 +13,14 @@ import {
 } from "@/components/ui/card"
 
 type Props = {
-  cityName: string
   approved: CityRulebookCheckRule[]
   pending: CityRulebookCheckRule[]
 }
 
 /**
- * 了承済み＝この市のチェック用ルールブック中身。
+ * 了承済み＝この市のチェックルール（チェックに使う物差し）。
  */
 export function CityRulebookCheckRulesPanel({
-  cityName,
   approved,
   pending,
 }: Props) {
@@ -35,14 +33,13 @@ export function CityRulebookCheckRulesPanel({
             className="flex items-center gap-2 text-xl font-bold text-primary-dark"
           >
             <ClipboardList className="size-5 text-primary" aria-hidden />
-            チェック用の中身
+            チェックルール
             <span className="font-normal text-muted-foreground tabular-nums">
               （了承済み {approved.length}件）
             </span>
           </h2>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            {cityName}
-            の書類チェックに使う物差しです。了承したものだけがここに入ります。
+            チェックの際に適用されるルールの一覧です
           </p>
         </div>
         {pending.length > 0 ? (
@@ -89,17 +86,24 @@ export function CityRulebookCheckRulesPanel({
         </Card>
       ) : null}
 
-      {approved.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
-          まだ了承済みがありません。根拠の目次で行政資料から「判定ルール案を生成」し、承認待ちで了承してください。
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {approved.map((r) => (
-            <RuleRow key={r.versionId} rule={r} />
-          ))}
-        </ul>
-      )}
+      <details className="rounded-xl border border-border bg-muted/20 px-4 py-3">
+        <summary className="cursor-pointer text-base font-semibold text-primary-dark outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          了承済みルールを表示する（{approved.length}件）
+        </summary>
+        <div className="mt-4 border-t border-border pt-4">
+          {approved.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
+              まだ了承済みがありません。自治体ルール設定で行政資料から「判定ルール案を生成」し、承認待ちで了承してください。
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {approved.map((r) => (
+                <RuleRow key={r.versionId} rule={r} />
+              ))}
+            </ul>
+          )}
+        </div>
+      </details>
     </section>
   )
 }

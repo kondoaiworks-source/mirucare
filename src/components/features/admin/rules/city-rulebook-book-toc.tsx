@@ -52,7 +52,7 @@ type Props = {
 }
 
 /**
- * 根拠（参照URL・行政資料）を国→県→市の1目次にまとめる。
+ * 根拠（参照URL・行政資料）を国→県→市の折りたたみ一覧にまとめる。
  */
 export function CityRulebookBookToc({ data }: Props) {
   const { city, sources, documents, counts } = data
@@ -133,10 +133,10 @@ export function CityRulebookBookToc({ data }: Props) {
                   id="book-toc-heading"
                   className="text-xl text-primary-dark"
                 >
-                  根拠の目次（国 → {city.prefectureName} → {city.name}）
+                  自治体ルール設定
                 </CardTitle>
                 <CardDescription className="mt-1 text-base leading-relaxed">
-                  従う根拠の一覧です。行政資料からは判定ルール案を生成できます。
+                  チェックルールの元となる自治体公開情報URLの一覧です
                 </CardDescription>
               </div>
             </div>
@@ -177,108 +177,123 @@ export function CityRulebookBookToc({ data }: Props) {
           まだ根拠がありません。下の「参照URLを追加・修正する」か、行政資料の編集から登録してください。
         </p>
       ) : (
-        <ol className="space-y-2">
+        <div className="space-y-2">
           {LAYER_ORDER.map((layer) => {
             const layerEntries = entries.filter((e) => e.layer === layer)
-            if (layerEntries.length === 0) return null
             const layerTitle =
               layer === "national"
-                ? "第1部：国"
+                ? "国"
                 : layer === "prefecture"
-                  ? `第2部：${city.prefectureName}`
-                  : `第3部：${city.name}`
+                  ? city.prefectureName
+                  : city.name
             return (
-              <li key={layer} className="space-y-2">
-                <h3 className="pt-2 text-base font-bold text-primary-dark">
+              <details
+                key={layer}
+                className="rounded-xl border border-border bg-muted/20 px-4 py-3"
+              >
+                <summary className="cursor-pointer text-base font-semibold text-primary-dark outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   {layerTitle}
                   <span className="ml-2 font-normal text-muted-foreground tabular-nums">
                     （{layerEntries.length}件）
                   </span>
-                </h3>
-                <ul className="space-y-2">
-                  {layerEntries.map((e, index) => (
-                    <li key={`${e.kind}-${e.id}`}>
-                      <Card className="rounded-xl shadow-subtle">
-                        <CardContent className="flex flex-wrap items-center gap-3 py-3.5">
-                          <span
-                            className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-semibold tabular-nums text-muted-foreground"
-                            aria-hidden
-                          >
-                            {index + 1}
-                          </span>
-                          <Badge variant="outline" className="rounded-md">
-                            {LAYER_LABEL[e.layer]}
-                          </Badge>
-                          <Badge variant="secondary" className="rounded-md">
-                            {e.kind === "source" ? (
-                              <>
-                                <Link2 className="mr-1 size-3.5" aria-hidden />
-                                参照URL
-                              </>
-                            ) : (
-                              <>
-                                <FileText
-                                  className="mr-1 size-3.5"
-                                  aria-hidden
-                                />
-                                行政資料
-                              </>
-                            )}
-                          </Badge>
-                          {e.needsAttention ? (
-                            <Badge
-                              variant="destructive"
-                              className="rounded-md"
-                            >
-                              要確認
-                            </Badge>
-                          ) : null}
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-primary-dark">
-                              {e.title}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {e.subtitle}
-                              {e.kind === "source" ? `／${e.reviewLabel}` : ""}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {e.url ? (
-                              <Button
-                                asChild
-                                variant="outline"
-                                size="sm"
-                                className="min-h-11"
+                </summary>
+                <div className="mt-4 space-y-2 border-t border-border pt-4">
+                  {layerEntries.length === 0 ? (
+                    <p className="text-base text-muted-foreground">
+                      登録はありません。
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {layerEntries.map((e, index) => (
+                        <li key={`${e.kind}-${e.id}`}>
+                          <Card className="rounded-xl shadow-subtle">
+                            <CardContent className="flex flex-wrap items-center gap-3 py-3.5">
+                              <span
+                                className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-semibold tabular-nums text-muted-foreground"
+                                aria-hidden
                               >
-                                <a
-                                  href={e.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                {index + 1}
+                              </span>
+                              <Badge variant="outline" className="rounded-md">
+                                {LAYER_LABEL[e.layer]}
+                              </Badge>
+                              <Badge variant="secondary" className="rounded-md">
+                                {e.kind === "source" ? (
+                                  <>
+                                    <Link2
+                                      className="mr-1 size-3.5"
+                                      aria-hidden
+                                    />
+                                    参照URL
+                                  </>
+                                ) : (
+                                  <>
+                                    <FileText
+                                      className="mr-1 size-3.5"
+                                      aria-hidden
+                                    />
+                                    行政資料
+                                  </>
+                                )}
+                              </Badge>
+                              {e.needsAttention ? (
+                                <Badge
+                                  variant="destructive"
+                                  className="rounded-md"
                                 >
-                                  原文を開く
-                                  <ExternalLink
-                                    className="size-4"
-                                    aria-hidden
+                                  要確認
+                                </Badge>
+                              ) : null}
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-primary-dark">
+                                  {e.title}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {e.subtitle}
+                                  {e.kind === "source"
+                                    ? `／${e.reviewLabel}`
+                                    : ""}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {e.url ? (
+                                  <Button
+                                    asChild
+                                    variant="outline"
+                                    size="sm"
+                                    className="min-h-11"
+                                  >
+                                    <a
+                                      href={e.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      原文を開く
+                                      <ExternalLink
+                                        className="size-4"
+                                        aria-hidden
+                                      />
+                                    </a>
+                                  </Button>
+                                ) : null}
+                                {e.kind === "document" ? (
+                                  <ProposeRulesFromDocumentButton
+                                    knowledgeDocumentId={e.id}
+                                    documentTitle={e.title}
                                   />
-                                </a>
-                              </Button>
-                            ) : null}
-                            {e.kind === "document" ? (
-                              <ProposeRulesFromDocumentButton
-                                knowledgeDocumentId={e.id}
-                                documentTitle={e.title}
-                              />
-                            ) : null}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </li>
-                  ))}
-                </ul>
-              </li>
+                                ) : null}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </details>
             )
           })}
-        </ol>
+        </div>
       )}
     </section>
   )

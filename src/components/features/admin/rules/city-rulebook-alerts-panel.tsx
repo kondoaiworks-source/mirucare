@@ -30,17 +30,15 @@ import { AlertTriangle, BookOpen, CheckCircle2 } from "lucide-react"
 
 type Props = {
   citySlug: string
-  cityName: string
   pendingDrafts: CityRulebookDraft[]
   openAlerts: CityRulebookAlert[]
 }
 
 /**
- * 市ルールブック上で更新アラートを人が確認・反映する。
+ * 市ルールブック上で新ルール判定（更新アラート）を人が確認・反映する。
  */
 export function CityRulebookAlertsPanel({
   citySlug,
-  cityName,
   pendingDrafts,
   openAlerts,
 }: Props) {
@@ -142,9 +140,9 @@ export function CityRulebookAlertsPanel({
     return (
       <Alert className="rounded-xl border-primary/20 bg-primary/[0.03]">
         <BookOpen className="text-primary" />
-        <AlertTitle>いま確認が必要な更新アラートはありません</AlertTitle>
+        <AlertTitle>新ルール判定</AlertTitle>
         <AlertDescription className="text-base leading-relaxed">
-          監視は自動です。差分が出たら、この画面で人が確認してから台帳へ反映してください。
+          現在判定案件は0件です。
         </AlertDescription>
       </Alert>
     )
@@ -155,7 +153,7 @@ export function CityRulebookAlertsPanel({
       <Alert className="rounded-xl border-warning/30 bg-warning/5">
         <AlertTriangle className="text-warning" />
         <AlertTitle id="city-alerts-heading">
-          {cityName}の更新アラート（{alertTotal}件）— 今の判定ルールを見直す必要あり
+          新ルール判定（{alertTotal}件）— 今の判定ルールを見直す必要あり
         </AlertTitle>
         <AlertDescription className="space-y-2 pt-2 text-base leading-relaxed">
           <p>

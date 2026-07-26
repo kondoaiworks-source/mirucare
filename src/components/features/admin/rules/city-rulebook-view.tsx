@@ -15,7 +15,7 @@ type Props = {
 }
 
 /**
- * 市ルールブック：①チェック用中身 → ②更新アラート → ③根拠の目次。
+ * 市ルールブック：①チェックルール → ②新ルール判定 → ③自治体ルール設定。
  * 件数カードや参照URL／資料の二重一覧は出さない。
  */
 export function CityRulebookView({ data }: Props) {
@@ -65,14 +65,12 @@ export function CityRulebookView({ data }: Props) {
       <RulebookServiceSelect showHeading={false} />
 
       <CityRulebookCheckRulesPanel
-        cityName={city.name}
         approved={data.approvedCheckRules}
         pending={data.pendingCheckRules}
       />
 
       <CityRulebookAlertsPanel
         citySlug={city.slug}
-        cityName={city.name}
         pendingDrafts={data.pendingDrafts}
         openAlerts={data.openAlerts}
       />
