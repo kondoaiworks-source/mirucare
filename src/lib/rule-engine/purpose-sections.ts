@@ -2,7 +2,6 @@ import {
   BookOpen,
   Bot,
   ClipboardCheck,
-  FileText,
   Landmark,
   Link2,
   Scale,
@@ -49,24 +48,18 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     navDescription: "この自治体で従う確定版を整える",
     icon: BookOpen,
     purpose:
-      "国・県・市の参照URLと行政資料を整え、更新アラートを人が確認してルールブックを最新に保ちます。施設は「この自治体ならこのルールブック」に従えばよい、が目標です。",
+      "国・県・市の参照URLを整え、PDFは自動監視します。更新アラートが出たら人が確認し、判定ルール案を了承してルールブックを最新に保ちます。施設は「この自治体ならこのルールブック」に従えばよい、が目標です。",
     steps: [
       "サービスはいま訪問介護（Phase1）",
-      "参照URL・行政資料を国／県／市で登録する",
-      "更新アラートが出たら人が確認して反映する",
+      "参照URLを国／県／市で登録する（PDF直リンクがあると自動監視）",
+      "更新アラートが出たら人が確認して判定ルール案を了承する",
     ],
     links: [
       {
         href: "/admin/rules/source-urls",
         label: "参照URL登録",
-        description: "法令・ルール・加算の公式URL（国・県・市）",
+        description: "法令・ルール・加算の公式URL（国・県・市）。登録で監視開始",
         icon: Link2,
-      },
-      {
-        href: "/admin/rules/documents",
-        label: "行政資料（監視）",
-        description: "マニュアルPDFの台帳と自動更新アラート",
-        icon: FileText,
       },
       {
         href: "/admin/rules/laws",

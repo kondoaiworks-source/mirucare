@@ -494,6 +494,16 @@ npm install -D @types/papaparse
       -H "Authorization: Bearer $CRON_SECRET"
     ```
 
+## 動作確認手順（参照URL登録→行政資料の自動監視）
+
+1. 運営アカウントで市ルールブック（`/admin/rules/regulatory/[slug]`）を開く
+2. 「参照URLを追加する」で資料名・PDF直リンクを登録する
+3. 成功メッセージに「監視を開始」系の文言が出ること
+4. 詳細設定 → 行政資料に、同名／同URLの台帳が自動で増えていること
+5. `rule_sources.knowledge_document_id` が埋まっていること（SQLまたは編集画面）
+6. HTMLページのみ（PDFなし）の場合は台帳はできるが「PDF直リンクがあると自動監視」案内になること
+7. ヘッダー右上に「ログイン中の事業所」と、設定した表示名が出ること
+
 ## 動作確認手順（アップロード導線・ナビ）
 
 1. 「運用AI監査」→「書類をアップロードする」で `/check/upload` を開く

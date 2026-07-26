@@ -51,9 +51,9 @@ export const RULES_MORE_LINKS: RulesMoreLink[] = [
   {
     href: "/admin/rules/documents",
     label: "行政資料（台帳）",
-    description: "マニュアルPDF・監視設定の詳細",
+    description: "トラブル時の台帳編集・手動同期（通常は参照URL登録で自動）",
     icon: FileText,
-    group: "ledger",
+    group: "ops",
   },
   {
     href: "/admin/rules/laws",

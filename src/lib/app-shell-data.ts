@@ -6,6 +6,7 @@ import { countIncompleteDocumentsAction } from "@/app/actions/documents"
 
 export type AppShellData = {
   facilityName: string | undefined
+  displayName: string | undefined
   laterCount: number
   incompleteDocumentsCount: number
   announcementCount: number
@@ -17,6 +18,7 @@ export type AppShellData = {
  */
 export const getAppShellData = cache(async (): Promise<AppShellData> => {
   let facilityName: string | undefined
+  let displayName: string | undefined
   let laterCount = 0
   let incompleteDocumentsCount = 0
   let announcementCount = 0
@@ -27,6 +29,7 @@ export const getAppShellData = cache(async (): Promise<AppShellData> => {
       ? profile?.organizations[0]
       : profile?.organizations
     facilityName = org?.name
+    displayName = profile?.display_name?.trim() || undefined
 
     const [later, incomplete, announcements] = await Promise.all([
       countLaterFindingsAction(),
@@ -50,6 +53,7 @@ export const getAppShellData = cache(async (): Promise<AppShellData> => {
 
   return {
     facilityName,
+    displayName,
     laterCount,
     incompleteDocumentsCount,
     announcementCount,

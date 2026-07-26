@@ -16,8 +16,10 @@ export async function SidebarWithData() {
 }
 
 export async function AppHeaderWithData() {
-  const { facilityName } = await getAppShellData()
-  return <AppHeader facilityName={facilityName} />
+  const { facilityName, displayName } = await getAppShellData()
+  return (
+    <AppHeader facilityName={facilityName} displayName={displayName} />
+  )
 }
 
 export async function MobileTabBarWithData() {

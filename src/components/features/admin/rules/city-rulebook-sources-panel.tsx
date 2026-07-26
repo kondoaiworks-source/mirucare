@@ -115,16 +115,13 @@ export function CityRulebookSourcesPanel({
         toast.error(result.error ?? "登録に失敗しました。")
         return
       }
-      toast.success("参照URLを追加しました。", {
-        description:
-          "次に行政資料を登録（または同期）し、「判定ルール案を生成する」とルールブックの中身を提案できます。",
-        action: {
-          label: "行政資料を開く",
-          onClick: () => {
-            window.location.href = `/admin/rules/documents?city=${citySlug}`
-          },
-        },
-        duration: 12000,
+      const monitorMessage =
+        result.data?.monitorMessage ?? "参照URLを追加しました。"
+      toast.success(monitorMessage, {
+        description: result.data?.monitoringReady
+          ? "以降の変更は自動で監視します。差分があれば更新アラートに出ます。「判定ルール案を生成する」へ進めます。"
+          : "PDFの直リンク（direct file URL）を入れると自動監視が始まります。",
+        duration: 10000,
       })
       setNewTitle("")
       setNewParentUrl("")
@@ -217,7 +214,7 @@ export function CityRulebookSourcesPanel({
             {cityName}の参照URL
           </h2>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            この市固有の公式ページ・資料URLです。追加したら、対応する行政資料を登録し「判定ルール案を生成する」へ進みます。
+            この市固有の公式ページ・資料URLです。追加すると行政資料台帳へ自動登録され、PDF直リンクがある場合は監視が始まります。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -259,7 +256,7 @@ export function CityRulebookSourcesPanel({
               {cityName}の参照URLを追加
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              公式ページまたはPDFのURLを登録します。登録だけではチェック基準になりません。行政資料化のあと「判定ルール案を生成→了承」が必要です。
+              公式ページまたはPDFのURLを登録します。PDF直リンクがあると自動で監視が始まります。チェックに使う判定ルールは「判定ルール案を生成→了承」が必要です。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

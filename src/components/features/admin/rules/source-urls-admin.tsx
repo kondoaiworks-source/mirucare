@@ -335,7 +335,7 @@ export function SourceUrlsAdmin() {
         toast.error(result.error ?? "登録に失敗しました。")
         return
       }
-      toast.success("参照URLを登録しました。")
+      toast.success(result.data?.monitorMessage ?? "参照URLを登録しました。")
       setNewTitle("")
       setNewParentUrl("")
       setNewDirectUrl("")
@@ -409,16 +409,16 @@ export function SourceUrlsAdmin() {
       ) : null}
 
       <Alert className="rounded-xl border-primary/20 bg-muted/40">
-        <AlertTitle className="text-base">行政資料との違い</AlertTitle>
+        <AlertTitle className="text-base">自動監視について</AlertTitle>
         <AlertDescription className="text-base leading-relaxed">
-          この画面は「どの公式URLを根拠にするか」の一覧です。PDFの自動監視や差分確認は
+          参照URLを登録すると行政資料台帳へ自動で紐付きます。PDFの直リンクがある場合は初回同期と以降の監視が始まります。台帳の詳細やトラブル対応は
           <Link
             href="/admin/rules/documents"
             className="font-medium text-primary underline-offset-2 hover:underline"
           >
-            行政資料
+            詳細設定の行政資料
           </Link>
-          で行います。
+          から行えます。
         </AlertDescription>
       </Alert>
 

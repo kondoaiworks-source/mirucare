@@ -5,6 +5,7 @@ import { requireOperator } from "@/lib/operator"
 import { toUserErrorMessage } from "@/lib/auth-errors"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
 import { PHASE1_AI_RULE_SEEDS } from "@/lib/phase1-ai-rules-seed"
+import { ensureKnowledgeDocumentFromRuleSource } from "@/lib/knowledge/ensure-from-rule-source"
 import type {
   AiCheckRule,
   AiCheckRuleVersion,
@@ -375,7 +376,13 @@ export async function updateRuleSourceUrlAction(input: {
   humanReviewStatus?: RuleHumanReviewStatus
   memo?: string
   markVerified?: boolean
-}): Promise<ActionResult> {
+}): Promise<
+  ActionResult<{
+    knowledgeDocumentId: string | null
+    monitoringReady: boolean
+    monitorMessage: string
+  }>
+> {
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
 
@@ -462,9 +469,23 @@ export async function updateRuleSourceUrlAction(input: {
     .eq("id", input.id)
 
   if (error) return { ok: false, error: toUserErrorMessage(error) }
+
+  const monitor = await ensureKnowledgeDocumentFromRuleSource(
+    op.service,
+    input.id
+  )
+
   revalidateRules("/admin/rules/source-urls")
   revalidateRules("/admin/rules/laws")
-  return { ok: true }
+  revalidateRules("/admin/rules/documents")
+  return {
+    ok: true,
+    data: {
+      knowledgeDocumentId: monitor.knowledgeDocumentId,
+      monitoringReady: monitor.monitoringReady,
+      monitorMessage: monitor.message,
+    },
+  }
 }
 
 export async function createMunicipalitySourceUrlAction(input: {
@@ -478,7 +499,14 @@ export async function createMunicipalitySourceUrlAction(input: {
   priority?: number
   fileType?: RuleSourceFileType | ""
   memo?: string
-}): Promise<ActionResult> {
+}): Promise<
+  ActionResult<{
+    id: string
+    knowledgeDocumentId: string | null
+    monitoringReady: boolean
+    monitorMessage: string
+  }>
+> {
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
 
@@ -494,25 +522,51 @@ export async function createMunicipalitySourceUrlAction(input: {
   const parent = input.parentPageUrl?.trim() || null
   const direct = input.directFileUrl?.trim() || null
 
-  const { error } = await op.service.from("rule_sources").insert({
-    jurisdiction_id: input.jurisdictionId,
-    title,
-    service_type: input.serviceType,
-    material_category: input.materialCategory,
-    source_kind: input.sourceKind ?? "manual",
-    parent_page_url: parent,
-    direct_file_url: direct,
-    official_url: direct || parent,
-    priority: input.priority ?? 100,
-    file_type: input.fileType || null,
-    memo: input.memo?.trim() || null,
-    status: "active",
-    human_review_status: "unverified",
-  })
+  const { data: inserted, error } = await op.service
+    .from("rule_sources")
+    .insert({
+      jurisdiction_id: input.jurisdictionId,
+      title,
+      service_type: input.serviceType,
+      material_category: input.materialCategory,
+      source_kind: input.sourceKind ?? "manual",
+      parent_page_url: parent,
+      direct_file_url: direct,
+      official_url: direct || parent,
+      priority: input.priority ?? 100,
+      file_type: input.fileType || null,
+      memo: input.memo?.trim() || null,
+      status: "active",
+      human_review_status: "unverified",
+    })
+    .select("id")
+    .single()
 
-  if (error) return { ok: false, error: toUserErrorMessage(error) }
+  if (error || !inserted) {
+    return {
+      ok: false,
+      error: error
+        ? toUserErrorMessage(error)
+        : "参照URLの登録に失敗しました。",
+    }
+  }
+
+  const monitor = await ensureKnowledgeDocumentFromRuleSource(
+    op.service,
+    inserted.id as string
+  )
+
   revalidateRules("/admin/rules/source-urls")
-  return { ok: true }
+  revalidateRules("/admin/rules/documents")
+  return {
+    ok: true,
+    data: {
+      id: inserted.id as string,
+      knowledgeDocumentId: monitor.knowledgeDocumentId,
+      monitoringReady: monitor.monitoringReady,
+      monitorMessage: monitor.message,
+    },
+  }
 }
 
 export async function listRuleSetsAction(): Promise<
