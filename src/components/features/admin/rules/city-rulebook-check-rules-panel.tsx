@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import type { CityRulebookCheckRule } from "@/app/actions/city-rulebook"
 import { CityRulebookSection } from "@/components/features/admin/rules/city-rulebook-section"
+import { ManualCheckRuleForm } from "@/components/features/admin/rules/manual-check-rule-form"
 import { RULE_SCOPE_LABEL } from "@/lib/rule-engine/city-rule-scope"
 import type { AuditItemCategory } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
@@ -112,8 +113,8 @@ export function CityRulebookCheckRulesPanel({
         </summary>
         <div className="mt-4 space-y-2 border-t border-border pt-4">
           {approved.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
-              まだ了承済みがありません。自治体ルール設定で参照URL（PDF）を登録して監視を始め、「判定ルール案を生成」し、新ルール判定通知で了承してください。
+            <p className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
+              まだ了承済みがありません。下の「自治体ルール設定」で参照URL（PDF）を登録し「判定ルール案を生成」するか、手入力で1件追加してから、新ルール判定通知で了承してください。
             </p>
           ) : (
             CATEGORY_ORDER.map((category) => {
@@ -143,6 +144,18 @@ export function CityRulebookCheckRulesPanel({
               )
             })
           )}
+        </div>
+      </details>
+
+      <details className="rounded-lg border border-border bg-muted/20 px-4 py-3">
+        <summary className="cursor-pointer text-base font-semibold text-primary-dark outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          手入力で判定ルールを1件追加する
+        </summary>
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
+          <p className="text-base leading-relaxed text-muted-foreground">
+            AI案が出せないときや、急ぎで1件足したいときに使います。登録すると必ず新ルール判定通知に載り、了承するまでチェックには使いません。
+          </p>
+          <ManualCheckRuleForm />
         </div>
       </details>
     </CityRulebookSection>

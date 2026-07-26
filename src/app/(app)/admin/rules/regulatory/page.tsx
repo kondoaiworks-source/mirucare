@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { PurposeHub } from "@/components/features/admin/purpose-hub"
 import { RulebookServiceSelect } from "@/components/features/admin/rules/rulebook-service-select"
+import { RulebookPhase1SetupCard } from "@/components/features/admin/rules/rulebook-phase1-setup-card"
 import { getPurposeSection } from "@/lib/rule-engine/purpose-sections"
 import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -22,7 +23,7 @@ export default function RegulatoryHubPage() {
   if (!section) return null
   return (
     <div className="space-y-8">
-      <Alert className="rounded-xl border-primary/20 bg-primary/[0.03]">
+      <Alert className="rounded-lg border-primary/20 bg-primary/[0.03]">
         <Info />
         <AlertTitle>Phase1 のルールブック範囲</AlertTitle>
         <AlertDescription className="space-y-2 text-base leading-relaxed">
@@ -31,6 +32,8 @@ export default function RegulatoryHubPage() {
           </p>
         </AlertDescription>
       </Alert>
+
+      <RulebookPhase1SetupCard />
 
       <RulebookServiceSelect />
 
@@ -42,19 +45,19 @@ export default function RegulatoryHubPage() {
           閲覧・修正（Phase1市）
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          「この市で運営するならこのルールブック」を開きます。更新アラートの確認や、参照URL・行政資料の編集へ進めます。
+          「この市で運営するならこのルールブック」を開きます。参照URLの登録・判定ルール案の生成・了承はここから進めます。
         </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PHASE1_CITIES.map((city) => (
             <Link
               key={city.slug}
               href={`/admin/rules/regulatory/${city.slug}`}
-              className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Card className="h-full rounded-xl shadow-subtle transition-colors group-hover:border-primary/30 group-hover:bg-primary/[0.02]">
+              <Card className="h-full rounded-lg shadow-subtle transition-colors group-hover:border-primary/30 group-hover:bg-primary/[0.02]">
                 <CardHeader className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <BookOpen className="size-5" aria-hidden />
                     </span>
                     <ArrowRight

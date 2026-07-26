@@ -89,8 +89,8 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     navDescription: "ルールブック内の「何を見るか」",
     icon: ShieldCheck,
     purpose:
-      "運営指導で確認されやすい項目（見出し）を登録します。判定ルールの土台です。日常は詳細設定から開きます。",
-    steps: ["監査項目を選ぶ／登録する", "内容を確認する", "保存する"],
+      "運営指導で確認されやすい項目（見出し）を登録します。判定ルールの土台です。初回はルールブック設定のセットアップから登録できます。",
+    steps: ["初回セットアップでテンプレート登録", "必要なら個別に追加", "保存する"],
     links: [],
     matchPaths: ["/admin/rules/audit-items"],
     showOnHome: false,
@@ -98,35 +98,33 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
   {
     id: "ai",
     href: "/admin/rules/ai-rules",
-    label: "判定ルール（詳細）",
-    navDescription: "ルールブック内の「どう疑うか」",
+    label: "判定ルール一覧",
+    navDescription: "登録済みルールの一覧（操作は市ルールブック）",
     icon: Bot,
     purpose:
-      "書類チェック用の見方を登録し、人が承認した版だけを本番に載せます。ルールブックの中身の部品です。",
+      "一覧の確認用です。新規追加・了承は市のルールブックと新ルール判定通知から行います。",
     steps: [
-      "ルールを登録する",
-      "新ルール判定通知で確認する",
+      "市ルールブックで案を生成または手入力",
+      "新ルール判定通知で了承する",
       "了承後にチェックで使われる",
     ],
     links: [
       {
-        href: "/admin/rules/ai-rules",
-        label: "判定ルールの登録・編集",
-        description: "チェック用の具体的な見方",
-        icon: ClipboardCheck,
+        href: "/admin/rules/regulatory",
+        label: "ルールブック設定",
+        description: "市を開いて判定ルールを追加・了承する",
+        icon: BookOpen,
       },
       {
         href: "/admin/rules/pending",
         label: "新ルール判定通知",
-        description:
-          "自治体ルールからAIが生成したチェックルールを確認して反映",
+        description: "案の了承・差し戻し",
         icon: Landmark,
       },
     ],
     matchPaths: [
       "/admin/rules/ai-rules",
       "/admin/rules/ai",
-      "/admin/rules/pending",
     ],
     showOnHome: false,
   },

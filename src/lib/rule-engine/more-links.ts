@@ -1,15 +1,12 @@
 import {
   Activity,
-  Bot,
-  Coins,
   FileText,
-  ShieldCheck,
   type LucideIcon,
 } from "lucide-react"
 
 /**
- * 「詳細設定」に残すリンク。
- * 日常はルールブック設定／新ルール判定通知。ここは中身の手直しと監視トラブル時のみ。
+ * 「監視トラブル」（旧・詳細設定）に残すリンク。
+ * 判定ルール・監査項目は市ルールブック／新ルール判定通知側。
  * @see docs/ルールブック構想.md
  */
 export type RulesMoreLink = {
@@ -17,31 +14,10 @@ export type RulesMoreLink = {
   label: string
   description: string
   icon: LucideIcon
-  group: "content" | "trouble"
+  group: "trouble"
 }
 
 export const RULES_MORE_LINKS: RulesMoreLink[] = [
-  {
-    href: "/admin/rules/audit-items",
-    label: "監査項目",
-    description: "チェックで「何を見るか」の見出し。判定ルールの土台です",
-    icon: ShieldCheck,
-    group: "content",
-  },
-  {
-    href: "/admin/rules/ai-rules",
-    label: "判定ルール",
-    description: "「どう疑うか」の本文。了承後にチェックへ使われます",
-    icon: Bot,
-    group: "content",
-  },
-  {
-    href: "/admin/rules/additions",
-    label: "加算設定",
-    description: "加算の算定条件・必要書類（任意・精度向上）",
-    icon: Coins,
-    group: "content",
-  },
   {
     href: "/admin/rules/documents",
     label: "行政資料台帳",
@@ -59,11 +35,7 @@ export const RULES_MORE_LINKS: RulesMoreLink[] = [
 ]
 
 export const RULES_MORE_GROUP_LABEL: Record<RulesMoreLink["group"], string> = {
-  content: "チェックの中身（手で直すとき）",
   trouble: "トラブル対応（通常は触らない）",
 }
 
-export const RULES_MORE_GROUP_ORDER: RulesMoreLink["group"][] = [
-  "content",
-  "trouble",
-]
+export const RULES_MORE_GROUP_ORDER: RulesMoreLink["group"][] = ["trouble"]

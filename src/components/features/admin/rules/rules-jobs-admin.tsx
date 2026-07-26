@@ -91,7 +91,7 @@ export function RulesJobsAdmin() {
       <div>
         <AdminBreadcrumb
           items={[
-            { label: "詳細設定", href: "/admin/rules/more" },
+            { label: "監視トラブル", href: "/admin/rules/more" },
             { label: "同期の結果" },
           ]}
         />

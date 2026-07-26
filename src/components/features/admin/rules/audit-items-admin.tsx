@@ -155,22 +155,19 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
     <div className="space-y-6">
       <div>
         <AdminBreadcrumb
-          items={[
-            ...(isAdditions
-              ? [
-                  { label: "詳細設定", href: "/admin/rules/more" },
-                  { label: "加算設定" },
-                ]
-              : [{ label: "監査項目" }]),
-          ]}
+          items={
+            isAdditions
+              ? [{ label: "加算設定" }]
+              : [{ label: "監査項目" }]
+          }
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
           {isAdditions ? "加算設定" : "監査項目"}
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
           {isAdditions
-            ? "加算の算定条件と必要書類を確認・編集します。"
-            : "運営指導で確認されやすい項目を登録します。AI判定ルールの土台になります。"}
+            ? "加算の算定条件と必要書類を確認・編集します（任意）。日常操作はルールブック設定側です。"
+            : "運営指導で確認されやすい項目を登録します。初回はルールブック設定のセットアップから登録できます。"}
         </p>
       </div>
 

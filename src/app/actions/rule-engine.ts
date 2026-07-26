@@ -940,6 +940,66 @@ export async function seedPhase1AiRulesAction(input?: {
   }
 }
 
+/**
+ * 初回セットアップ: 訪問介護ルールセットへ監査項目テンプレを入れ、Phase1判定ルールを承認済みで載せる。
+ */
+export async function seedPhase1RulebookBasicsAction(): Promise<
+  ActionResult<{
+    auditInserted: number
+    auditSkipped: number
+    ruleSetsTouched: number
+    rulesInserted: number
+    rulesSkipped: number
+    missingAuditItems: string[]
+  }>
+> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  const { data: sets, error: setsError } = await op.service
+    .from("rule_sets")
+    .select("id, service_type")
+    .eq("service_type", "訪問介護")
+
+  if (setsError) return { ok: false, error: toUserErrorMessage(setsError) }
+
+  let auditInserted = 0
+  let auditSkipped = 0
+  let ruleSetsTouched = 0
+
+  for (const set of sets ?? []) {
+    const result = await createHomeVisitAuditTemplateAction({
+      ruleSetId: set.id as string,
+    })
+    if (!result.ok) {
+      return { ok: false, error: result.error }
+    }
+    auditInserted += result.data?.insertedCount ?? 0
+    auditSkipped += result.data?.skippedCount ?? 0
+    ruleSetsTouched += 1
+  }
+
+  const rules = await seedPhase1AiRulesAction()
+  if (!rules.ok) {
+    return { ok: false, error: rules.error }
+  }
+
+  revalidateRules("/admin/rules/regulatory")
+  revalidateRules("/admin/rules/more")
+
+  return {
+    ok: true,
+    data: {
+      auditInserted,
+      auditSkipped,
+      ruleSetsTouched,
+      rulesInserted: rules.data?.insertedCount ?? 0,
+      rulesSkipped: rules.data?.skippedCount ?? 0,
+      missingAuditItems: rules.data?.missingAuditItems ?? [],
+    },
+  }
+}
+
 export async function listAiRulesAction(): Promise<
   ActionResult<{
     rules: Array<
