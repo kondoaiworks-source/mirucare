@@ -41,7 +41,6 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
         icon: BookOpen,
         matchPaths: [
           "/admin/rules/regulatory",
-          "/admin/rules/documents",
           "/admin/rules/laws",
           "/admin/rules/source-urls",
           "/admin/document-changes",
@@ -88,7 +87,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
       {
         href: "/admin/rules/more",
         label: "詳細設定",
-        description: "監査項目・判定ルール・運用監視など",
+        description: "チェック中身の手直し・監視トラブル時",
         icon: MoreHorizontal,
         matchPaths: [
           "/admin/rules/more",
@@ -96,6 +95,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
           "/admin/rules/audit-items",
           "/admin/rules/ai-rules",
           "/admin/rules/ai",
+          "/admin/rules/documents",
           "/admin/rules/jobs",
         ],
       },

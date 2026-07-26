@@ -416,7 +416,7 @@ export function SourceUrlsAdmin() {
             href="/admin/rules/documents"
             className="font-medium text-primary underline-offset-2 hover:underline"
           >
-            詳細設定の行政資料
+            詳細設定の行政資料台帳
           </Link>
           から行えます。
         </AlertDescription>

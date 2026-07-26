@@ -89,10 +89,17 @@ export function RulesJobsAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <AdminBreadcrumb items={[{ label: "運用監視" }]} />
-        <h1 className="mt-2 text-2xl font-bold text-primary-dark">運用監視</h1>
+        <AdminBreadcrumb
+          items={[
+            { label: "詳細設定", href: "/admin/rules/more" },
+            { label: "同期の結果" },
+          ]}
+        />
+        <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
+          同期の結果
+        </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          行政資料の自動同期の結果を確認します。問題があれば行政資料画面で対応してください。
+          行政資料の自動取得が成功したか確認します。問題があれば行政資料台帳で対応してください。
         </p>
       </div>
 
@@ -113,7 +120,7 @@ export function RulesJobsAdmin() {
             </CardDescription>
           </div>
           <Button asChild variant="outline" size="lg" className="min-h-11">
-            <Link href="/admin/rules/documents">行政資料で対応する</Link>
+            <Link href="/admin/rules/documents">行政資料台帳で対応する</Link>
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">

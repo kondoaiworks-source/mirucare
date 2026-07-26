@@ -76,7 +76,6 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     ],
     matchPaths: [
       "/admin/rules/regulatory",
-      "/admin/rules/documents",
       "/admin/rules/laws",
       "/admin/rules/source-urls",
       "/admin/document-changes",

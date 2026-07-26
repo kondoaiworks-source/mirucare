@@ -263,6 +263,6 @@ export async function ensureKnowledgeDocumentFromRuleSource(
       ? created
         ? "参照URLを登録し、行政資料の監視を開始しました。"
         : "行政資料の監視を更新しました。"
-      : `台帳は用意しましたが、初回取得に問題があります（${syncResult.message}）。運用監視でご確認ください。`,
+      : `台帳は用意しましたが、初回取得に問題があります（${syncResult.message}）。詳細設定の「同期の結果」でご確認ください。`,
   }
 }

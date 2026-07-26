@@ -427,7 +427,7 @@ npm install -D @types/papaparse
 4. 左メニューが次の構成であること
    - ルールブック設定（ルールブック設定／新ルール判定通知／更新履歴／自治体ルール変更通知）
    - 自治体管理（自治体マスタ）
-   - 詳細設定（監査項目・判定ルール・運用監視など）
+   - 詳細設定（チェック中身の手直し・監視トラブル時）
 5. `/admin/rules` がルールブック設定（`/admin/rules/regulatory`）へリダイレクトすること
 6. 「ルールブック設定」にサービス選択（訪問介護のみ）と Phase1市カードがあり、各市ルールブックが開けること
 7. 市ルールブックは「チェックルール → 新ルール判定 → 自治体ルール設定」がそれぞれ枠付きのひとまとまりで、見出しの文字サイズ・レイアウトが揃っていること
@@ -439,7 +439,10 @@ npm install -D @types/papaparse
 13. `/admin/rules/source-urls?city=kawasaki&edit=（参照URLのID）` で当該行の編集フォームが開くこと
 14. 更新アラートまたは行政資料から「判定ルール案を生成する」→ `/admin/rules/pending` に案＋根拠が載り、了承するまでチェックに使われないこと
 15. 「行政資料を編集する」で `/admin/rules/documents?city=...` が開き、一覧が市に絞られること
-16. [http://localhost:3000/admin/rules/more](http://localhost:3000/admin/rules/more) が「詳細設定」で、運用監視へのリンクがあること
+16. [http://localhost:3000/admin/rules/more](http://localhost:3000/admin/rules/more) が「詳細設定」で、次の2グループであること
+    - チェックの中身: 監査項目／判定ルール／加算設定
+    - トラブル対応: 行政資料台帳／同期の結果
+    - 参照URL・法令・更新アラート確認は詳細設定に無いこと（ルールブック設定側）
 17. 詳細設定から監査項目を1件登録 → 判定ルールを「新ルール判定通知」向けに登録 → 新ルール判定通知で理由を書いて了承できること
 18. findings のレビューコンソール（`/admin`）や Stripe には影響しないこと
 19. 監査項目で訪問介護テンプレートを一括登録できること（詳細設定内）
@@ -583,7 +586,8 @@ npm install -D @types/papaparse
 | `/admin/rules` | ルール設定（ルールブック中心・運営のみ） |
 | `/admin/rules/regulatory` | ルールブック設定ハブ |
 | `/admin/rules/regulatory/[slug]` | Phase1市ルールブック（閲覧・修正導線） |
-| `/admin/rules/more` | 詳細設定（監査項目・判定ルール・加算など） |
+| `/admin/rules/more` | 詳細設定（チェック中身・監視トラブル） |
+| `/admin/rules/jobs` | 同期の結果（詳細設定内） |
 | `/admin/rules/documents` | 行政資料（ナレッジ）台帳・Dify登録（運営のみ）。旧 `/admin/documents` はリダイレクト |
 | `/admin/reports` | 月次レポート管理（管理者のみ） |
 | `/settings` | 設定・招待・ログアウト |
