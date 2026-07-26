@@ -5,7 +5,6 @@ import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { CityRulebookAlertsPanel } from "@/components/features/admin/rules/city-rulebook-alerts-panel"
 import { CityRulebookBookToc } from "@/components/features/admin/rules/city-rulebook-book-toc"
 import { CityRulebookCheckRulesPanel } from "@/components/features/admin/rules/city-rulebook-check-rules-panel"
-import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
 import { RulebookServiceSelect } from "@/components/features/admin/rules/rulebook-service-select"
 import { Button } from "@/components/ui/button"
 import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
@@ -19,8 +18,7 @@ type Props = {
  * 件数カードや参照URL／資料の二重一覧は出さない。
  */
 export function CityRulebookView({ data }: Props) {
-  const { city, jurisdiction, sources } = data
-  const citySources = sources.filter((s) => s.layer === "city")
+  const { city } = data
 
   return (
     <div className="space-y-8">
@@ -76,21 +74,6 @@ export function CityRulebookView({ data }: Props) {
       />
 
       <CityRulebookBookToc data={data} />
-
-      <details className="rounded-xl border border-border bg-muted/20 px-4 py-3">
-        <summary className="cursor-pointer text-base font-semibold text-primary-dark outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          この市の参照URLを追加・修正する
-        </summary>
-        <div className="mt-4 border-t border-border pt-4">
-          <CityRulebookSourcesPanel
-            citySlug={city.slug}
-            cityName={city.name}
-            jurisdictionId={jurisdiction.id}
-            sources={citySources}
-            embedded
-          />
-        </div>
-      </details>
     </div>
   )
 }

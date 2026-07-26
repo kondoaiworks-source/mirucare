@@ -14,7 +14,6 @@ import type {
   CityRulebookAlert,
   CityRulebookDraft,
 } from "@/app/actions/city-rulebook"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,7 +25,7 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { AlertTriangle, BookOpen, CheckCircle2 } from "lucide-react"
+import { AlertTriangle, Scale } from "lucide-react"
 
 type Props = {
   citySlug: string
@@ -136,153 +135,171 @@ export function CityRulebookAlertsPanel({
     })
   }
 
-  if (alertTotal === 0) {
-    return (
-      <Alert className="rounded-xl border-primary/20 bg-primary/[0.03]">
-        <BookOpen className="text-primary" />
-        <AlertTitle>新ルール判定</AlertTitle>
-        <AlertDescription className="text-base leading-relaxed">
-          現在判定案件は0件です。
-        </AlertDescription>
-      </Alert>
-    )
-  }
-
   return (
     <section className="space-y-4" aria-labelledby="city-alerts-heading">
-      <Alert className="rounded-xl border-warning/30 bg-warning/5">
-        <AlertTriangle className="text-warning" />
-        <AlertTitle id="city-alerts-heading">
-          新ルール判定（{alertTotal}件）— 今の判定ルールを見直す必要あり
-        </AlertTitle>
-        <AlertDescription className="space-y-2 pt-2 text-base leading-relaxed">
-          <p>
-            マニュアル差分 {pendingDrafts.length}件／同期アラート{" "}
-            {openAlerts.length}件。原文が変わった可能性があるため、
-            <strong>いま了承済みの判定ルールと違う箇所</strong>
-            があれば「判定ルール案を生成する」で更新案を出してください。
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2
+            id="city-alerts-heading"
+            className="flex items-center gap-2 text-xl font-bold text-primary-dark"
+          >
+            <Scale className="size-5 text-primary" aria-hidden />
+            新ルール判定
+            <span className="font-normal text-muted-foreground tabular-nums">
+              （{alertTotal}件）
+            </span>
+          </h2>
+          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
+            {alertTotal === 0
+              ? "現在判定案件は0件です。"
+              : "原文の差分や同期アラートを確認し、必要なら判定ルール案を更新します。"}
           </p>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href={`/admin/document-changes?city=${citySlug}`}>
-              差分承認の詳細画面を開く
+        </div>
+        {alertTotal > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            <Link
+              href={`/admin/document-changes?city=${citySlug}`}
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              差分承認の詳細
             </Link>
-          </Button>
-        </AlertDescription>
-      </Alert>
+          </p>
+        ) : null}
+      </div>
 
-      <ul className="space-y-4">
-        {pendingDrafts.map((d) => (
-          <li key={d.id} id={`draft-${d.id}`}>
-            <Card className="rounded-xl shadow-subtle">
-              <CardHeader className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="destructive" className="rounded-md">
-                    マニュアル差分
-                  </Badge>
-                  <CardTitle className="text-base">
-                    {d.knowledge_documents?.title ?? "（資料名なし）"}
-                  </CardTitle>
-                </div>
-                <CardDescription className="text-base leading-relaxed whitespace-pre-wrap">
-                  {d.ai_summary?.trim() ||
-                    "差分の要約はまだありません。原文を確認し、今の判定ルールを変えたい箇所があれば案を生成してください。"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor={`reason-${d.id}`}>確認記録（必須）</Label>
-                  <Textarea
-                    id={`reason-${d.id}`}
-                    value={reasons[d.id] ?? ""}
-                    onChange={(e) =>
-                      setReasons((prev) => ({
-                        ...prev,
-                        [d.id]: e.target.value,
-                      }))
-                    }
-                    placeholder="原文を確認した内容を短く残してください"
-                    className="min-h-24 text-base"
-                    disabled={pending}
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="lg"
-                    disabled={pending}
-                    onClick={() => onApprove(d)}
-                  >
-                    <CheckCircle2 className="size-4" aria-hidden />
-                    台帳へ反映する
-                  </Button>
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant="secondary"
-                    disabled={pending}
-                    onClick={() => onProposeRules(d)}
-                  >
-                    判定ルール案を生成する（ここを変えたい）
-                  </Button>
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant="outline"
-                    disabled={pending}
-                    onClick={() => onReject(d)}
-                  >
-                    差し戻す
-                  </Button>
-                  <Button asChild size="lg" variant="ghost">
-                    <Link href={`/admin/document-changes?city=${citySlug}&draft=${d.id}`}>
-                      詳細を見る
-                    </Link>
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  「判定ルール案を生成する」＝今のルールと差分を比べ、更新したい案＋根拠を承認待ちへ載せます。了承するまでチェックには使われません。
-                </p>
-              </CardContent>
-            </Card>
-          </li>
-        ))}
+      {alertTotal === 0 ? null : (
+        <>
+          <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-base leading-relaxed text-primary-dark">
+            <p className="flex items-start gap-2">
+              <AlertTriangle
+                className="mt-0.5 size-5 shrink-0 text-warning"
+                aria-hidden
+              />
+              <span>
+                マニュアル差分 {pendingDrafts.length}件／同期アラート{" "}
+                {openAlerts.length}件。原文が変わった可能性があるため、
+                <strong>いま了承済みの判定ルールと違う箇所</strong>
+                があれば「判定ルール案を生成する」で更新案を出してください。
+              </span>
+            </p>
+          </div>
 
-        {openAlerts.map((a) => (
-          <li key={a.id}>
-            <Card className="rounded-xl shadow-subtle">
-              <CardHeader className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="rounded-md">
-                    同期アラート
-                  </Badge>
-                  <CardTitle className="text-base">
-                    {a.knowledge_documents?.title ?? "（資料名なし）"}
-                  </CardTitle>
-                </div>
-                <CardDescription className="text-base leading-relaxed">
-                  {a.message || a.kind}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="outline"
-                  disabled={pending}
-                  onClick={() => onResolveAlert(a.id)}
-                >
-                  確認して解消する
-                </Button>
-                <Button asChild size="lg" variant="ghost">
-                  <Link href={`/admin/rules/documents?city=${citySlug}`}>
-                    行政資料を開く
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </li>
-        ))}
-      </ul>
+          <ul className="space-y-4">
+            {pendingDrafts.map((d) => (
+              <li key={d.id} id={`draft-${d.id}`}>
+                <Card className="rounded-xl shadow-subtle">
+                  <CardHeader className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="destructive" className="rounded-md">
+                        マニュアル差分
+                      </Badge>
+                      <CardTitle className="text-base">
+                        {d.knowledge_documents?.title ?? "（資料名なし）"}
+                      </CardTitle>
+                    </div>
+                    <CardDescription className="text-base leading-relaxed whitespace-pre-wrap">
+                      {d.ai_summary?.trim() ||
+                        "差分の要約はまだありません。原文を確認し、今の判定ルールを変えたい箇所があれば案を生成してください。"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor={`reason-${d.id}`}>確認記録（必須）</Label>
+                      <Textarea
+                        id={`reason-${d.id}`}
+                        value={reasons[d.id] ?? ""}
+                        onChange={(e) =>
+                          setReasons((prev) => ({
+                            ...prev,
+                            [d.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="原文を確認した内容を短く残してください"
+                        className="min-h-24 text-base"
+                        disabled={pending}
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="lg"
+                        disabled={pending}
+                        onClick={() => onApprove(d)}
+                      >
+                        台帳へ反映する
+                      </Button>
+                      <Button
+                        type="button"
+                        size="lg"
+                        variant="secondary"
+                        disabled={pending}
+                        onClick={() => onProposeRules(d)}
+                      >
+                        判定ルール案を生成する（ここを変えたい）
+                      </Button>
+                      <Button
+                        type="button"
+                        size="lg"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() => onReject(d)}
+                      >
+                        差し戻す
+                      </Button>
+                      <Button asChild size="lg" variant="ghost">
+                        <Link
+                          href={`/admin/document-changes?city=${citySlug}&draft=${d.id}`}
+                        >
+                          詳細を見る
+                        </Link>
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      「判定ルール案を生成する」＝今のルールと差分を比べ、更新したい案＋根拠を承認待ちへ載せます。了承するまでチェックには使われません。
+                    </p>
+                  </CardContent>
+                </Card>
+              </li>
+            ))}
+
+            {openAlerts.map((a) => (
+              <li key={a.id}>
+                <Card className="rounded-xl shadow-subtle">
+                  <CardHeader className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="rounded-md">
+                        同期アラート
+                      </Badge>
+                      <CardTitle className="text-base">
+                        {a.knowledge_documents?.title ?? "（資料名なし）"}
+                      </CardTitle>
+                    </div>
+                    <CardDescription className="text-base leading-relaxed">
+                      {a.message || a.kind}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => onResolveAlert(a.id)}
+                    >
+                      確認して解消する
+                    </Button>
+                    <Button asChild size="lg" variant="ghost">
+                      <Link href={`/admin/rules/documents?city=${citySlug}`}>
+                        行政資料を開く
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   )
 }
