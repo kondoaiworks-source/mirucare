@@ -74,9 +74,21 @@ export type CityRulebookCheckRule = {
   reviewStatus: "approved" | "pending_review"
 }
 
+export type CityRulebookLayerJurisdiction = {
+  id: string
+  name: string
+  code: string
+}
+
 export type CityRulebookData = {
   city: Phase1City
   jurisdiction: RuleJurisdiction
+  /** 国・県・市の管轄（参照URLの追加先） */
+  layerJurisdictions: {
+    national: CityRulebookLayerJurisdiction | null
+    prefecture: CityRulebookLayerJurisdiction | null
+    city: CityRulebookLayerJurisdiction
+  }
   sources: CityRulebookSource[]
   documents: CityRulebookDocument[]
   pendingDrafts: CityRulebookDraft[]
@@ -156,14 +168,24 @@ export async function getCityRulebookAction(
     .in("code", [NATIONAL_JURISDICTION_CODE, KANAGAWA_JURISDICTION_CODE])
 
   const sharedByCode = new Map(
-    (sharedJurisdictions ?? []).map((j) => [j.code as string, j])
+    (sharedJurisdictions ?? []).map((j) => [
+      j.code as string,
+      j as CityRulebookLayerJurisdiction,
+    ])
   )
-  const nationalId = sharedByCode.get(NATIONAL_JURISDICTION_CODE)?.id
-  const prefectureId = sharedByCode.get(KANAGAWA_JURISDICTION_CODE)?.id
+  const nationalJurisdiction =
+    sharedByCode.get(NATIONAL_JURISDICTION_CODE) ?? null
+  const prefectureJurisdiction =
+    sharedByCode.get(KANAGAWA_JURISDICTION_CODE) ?? null
+  const cityLayerJurisdiction: CityRulebookLayerJurisdiction = {
+    id: cityJurisdiction.id as string,
+    name: (cityJurisdiction.name as string) || city.name,
+    code: (cityJurisdiction.code as string) || city.code,
+  }
   const jurisdictionIds = [
-    cityJurisdiction.id as string,
-    nationalId,
-    prefectureId,
+    cityLayerJurisdiction.id,
+    nationalJurisdiction?.id,
+    prefectureJurisdiction?.id,
   ].filter(Boolean) as string[]
 
   const [sourcesRes, docsRes, draftsRes, alertsRes] = await Promise.all([
@@ -311,6 +333,11 @@ export async function getCityRulebookAction(
     data: {
       city,
       jurisdiction: cityJurisdiction as RuleJurisdiction,
+      layerJurisdictions: {
+        national: nationalJurisdiction,
+        prefecture: prefectureJurisdiction,
+        city: cityLayerJurisdiction,
+      },
       sources,
       documents,
       pendingDrafts,

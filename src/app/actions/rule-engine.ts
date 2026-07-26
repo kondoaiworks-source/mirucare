@@ -478,6 +478,7 @@ export async function updateRuleSourceUrlAction(input: {
   revalidateRules("/admin/rules/source-urls")
   revalidateRules("/admin/rules/laws")
   revalidateRules("/admin/rules/documents")
+  revalidateRules("/admin/rules/regulatory")
   return {
     ok: true,
     data: {
@@ -558,6 +559,7 @@ export async function createMunicipalitySourceUrlAction(input: {
 
   revalidateRules("/admin/rules/source-urls")
   revalidateRules("/admin/rules/documents")
+  revalidateRules("/admin/rules/regulatory")
   return {
     ok: true,
     data: {
@@ -567,6 +569,31 @@ export async function createMunicipalitySourceUrlAction(input: {
       monitorMessage: monitor.message,
     },
   }
+}
+
+/**
+ * 参照URLを一覧から外す（論理削除＝archived）。
+ * 市ルールブックの自治体ルール設定から使う。
+ */
+export async function archiveRuleSourceUrlAction(input: {
+  id: string
+}): Promise<ActionResult> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  if (!input.id) return { ok: false, error: "対象が指定されていません。" }
+
+  const { error } = await op.service
+    .from("rule_sources")
+    .update({ status: "archived" })
+    .eq("id", input.id)
+
+  if (error) return { ok: false, error: toUserErrorMessage(error) }
+
+  revalidateRules("/admin/rules/source-urls")
+  revalidateRules("/admin/rules/documents")
+  revalidateRules("/admin/rules/regulatory")
+  return { ok: true }
 }
 
 export async function listRuleSetsAction(): Promise<

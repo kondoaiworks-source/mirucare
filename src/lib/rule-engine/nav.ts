@@ -42,7 +42,6 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
         matchPaths: [
           "/admin/rules/regulatory",
           "/admin/rules/laws",
-          "/admin/rules/source-urls",
           "/admin/document-changes",
         ],
       },

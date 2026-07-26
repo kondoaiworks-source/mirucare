@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
+  archiveRuleSourceUrlAction,
   createMunicipalitySourceUrlAction,
   updateRuleSourceUrlAction,
 } from "@/app/actions/rule-engine"
@@ -42,19 +42,28 @@ import {
   CheckCircle2,
   ExternalLink,
   Info,
-  Link2,
   Pencil,
   Plus,
+  Trash2,
   X,
 } from "lucide-react"
 
+export type SourceLayer = "national" | "prefecture" | "city"
+
+const LAYER_BADGE: Record<SourceLayer, string> = {
+  national: "国",
+  prefecture: "県",
+  city: "市",
+}
+
 type Props = {
-  citySlug: string
-  cityName: string
-  jurisdictionId: string
+  /** 表示用のレイヤ名（例：国、神奈川県、横浜市） */
+  layerLabel: string
+  layer: SourceLayer
+  jurisdictionId: string | null
   sources: CityRulebookSource[]
-  /** 親の details 内など、外側見出しを出さない */
-  embedded?: boolean
+  /** 折りたたみ内など。監視注意は先頭レイヤだけ出すときに false */
+  showMonitoringAlert?: boolean
 }
 
 type EditDraft = {
@@ -67,15 +76,15 @@ type EditDraft = {
 }
 
 /**
- * 市ルールブック上で、この市の参照URLを追加・短い編集する。
- * 詳細項目は参照サイト画面へ。
+ * 市ルールブック「自治体ルール設定」内で、国／県／市の参照URLを
+ * 追加・修正・削除（無効化）する。
  */
 export function CityRulebookSourcesPanel({
-  citySlug,
-  cityName,
+  layerLabel,
+  layer,
   jurisdictionId,
   sources,
-  embedded = false,
+  showMonitoringAlert = true,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -88,6 +97,8 @@ export function CityRulebookSourcesPanel({
   const [newCategory, setNewCategory] =
     useState<RuleMaterialCategory>("訪問介護")
   const [newMemo, setNewMemo] = useState("")
+
+  const canManage = Boolean(jurisdictionId)
 
   function refresh() {
     router.refresh()
@@ -106,6 +117,7 @@ export function CityRulebookSourcesPanel({
   }
 
   function onCreate() {
+    if (!jurisdictionId) return
     startTransition(async () => {
       const result = await createMunicipalitySourceUrlAction({
         jurisdictionId,
@@ -124,8 +136,8 @@ export function CityRulebookSourcesPanel({
         result.data?.monitorMessage ?? "参照URLを追加しました。"
       toast.success(monitorMessage, {
         description: result.data?.monitoringReady
-          ? "以降の変更は自動で監視します。差分があれば更新アラートに出ます。「判定ルール案を生成する」へ進めます。"
-          : "PDFの直リンク（direct file URL）を入れると自動監視が始まります。",
+          ? "以降の変更は自動で監視します。差分があれば更新アラートに出ます。"
+          : "PDFの直リンクを入れると自動監視が始まります。",
         duration: 10000,
       })
       setNewTitle("")
@@ -173,102 +185,76 @@ export function CityRulebookSourcesPanel({
     })
   }
 
+  function onDelete(source: CityRulebookSource) {
+    const ok = window.confirm(
+      `「${source.title}」を一覧から外しますか？\n（無効化します。必要ならあとから管理者向け画面で戻せます）`
+    )
+    if (!ok) return
+    startTransition(async () => {
+      const result = await archiveRuleSourceUrlAction({ id: source.id })
+      if (!result.ok) {
+        toast.error(result.error ?? "削除に失敗しました。")
+        return
+      }
+      toast.success("参照URLを一覧から外しました。")
+      if (editing?.id === source.id) setEditing(null)
+      refresh()
+    })
+  }
+
   return (
-    <section
-      className="space-y-3"
-      aria-labelledby={embedded ? undefined : "city-sources-heading"}
-    >
-      {embedded ? (
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant={showAdd ? "default" : "outline"}
-            className="min-h-11"
-            disabled={pending}
-            onClick={() => {
-              setEditing(null)
-              setShowAdd((v) => !v)
-            }}
-          >
-            {showAdd ? (
-              <>
-                <X className="size-4" aria-hidden />
-                追加をやめる
-              </>
-            ) : (
-              <>
-                <Plus className="size-4" aria-hidden />
-                参照URLを追加する
-              </>
-            )}
-          </Button>
-          <Button asChild variant="ghost" className="min-h-11">
-            <Link href={`/admin/rules/source-urls?city=${citySlug}`}>
-              詳細画面で編集する
-            </Link>
-          </Button>
-        </div>
-      ) : (
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2
-            id="city-sources-heading"
-            className="flex items-center gap-2 text-xl font-bold text-primary-dark"
-          >
-            <Link2 className="size-5 text-primary" aria-hidden />
-            {cityName}の参照URL
-          </h2>
-          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            この市固有の公式ページ・資料URLです。追加すると行政資料台帳へ自動登録されます。更新アラートを受け取るにはPDF直リンクが必要です。
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant={showAdd ? "default" : "outline"}
-            className="min-h-11"
-            disabled={pending}
-            onClick={() => {
-              setEditing(null)
-              setShowAdd((v) => !v)
-            }}
-          >
-            {showAdd ? (
-              <>
-                <X className="size-4" aria-hidden />
-                追加をやめる
-              </>
-            ) : (
-              <>
-                <Plus className="size-4" aria-hidden />
-                参照URLを追加する
-              </>
-            )}
-          </Button>
-          <Button asChild variant="ghost" className="min-h-11">
-            <Link href={`/admin/rules/source-urls?city=${citySlug}`}>
-              詳細画面で編集する
-            </Link>
-          </Button>
-        </div>
+    <section className="space-y-3" aria-label={`${layerLabel}の参照URL`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-base font-semibold text-primary-dark">
+          参照URL（{LAYER_BADGE[layer]}）
+        </p>
+        <Button
+          type="button"
+          variant={showAdd ? "default" : "outline"}
+          className="min-h-11"
+          disabled={pending || !canManage}
+          onClick={() => {
+            setEditing(null)
+            setShowAdd((v) => !v)
+          }}
+        >
+          {showAdd ? (
+            <>
+              <X className="size-4" aria-hidden />
+              追加をやめる
+            </>
+          ) : (
+            <>
+              <Plus className="size-4" aria-hidden />
+              参照URLを追加する
+            </>
+          )}
+        </Button>
       </div>
-      )}
 
-      <Alert className="rounded-xl border-accent/40 bg-accent/5">
-        <Info className="text-accent" aria-hidden />
-        <AlertTitle className="text-base text-primary-dark">
-          {SOURCE_URL_MONITORING_ALERT_TITLE}
-        </AlertTitle>
-        <AlertDescription className="text-base leading-relaxed text-foreground/90">
-          {SOURCE_URL_MONITORING_ALERT_BODY}
-        </AlertDescription>
-      </Alert>
+      {!canManage ? (
+        <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-4 text-base text-muted-foreground">
+          この層の自治体マスタがまだありません。自治体マスタをご確認ください。
+        </p>
+      ) : null}
 
-      {showAdd ? (
+      {showMonitoringAlert ? (
+        <Alert className="rounded-xl border-accent/40 bg-accent/5">
+          <Info className="text-accent" aria-hidden />
+          <AlertTitle className="text-base text-primary-dark">
+            {SOURCE_URL_MONITORING_ALERT_TITLE}
+          </AlertTitle>
+          <AlertDescription className="text-base leading-relaxed text-foreground/90">
+            {SOURCE_URL_MONITORING_ALERT_BODY}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {showAdd && canManage ? (
         <Card className="rounded-xl border-primary/20 bg-primary/[0.02] shadow-subtle">
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg text-primary-dark">
-              {cityName}の参照URLを追加
+              {layerLabel}の参照URLを追加
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
               公式ページまたはPDFのURLを登録します。チェックに使う判定ルールは「判定ルール案を生成→了承」が必要です。
@@ -276,9 +262,9 @@ export function CityRulebookSourcesPanel({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new-source-title">資料名</Label>
+              <Label htmlFor={`new-source-title-${layer}`}>資料名</Label>
               <Input
-                id="new-source-title"
+                id={`new-source-title-${layer}`}
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="例：訪問介護 実地指導マニュアル"
@@ -287,7 +273,7 @@ export function CityRulebookSourcesPanel({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-source-category">資料の種類</Label>
+              <Label htmlFor={`new-source-category-${layer}`}>資料の種類</Label>
               <Select
                 value={newCategory}
                 onValueChange={(v) =>
@@ -296,7 +282,7 @@ export function CityRulebookSourcesPanel({
                 disabled={pending}
               >
                 <SelectTrigger
-                  id="new-source-category"
+                  id={`new-source-category-${layer}`}
                   className="min-h-11 text-base"
                 >
                   <SelectValue />
@@ -311,11 +297,11 @@ export function CityRulebookSourcesPanel({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-parent-url">
+              <Label htmlFor={`new-parent-url-${layer}`}>
                 公式ページURL（一覧ページ可）
               </Label>
               <Input
-                id="new-parent-url"
+                id={`new-parent-url-${layer}`}
                 type="url"
                 value={newParentUrl}
                 onChange={(e) => setNewParentUrl(e.target.value)}
@@ -328,11 +314,11 @@ export function CityRulebookSourcesPanel({
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-direct-url">
+              <Label htmlFor={`new-direct-url-${layer}`}>
                 PDFなどの直接URL（自動監視用・推奨）
               </Label>
               <Input
-                id="new-direct-url"
+                id={`new-direct-url-${layer}`}
                 type="url"
                 value={newDirectUrl}
                 onChange={(e) => setNewDirectUrl(e.target.value)}
@@ -345,9 +331,9 @@ export function CityRulebookSourcesPanel({
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-memo">メモ（任意）</Label>
+              <Label htmlFor={`new-memo-${layer}`}>メモ（任意）</Label>
               <Input
-                id="new-memo"
+                id={`new-memo-${layer}`}
                 value={newMemo}
                 onChange={(e) => setNewMemo(e.target.value)}
                 placeholder="どこを見たか短く"
@@ -362,24 +348,35 @@ export function CityRulebookSourcesPanel({
               disabled={pending || !newTitle.trim()}
               onClick={onCreate}
             >
-              この市のルールブックに追加する
+              {layerLabel}の参照URLに追加する
             </Button>
           </CardContent>
         </Card>
       ) : null}
 
       {sources.length === 0 && !showAdd ? (
-        <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
-          まだ登録がありません。「参照URLを追加する」から入れてください。
+        <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-4 text-base text-muted-foreground">
+          まだ参照URLがありません。「参照URLを追加する」から入れてください。
         </p>
       ) : (
         <ul className="space-y-2">
           {sources.map((s) => {
             const url = primarySourceUrl(s)
             const isEditing = editing?.id === s.id
+            const needsAttention =
+              s.human_review_status === "needs_review" ||
+              s.human_review_status === "outdated" ||
+              s.human_review_status === "unverified" ||
+              !url
             return (
               <li key={s.id}>
-                <Card className="rounded-xl shadow-subtle">
+                <Card
+                  className={
+                    needsAttention
+                      ? "rounded-xl border-warning/40 shadow-subtle"
+                      : "rounded-xl shadow-subtle"
+                  }
+                >
                   {isEditing && editing ? (
                     <CardContent className="space-y-4 py-4">
                       <div className="space-y-2">
@@ -438,9 +435,6 @@ export function CityRulebookSourcesPanel({
                           className="min-h-11 text-base"
                           disabled={pending}
                         />
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          根拠の所在を残すためのURLです。これだけでは自動監視が始まらないことがあります。
-                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor={`edit-direct-${s.id}`}>
@@ -498,8 +492,13 @@ export function CityRulebookSourcesPanel({
                   ) : (
                     <CardContent className="flex flex-wrap items-center gap-3 py-4">
                       <Badge variant="outline" className="rounded-md">
-                        市
+                        {LAYER_BADGE[layer]}
                       </Badge>
+                      {needsAttention ? (
+                        <Badge variant="destructive" className="rounded-md">
+                          {!url ? "URLなし／要修正" : "要確認"}
+                        </Badge>
+                      ) : null}
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-primary-dark">
                           {s.title}
@@ -538,7 +537,7 @@ export function CityRulebookSourcesPanel({
                         )}
                         <Button
                           type="button"
-                          variant="outline"
+                          variant={needsAttention ? "default" : "outline"}
                           size="sm"
                           className="min-h-11"
                           disabled={pending}
@@ -559,6 +558,17 @@ export function CityRulebookSourcesPanel({
                             確認済みにする
                           </Button>
                         ) : null}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="min-h-11 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          disabled={pending}
+                          onClick={() => onDelete(s)}
+                        >
+                          <Trash2 className="size-4" aria-hidden />
+                          削除する
+                        </Button>
                       </div>
                     </CardContent>
                   )}

@@ -45,7 +45,7 @@ export default function RegulatoryHubPage() {
           閲覧・修正（Phase1市）
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          「この市で運営するならこのルールブック」を開きます。参照URLの登録・判定ルール案の生成・了承はここから進めます。
+          「この市で運営するならこのルールブック」を開きます。国・県・市の参照URLの登録・修正・削除、判定ルール案の生成・了承はここから進めます。
         </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PHASE1_CITIES.map((city) => (

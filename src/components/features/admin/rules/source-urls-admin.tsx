@@ -58,6 +58,7 @@ import {
 import {
   AlertTriangle,
   ExternalLink,
+  Info,
   Loader2,
   Pencil,
   RefreshCw,
@@ -361,10 +362,10 @@ export function SourceUrlsAdmin() {
             ]}
           />
           <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-            参照サイト
+            参照サイト（詳細・トラブル時）
           </h1>
           <p className="mt-1 max-w-3xl text-base leading-relaxed text-muted-foreground">
-            自治体・厚労省などの原文URLを管理します。法改正時はリンク切れがないかご確認ください。
+            日常の追加・修正・削除は各市ルールブックの「自治体ルール設定」で行います。ここは横断確認や細かい項目の調整用です。
           </p>
           {cityFromQuery ? (
             <p className="mt-2 text-base font-medium text-primary">
@@ -396,9 +397,30 @@ export function SourceUrlsAdmin() {
         </Button>
       </div>
 
+      <Alert className="rounded-xl border-primary/30 bg-primary/[0.04]">
+        <Info className="text-primary" aria-hidden />
+        <AlertTitle className="text-base text-primary-dark">
+          日常の操作場所が変わりました
+        </AlertTitle>
+        <AlertDescription className="text-base leading-relaxed">
+          国・県・市の参照URLの登録・修正・削除は、
+          <Link
+            href="/admin/rules/regulatory"
+            className="font-medium text-primary underline-offset-2 hover:underline"
+          >
+            ルールブック設定
+          </Link>
+          から市を開き、「自治体ルール設定」で行ってください。
+        </AlertDescription>
+      </Alert>
+
       <PurposeGuide
-        purpose="AIや監査項目が参照する公式サイトのURLを最新に保ちます。自治体別・資料別に整理できます。"
-        steps={["参照サイトを選択", "URLを確認・更新", "保存"]}
+        purpose="横断一覧や細かい項目の調整用です。日常は市ルールブックの自治体ルール設定を使います。"
+        steps={[
+          "市ルールブックで追加・修正するのが基本",
+          "ここは必要時のみ確認・調整",
+          "保存後はルールブック側でも反映を確認",
+        ]}
       />
 
       <h2 className="text-xl font-bold text-primary-dark">管理一覧</h2>

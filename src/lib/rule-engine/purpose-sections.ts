@@ -3,7 +3,6 @@ import {
   Bot,
   ClipboardCheck,
   Landmark,
-  Link2,
   Scale,
   ShieldCheck,
   type LucideIcon,
@@ -48,23 +47,17 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     navDescription: "この自治体で従う確定版を整える",
     icon: BookOpen,
     purpose:
-      "国・県・市の参照URLを整え、PDFは自動監視します。更新アラートが出たら人が確認し、判定ルール案を了承してルールブックを最新に保ちます。施設は「この自治体ならこのルールブック」に従えばよい、が目標です。",
+      "市のルールブック（自治体ルール設定）で国・県・市の参照URLを整え、PDFは自動監視します。更新アラートが出たら人が確認し、判定ルール案を了承してルールブックを最新に保ちます。施設は「この自治体ならこのルールブック」に従えばよい、が目標です。",
     steps: [
       "サービスはいま訪問介護（Phase1）",
-      "参照URLを国／県／市で登録する（PDF直リンクがあると自動監視）",
+      "市ルールブックの「自治体ルール設定」で国／県／市の参照URLを登録する（PDF直リンクがあると自動監視）",
       "更新アラートが出たら人が確認して判定ルール案を了承する",
     ],
     links: [
       {
-        href: "/admin/rules/source-urls",
-        label: "参照URL登録",
-        description: "法令・ルール・加算の公式URL（国・県・市）。更新監視にはPDF直リンクが必要",
-        icon: Link2,
-      },
-      {
         href: "/admin/rules/laws",
         label: "法令・根拠",
-        description: "法令・通知のメタ情報",
+        description: "法令・通知のメタ情報（任意）",
         icon: Scale,
       },
       {
@@ -77,7 +70,6 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     matchPaths: [
       "/admin/rules/regulatory",
       "/admin/rules/laws",
-      "/admin/rules/source-urls",
       "/admin/document-changes",
     ],
     showOnHome: true,

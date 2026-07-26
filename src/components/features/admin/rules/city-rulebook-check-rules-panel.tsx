@@ -114,7 +114,7 @@ export function CityRulebookCheckRulesPanel({
         <div className="mt-4 space-y-2 border-t border-border pt-4">
           {approved.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
-              まだ了承済みがありません。下の「自治体ルール設定」で参照URL（PDF）を登録し「判定ルール案を生成」するか、手入力で1件追加してから、新ルール判定通知で了承してください。
+              まだ了承済みがありません。下の「自治体ルール設定」で国・県・市の参照URL（PDF）を登録し「判定ルール案を生成」するか、手入力で1件追加してから、新ルール判定通知で了承してください。
             </p>
           ) : (
             CATEGORY_ORDER.map((category) => {
