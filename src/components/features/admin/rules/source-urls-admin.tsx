@@ -23,6 +23,9 @@ import {
   MATERIAL_CATEGORIES,
   MATERIAL_CATEGORY_LABEL,
   SERVICE_TYPE_OPTIONS,
+  SOURCE_URL_DIRECT_FILE_HINT,
+  SOURCE_URL_MONITORING_ALERT_BODY,
+  SOURCE_URL_MONITORING_ALERT_TITLE,
   primarySourceUrl,
 } from "@/lib/rule-engine/source-urls"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -408,17 +411,23 @@ export function SourceUrlsAdmin() {
         </Alert>
       ) : null}
 
-      <Alert className="rounded-xl border-primary/20 bg-muted/40">
-        <AlertTitle className="text-base">自動監視について</AlertTitle>
-        <AlertDescription className="text-base leading-relaxed">
-          参照URLを登録すると行政資料台帳へ自動で紐付きます。PDFの直リンクがある場合は初回同期と以降の監視が始まります。台帳の詳細やトラブル対応は
-          <Link
-            href="/admin/rules/documents"
-            className="font-medium text-primary underline-offset-2 hover:underline"
-          >
-            監視トラブルの行政資料台帳
-          </Link>
-          から行えます。
+      <Alert className="rounded-xl border-accent/40 bg-accent/5">
+        <AlertTriangle className="text-accent" aria-hidden />
+        <AlertTitle className="text-base text-primary-dark">
+          {SOURCE_URL_MONITORING_ALERT_TITLE}
+        </AlertTitle>
+        <AlertDescription className="text-base leading-relaxed text-foreground/90">
+          <p>{SOURCE_URL_MONITORING_ALERT_BODY}</p>
+          <p className="mt-2">
+            台帳の詳細やトラブル対応は
+            <Link
+              href="/admin/rules/documents"
+              className="font-medium text-primary underline-offset-2 hover:underline"
+            >
+              監視トラブルの行政資料台帳
+            </Link>
+            から行えます。
+          </p>
         </AlertDescription>
       </Alert>
 
@@ -601,7 +610,7 @@ export function SourceUrlsAdmin() {
             </Select>
           </div>
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="new-parent">親ページURL</Label>
+            <Label htmlFor="new-parent">親ページURL（一覧ページ可）</Label>
             <Input
               id="new-parent"
               type="url"
@@ -610,9 +619,14 @@ export function SourceUrlsAdmin() {
               onChange={(e) => setNewParentUrl(e.target.value)}
               placeholder="https://"
             />
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              根拠の所在を残すためのURLです。これだけでは自動監視が始まらないことがあります。
+            </p>
           </div>
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="new-direct">直接ファイルURL</Label>
+            <Label htmlFor="new-direct">
+              直接ファイルURL（PDF直リンク・自動監視用）
+            </Label>
             <Input
               id="new-direct"
               type="url"
@@ -621,6 +635,9 @@ export function SourceUrlsAdmin() {
               onChange={(e) => setNewDirectUrl(e.target.value)}
               placeholder="https://（PDF直リンク等）"
             />
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {SOURCE_URL_DIRECT_FILE_HINT}
+            </p>
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="new-memo">メモ</Label>
@@ -833,7 +850,7 @@ export function SourceUrlsAdmin() {
               </Select>
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="edit-parent">親ページURL</Label>
+              <Label htmlFor="edit-parent">親ページURL（一覧ページ可）</Label>
               <Input
                 id="edit-parent"
                 type="url"
@@ -843,9 +860,14 @@ export function SourceUrlsAdmin() {
                   setEditing({ ...editing, parentPageUrl: e.target.value })
                 }
               />
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                根拠の所在を残すためのURLです。これだけでは自動監視が始まらないことがあります。
+              </p>
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="edit-direct">直接ファイルURL</Label>
+              <Label htmlFor="edit-direct">
+                直接ファイルURL（PDF直リンク・自動監視用）
+              </Label>
               <Input
                 id="edit-direct"
                 type="url"
@@ -855,6 +877,9 @@ export function SourceUrlsAdmin() {
                   setEditing({ ...editing, directFileUrl: e.target.value })
                 }
               />
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {SOURCE_URL_DIRECT_FILE_HINT}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-priority">優先度</Label>

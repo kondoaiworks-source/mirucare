@@ -58,7 +58,7 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
       {
         href: "/admin/rules/source-urls",
         label: "参照URL登録",
-        description: "法令・ルール・加算の公式URL（国・県・市）。登録で監視開始",
+        description: "法令・ルール・加算の公式URL（国・県・市）。更新監視にはPDF直リンクが必要",
         icon: Link2,
       },
       {

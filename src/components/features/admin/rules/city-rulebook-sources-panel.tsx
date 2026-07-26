@@ -13,9 +13,13 @@ import {
   HUMAN_REVIEW_STATUS_LABEL,
   MATERIAL_CATEGORIES,
   MATERIAL_CATEGORY_LABEL,
+  SOURCE_URL_DIRECT_FILE_HINT,
+  SOURCE_URL_MONITORING_ALERT_BODY,
+  SOURCE_URL_MONITORING_ALERT_TITLE,
   primarySourceUrl,
 } from "@/lib/rule-engine/source-urls"
 import type { RuleMaterialCategory } from "@/types/database"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -37,6 +41,7 @@ import {
 import {
   CheckCircle2,
   ExternalLink,
+  Info,
   Link2,
   Pencil,
   Plus,
@@ -214,7 +219,7 @@ export function CityRulebookSourcesPanel({
             {cityName}の参照URL
           </h2>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            この市固有の公式ページ・資料URLです。追加すると行政資料台帳へ自動登録され、PDF直リンクがある場合は監視が始まります。
+            この市固有の公式ページ・資料URLです。追加すると行政資料台帳へ自動登録されます。更新アラートを受け取るにはPDF直リンクが必要です。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -249,6 +254,16 @@ export function CityRulebookSourcesPanel({
       </div>
       )}
 
+      <Alert className="rounded-xl border-accent/40 bg-accent/5">
+        <Info className="text-accent" aria-hidden />
+        <AlertTitle className="text-base text-primary-dark">
+          {SOURCE_URL_MONITORING_ALERT_TITLE}
+        </AlertTitle>
+        <AlertDescription className="text-base leading-relaxed text-foreground/90">
+          {SOURCE_URL_MONITORING_ALERT_BODY}
+        </AlertDescription>
+      </Alert>
+
       {showAdd ? (
         <Card className="rounded-xl border-primary/20 bg-primary/[0.02] shadow-subtle">
           <CardHeader className="space-y-1">
@@ -256,7 +271,7 @@ export function CityRulebookSourcesPanel({
               {cityName}の参照URLを追加
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              公式ページまたはPDFのURLを登録します。PDF直リンクがあると自動で監視が始まります。チェックに使う判定ルールは「判定ルール案を生成→了承」が必要です。
+              公式ページまたはPDFのURLを登録します。チェックに使う判定ルールは「判定ルール案を生成→了承」が必要です。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -296,7 +311,9 @@ export function CityRulebookSourcesPanel({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-parent-url">公式ページURL</Label>
+              <Label htmlFor="new-parent-url">
+                公式ページURL（一覧ページ可）
+              </Label>
               <Input
                 id="new-parent-url"
                 type="url"
@@ -306,9 +323,14 @@ export function CityRulebookSourcesPanel({
                 className="min-h-11 text-base"
                 disabled={pending}
               />
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                根拠の所在を残すためのURLです。これだけでは自動監視が始まらないことがあります。
+              </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-direct-url">PDFなどの直接URL（任意）</Label>
+              <Label htmlFor="new-direct-url">
+                PDFなどの直接URL（自動監視用・推奨）
+              </Label>
               <Input
                 id="new-direct-url"
                 type="url"
@@ -318,6 +340,9 @@ export function CityRulebookSourcesPanel({
                 className="min-h-11 text-base"
                 disabled={pending}
               />
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {SOURCE_URL_DIRECT_FILE_HINT}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="new-memo">メモ（任意）</Label>
@@ -398,7 +423,7 @@ export function CityRulebookSourcesPanel({
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor={`edit-parent-${s.id}`}>
-                          公式ページURL
+                          公式ページURL（一覧ページ可）
                         </Label>
                         <Input
                           id={`edit-parent-${s.id}`}
@@ -413,10 +438,13 @@ export function CityRulebookSourcesPanel({
                           className="min-h-11 text-base"
                           disabled={pending}
                         />
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                          根拠の所在を残すためのURLです。これだけでは自動監視が始まらないことがあります。
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor={`edit-direct-${s.id}`}>
-                          PDFなどの直接URL（任意）
+                          PDFなどの直接URL（自動監視用・推奨）
                         </Label>
                         <Input
                           id={`edit-direct-${s.id}`}
@@ -431,6 +459,9 @@ export function CityRulebookSourcesPanel({
                           className="min-h-11 text-base"
                           disabled={pending}
                         />
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                          {SOURCE_URL_DIRECT_FILE_HINT}
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor={`edit-memo-${s.id}`}>メモ（任意）</Label>

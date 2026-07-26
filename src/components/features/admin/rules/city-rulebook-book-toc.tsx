@@ -145,7 +145,7 @@ export function CityRulebookBookToc({ data }: Props) {
       icon={<BookMarked className="size-5" aria-hidden />}
       title="自治体ルール設定"
       countLabel={`（${entries.length}件）`}
-      description="チェックルールの元となる自治体公開情報URLの一覧です"
+      description="チェックルールの元となる自治体公開情報URLの一覧です。更新アラートにはPDF直リンクが必要です。"
       action={
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" className="min-h-11">
