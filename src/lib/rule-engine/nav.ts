@@ -65,8 +65,9 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
     items: [
       {
         href: "/admin/rules/pending",
-        label: "承認待ち",
-        description: "人がOKするまで本番に載せない",
+        label: "新ルール判定通知",
+        description:
+          "自治体ルールからAIが生成したチェックルールを確認して反映",
         icon: Hourglass,
       },
       {
@@ -89,8 +90,9 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
       },
       {
         href: "/admin/rules/notifications",
-        label: "通知一覧",
-        description: "更新アラートなどの通知履歴",
+        label: "自治体ルール変更通知",
+        description:
+          "自治体ルールの変更を感知して差分承認の依頼を通知",
         icon: Bell,
       },
       {

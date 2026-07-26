@@ -36,11 +36,11 @@ export function ProposeRulesFromDocumentButton({
         return
       }
       toast.success(
-        `「${documentTitle}」から判定ルール案を ${result.data?.createdCount ?? 0}件、承認待ちに載せました。`,
+        `「${documentTitle}」から判定ルール案を ${result.data?.createdCount ?? 0}件、新ルール判定通知に載せました。`,
         {
           description: "了承するまで書類チェックには使われません。",
           action: {
-            label: "承認待ちを開く",
+            label: "新ルール判定通知を開く",
             onClick: () => {
               window.location.href = "/admin/rules/pending"
             },

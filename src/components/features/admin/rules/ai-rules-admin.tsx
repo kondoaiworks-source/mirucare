@@ -55,7 +55,7 @@ const DOC_TYPES: DocType[] = [
 
 const REVIEW_LABEL: Record<AiCheckRuleVersion["review_status"], string> = {
   draft: "下書き",
-  pending_review: "承認待ち",
+  pending_review: "了承待ち",
   approved: "承認済",
   rejected: "差し戻し",
 }
@@ -134,7 +134,7 @@ export function AiRulesAdmin({
       }
       toast.success(
         submitForReview
-          ? "ルールを登録し、承認待ちにしました。"
+          ? "ルールを登録し、新ルール判定通知に載せました。"
           : "ルールを下書き登録しました。"
       )
       setCode("")
@@ -165,7 +165,7 @@ export function AiRulesAdmin({
           <AlertTriangle className="text-primary" />
           <AlertTitle>行政資料の台帳反映あとの次ステップです</AlertTitle>
           <AlertDescription className="text-base leading-relaxed">
-            台帳反映だけではチェック用辞書には載りません。ここで改訂案を作り、承認待ちに回してください（ドラフトID紐付けあり）。
+            台帳反映だけではチェック用辞書には載りません。ここで改訂案を作り、新ルール判定通知に回してください（ドラフトID紐付けあり）。
           </AlertDescription>
         </Alert>
       ) : null}
@@ -344,7 +344,7 @@ export function AiRulesAdmin({
                   checked={submitForReview}
                   onChange={(e) => setSubmitForReview(e.target.checked)}
                 />
-                登録と同時に承認待ちにする
+                登録と同時に新ルール判定通知へ載せる
               </label>
             </div>
             <div>

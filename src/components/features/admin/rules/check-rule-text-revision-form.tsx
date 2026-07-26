@@ -58,7 +58,7 @@ export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
         .sort((a, b) => b.version_no - a.version_no)[0]
       if (!rule || !version) {
         setLoadError(
-          "了承済みの判定ルールが見つかりません。ルールブックまたは承認待ちをご確認ください。"
+          "了承済みの判定ルールが見つかりません。ルールブックまたは新ルール判定通知をご確認ください。"
         )
         setLoading(false)
         return
@@ -84,10 +84,10 @@ export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
         toast.error(result.error ?? "修正案の登録に失敗しました。")
         return
       }
-      toast.success("文言の修正案を承認待ちに載せました。", {
+      toast.success("文言の修正案を新ルール判定通知に載せました。", {
         description: "了承されるまでチェックには使われません。",
         action: {
-          label: "承認待ちを開く",
+          label: "新ルール判定通知を開く",
           onClick: () => {
             window.location.href = "/admin/rules/pending"
           },
@@ -128,7 +128,7 @@ export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
         </CardTitle>
         <CardDescription className="text-base leading-relaxed">
           {code} — {title}
-          。修正案は承認待ちに載り、了承されるまでチェックには使いません。
+          。修正案は新ルール判定通知に載り、了承されるまでチェックには使いません。
         </CardDescription>
         {fromCitySlug ? (
           <p className="text-sm text-muted-foreground">
@@ -174,10 +174,10 @@ export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
             {pending ? (
               <Loader2 className="size-4 animate-spin" aria-hidden />
             ) : null}
-            承認待ちに載せる
+            新ルール判定通知に載せる
           </Button>
           <Button asChild size="lg" variant="outline" className="min-h-11">
-            <Link href="/admin/rules/pending">承認待ちを開く</Link>
+            <Link href="/admin/rules/pending">新ルール判定通知を開く</Link>
           </Button>
         </div>
       </CardContent>

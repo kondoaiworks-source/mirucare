@@ -75,8 +75,9 @@ const HOME_SHORTCUTS = [
   },
   {
     href: "/admin/rules/pending",
-    label: "承認待ち",
-    description: "人がOKするまで、チェック基準に載せません。",
+    label: "新ルール判定通知",
+    description:
+      "自治体ルールからAIが生成したチェックルールを確認して反映します。",
     icon: Hourglass,
   },
   {
@@ -93,8 +94,9 @@ const HOME_SHORTCUTS = [
   },
   {
     href: "/admin/rules/notifications",
-    label: "通知一覧",
-    description: "更新アラートなどの通知履歴です。",
+    label: "自治体ルール変更通知",
+    description:
+      "自治体ルールの変更を感知して差分承認の依頼を通知します。",
     icon: Bell,
   },
   {
@@ -152,7 +154,7 @@ export default async function RulesDashboardPage() {
             {d.pendingVersionCount > 0 ? (
               <Link href="/admin/rules/pending">
                 <Badge variant="destructive" className="rounded-lg tabular-nums">
-                  ルール承認待ち {d.pendingVersionCount}
+                  新ルール判定通知 {d.pendingVersionCount}
                 </Badge>
               </Link>
             ) : null}
@@ -295,13 +297,13 @@ export default async function RulesDashboardPage() {
             href="/admin/rules/ai-rules"
           />
           <StatCard
-            label="承認待ち"
+            label="新ルール判定通知"
             value={d.pendingVersionCount}
             href="/admin/rules/pending"
             warn={d.pendingVersionCount > 0}
           />
           <StatCard
-            label="更新アラート（未承認差分）"
+            label="自治体ルール変更（未承認差分）"
             value={d.pendingKnowledgeDraftCount}
             href="/admin/document-changes"
             warn={d.pendingKnowledgeDraftCount > 0}

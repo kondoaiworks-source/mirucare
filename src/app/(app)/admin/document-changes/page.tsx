@@ -29,7 +29,7 @@ export default async function AdminDocumentChangesPage() {
             variant="destructive"
             className="h-8 rounded-lg px-3 text-sm tabular-nums"
           >
-            承認待ち {count}件
+            新ルール判定通知 {count}件
           </Badge>
         ) : null}
         <Button asChild variant="outline">

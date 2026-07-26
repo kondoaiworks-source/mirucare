@@ -146,7 +146,7 @@ export function DocumentChangesAdmin() {
       }
       toast.success("台帳に反映しました", {
         description:
-          "続けて「判定ルール案を生成する」と、差分からチェック用ルール案が承認待ちに載ります。",
+          "続けて「判定ルール案を生成する」と、差分からチェック用ルール案が新ルール判定通知に載ります。",
         duration: 10000,
       })
       setReasons((prev) => {
@@ -172,11 +172,11 @@ export function DocumentChangesAdmin() {
         return
       }
       toast.success(
-        `判定ルール案を ${result.data?.createdCount ?? 0}件、承認待ちに載せました。`,
+        `判定ルール案を ${result.data?.createdCount ?? 0}件、新ルール判定通知に載せました。`,
         {
           description: "了承するまで書類チェックには使われません。",
           action: {
-            label: "承認待ちを開く",
+            label: "新ルール判定通知を開く",
             onClick: () => {
               window.location.href = "/admin/rules/pending"
             },
@@ -219,7 +219,7 @@ export function DocumentChangesAdmin() {
             監視で検知した変更を確認し、問題なければ<strong>行政資料の台帳</strong>
             へ反映します。チェック用の判定ルールは、差分から
             <strong>判定ルール案を生成</strong>
-            し、承認待ちで了承してから使います。
+            し、新ルール判定通知で了承してから使います。
           </p>
           {cityFromQuery ? (
             <p className="text-base font-medium text-primary">
@@ -260,7 +260,7 @@ export function DocumentChangesAdmin() {
       ) : null}
 
       <p className="text-base tabular-nums text-muted-foreground">
-        承認待ち{" "}
+        差分承認待ち{" "}
         <span className="text-2xl font-bold text-primary-dark">
           {visibleDrafts.length}
         </span>{" "}
@@ -277,11 +277,11 @@ export function DocumentChangesAdmin() {
           <p>
             ①この画面の承認＝行政資料の<strong>台帳・版履歴</strong>への反映。
             ②チェック用の判定ルールは「判定ルール案を生成する」→
-            <strong>承認待ち</strong>
+            <strong>新ルール判定通知</strong>
             で了承して初めて使われます（自動では載りません）。
           </p>
           <Button asChild variant="outline" className="min-h-11">
-            <Link href="/admin/rules/pending">承認待ちを開く</Link>
+            <Link href="/admin/rules/pending">新ルール判定通知を開く</Link>
           </Button>
         </AlertDescription>
       </Alert>
@@ -296,7 +296,7 @@ export function DocumentChangesAdmin() {
       {!loading && visibleDrafts.length === 0 && !loadError ? (
         <Card className="rounded-xl shadow-subtle">
           <CardHeader>
-            <CardTitle className="text-lg">承認待ちはありません</CardTitle>
+            <CardTitle className="text-lg">差分承認待ちはありません</CardTitle>
             <CardDescription className="text-base leading-relaxed">
               {cityFromQuery
                 ? `${cityFromQuery.name}関連のマニュアル差分はありません。`
@@ -524,7 +524,7 @@ export function DocumentChangesAdmin() {
                       判定ルール案を生成する
                     </Button>
                     <Button asChild size="lg" variant="ghost" className="min-h-11">
-                      <Link href="/admin/rules/pending">承認待ちを開く</Link>
+                      <Link href="/admin/rules/pending">新ルール判定通知を開く</Link>
                     </Button>
                     <Button asChild size="lg" variant="ghost" className="min-h-11">
                       <Link

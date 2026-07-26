@@ -24,7 +24,7 @@ import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 
 const REVIEW_LABEL: Record<AiCheckRuleVersion["review_status"], string> = {
   draft: "下書き",
-  pending_review: "承認待ち",
+  pending_review: "了承待ち",
   approved: "承認済",
   rejected: "差し戻し",
 }

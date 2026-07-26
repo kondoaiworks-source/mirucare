@@ -104,7 +104,7 @@ export function buildSetupReadiness(
             : "/admin/rules/ai-rules",
       actionLabel:
         input.pendingVersionCount > 0
-          ? "承認待ちを確認する"
+          ? "新ルール判定通知を確認する"
           : "判定ルールを開く（詳細）",
       done: input.approvedAiRuleCount > 0,
       required: true,
@@ -112,14 +112,15 @@ export function buildSetupReadiness(
         input.approvedAiRuleCount > 0
           ? `承認済みルールが ${input.approvedAiRuleCount}件あります`
           : input.pendingVersionCount > 0
-            ? `承認待ちが ${input.pendingVersionCount}件あります`
+            ? `新ルール判定通知が ${input.pendingVersionCount}件あります`
             : "承認済みの判定ルールがありません",
       icon: Bot,
     },
     {
       id: "clearQueue",
       label: "確認待ちを残さない",
-      description: "承認待ち・マニュアル差分・同期アラートを解消します。",
+      description:
+        "新ルール判定通知・自治体ルール変更（差分）・同期アラートを解消します。",
       href:
         input.pendingVersionCount > 0
           ? "/admin/rules/pending"

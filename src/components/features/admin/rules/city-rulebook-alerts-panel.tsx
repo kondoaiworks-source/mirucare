@@ -87,11 +87,11 @@ export function CityRulebookAlertsPanel({
         return
       }
       toast.success(
-        `判定ルール案を ${result.data?.createdCount ?? 0}件、承認待ちに載せました。`,
+        `判定ルール案を ${result.data?.createdCount ?? 0}件、新ルール判定通知に載せました。`,
         {
           description: "了承するまで書類チェックには使われません。",
           action: {
-            label: "承認待ちを開く",
+            label: "新ルール判定通知を開く",
             onClick: () => {
               window.location.href = "/admin/rules/pending"
             },
@@ -248,7 +248,7 @@ export function CityRulebookAlertsPanel({
                       </Button>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      「判定ルール案を生成する」＝今のルールと差分を比べ、更新したい案＋根拠を承認待ちへ載せます。了承するまでチェックには使われません。
+                      「判定ルール案を生成する」＝今のルールと差分を比べ、更新したい案＋根拠を新ルール判定通知へ載せます。了承するまでチェックには使われません。
                     </p>
                   </CardContent>
                 </Card>

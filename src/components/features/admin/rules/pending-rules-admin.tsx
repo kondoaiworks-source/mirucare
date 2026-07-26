@@ -73,10 +73,12 @@ export function PendingRulesAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <AdminBreadcrumb items={[{ label: "承認待ち" }]} />
-        <h1 className="mt-2 text-2xl font-bold text-primary-dark">承認待ち</h1>
+        <AdminBreadcrumb items={[{ label: "新ルール判定通知" }]} />
+        <h1 className="mt-2 text-2xl font-bold text-primary-dark">
+          新ルール判定通知
+        </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          AIが行政資料から作った判定ルール案（と根拠）を確認し、問題なければ承認します。了承したものだけがチェックに使われ、ルールブックの中身になります。
+          自治体ルールからAIが生成したチェックルールを確認して反映します。了承したものだけがチェックに使われ、ルールブックの中身になります。
         </p>
         <p className="mt-2 text-base tabular-nums text-muted-foreground">
           件数{" "}
@@ -97,7 +99,9 @@ export function PendingRulesAdmin() {
       {rows.length === 0 && !error ? (
         <Card className="rounded-xl shadow-subtle">
           <CardHeader>
-            <CardTitle className="text-lg">承認待ちはありません</CardTitle>
+            <CardTitle className="text-lg">
+              現在、確認する新ルール判定はありません
+            </CardTitle>
             <CardDescription className="text-base">
               差分や行政資料から判定ルール案を生成すると、ここに表示されます。
             </CardDescription>

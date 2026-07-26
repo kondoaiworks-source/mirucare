@@ -60,7 +60,7 @@ export function CityRulebookCheckRulesPanel({
         pending.length > 0 ? (
           <Button asChild className="min-h-11">
             <Link href="/admin/rules/pending">
-              承認待ちで了承する（{pending.length}件）
+              新ルール判定通知で了承する（{pending.length}件）
             </Link>
           </Button>
         ) : (
@@ -83,7 +83,7 @@ export function CityRulebookCheckRulesPanel({
               了承前の案（まだチェックには使いません）
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              承認待ちで了承すると、下の了承済みに入ります。
+              新ルール判定通知で了承すると、下の了承済みに入ります。
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -99,7 +99,7 @@ export function CityRulebookCheckRulesPanel({
             </ul>
             {pending.length > 5 ? (
               <p className="mt-2 text-sm text-muted-foreground">
-                ほか {pending.length - 5}件は承認待ち画面で確認できます。
+                ほか {pending.length - 5}件は新ルール判定通知で確認できます。
               </p>
             ) : null}
           </CardContent>
@@ -113,7 +113,7 @@ export function CityRulebookCheckRulesPanel({
         <div className="mt-4 space-y-2 border-t border-border pt-4">
           {approved.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
-              まだ了承済みがありません。自治体ルール設定で行政資料から「判定ルール案を生成」し、承認待ちで了承してください。
+              まだ了承済みがありません。自治体ルール設定で行政資料から「判定ルール案を生成」し、新ルール判定通知で了承してください。
             </p>
           ) : (
             CATEGORY_ORDER.map((category) => {
@@ -185,7 +185,7 @@ function RuleRow({
           <div className="flex flex-wrap items-center gap-2">
             {pending ? (
               <Badge variant="outline" className="rounded-md">
-                承認待ち
+                了承待ち
               </Badge>
             ) : (
               <Badge
@@ -255,7 +255,7 @@ function RuleRow({
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm" className="min-h-11">
-                <Link href="/admin/rules/pending">承認待ちで確認する</Link>
+                <Link href="/admin/rules/pending">新ルール判定通知で確認する</Link>
               </Button>
             )}
           </div>

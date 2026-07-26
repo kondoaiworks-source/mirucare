@@ -28,7 +28,7 @@ export default function RulesMorePage() {
           詳細設定
         </h1>
         <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          ルールブックの中身（監査項目・判定ルール）や台帳の細部です。日常は「ルールブック設定」と「承認待ち」が中心です。
+          ルールブックの中身（監査項目・判定ルール）や台帳の細部です。日常は「ルールブック設定」と「新ルール判定通知」が中心です。
         </p>
       </div>
 

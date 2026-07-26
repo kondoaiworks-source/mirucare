@@ -66,10 +66,12 @@ export function RulesNotificationsAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <AdminBreadcrumb items={[{ label: "通知一覧" }]} />
-        <h1 className="mt-2 text-2xl font-bold text-primary-dark">通知一覧</h1>
+        <AdminBreadcrumb items={[{ label: "自治体ルール変更通知" }]} />
+        <h1 className="mt-2 text-2xl font-bold text-primary-dark">
+          自治体ルール変更通知
+        </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          行政資料の変更やメール通知の状況を確認します。
+          自治体ルールの変更を感知して差分承認の依頼を通知します。詳細確認・承認は差分承認画面で行います。
         </p>
       </div>
 
@@ -84,9 +86,9 @@ export function RulesNotificationsAdmin() {
       <Card className="rounded-xl shadow-subtle">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
           <div>
-            <CardTitle className="text-lg">マニュアル変更通知</CardTitle>
+            <CardTitle className="text-lg">自治体ルール変更の一覧</CardTitle>
             <CardDescription className="text-base">
-              詳細確認・承認はマニュアル変更の承認画面で行います。
+              詳細確認・承認は差分承認画面で行います。
             </CardDescription>
           </div>
           <Button asChild variant="outline" size="lg" className="min-h-11">
@@ -115,7 +117,7 @@ export function RulesNotificationsAdmin() {
                   <TableCell>
                     <Badge variant="outline" className="rounded-lg">
                       {row.status === "pending"
-                        ? "承認待ち"
+                        ? "差分承認待ち"
                         : row.status === "approved"
                           ? "承認済"
                           : "差し戻し"}

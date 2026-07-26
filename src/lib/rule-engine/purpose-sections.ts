@@ -113,8 +113,8 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
       "書類チェック用の見方を登録し、人が承認した版だけを本番に載せます。ルールブックの中身の部品です。",
     steps: [
       "ルールを登録する",
-      "承認待ちで確認する",
-      "承認後にチェックで使われる",
+      "新ルール判定通知で確認する",
+      "了承後にチェックで使われる",
     ],
     links: [
       {
@@ -125,8 +125,9 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
       },
       {
         href: "/admin/rules/pending",
-        label: "承認待ち",
-        description: "本番に載せる前の確認",
+        label: "新ルール判定通知",
+        description:
+          "自治体ルールからAIが生成したチェックルールを確認して反映",
         icon: Landmark,
       },
     ],
