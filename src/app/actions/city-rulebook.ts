@@ -19,6 +19,7 @@ import type {
   KnowledgeSyncAlert,
   RuleJurisdiction,
   RuleSource,
+  AuditItemCategory,
 } from "@/types/database"
 
 export type ActionResult<T = undefined> = {
@@ -61,7 +62,15 @@ export type CityRulebookCheckRule = {
   effectiveFrom: string
   changeSummary: string | null
   scopeKind: "city" | "shared" | "other_city" | "unscoped"
+  /** 監査項目のジャンル（契約・計画・記録など） */
+  category: AuditItemCategory | null
+  auditItemTitle: string | null
+  sourceDocumentId: string | null
   sourceDocumentTitle: string | null
+  /** 原本（行政資料）の公開URL */
+  sourceDocumentUrl: string | null
+  evidenceSummary: string | null
+  evidenceQuotes: string[]
   reviewStatus: "approved" | "pending_review"
 }
 
@@ -334,14 +343,32 @@ function evidenceFromLogic(logic: unknown): {
   regionName: string | null
   jurisdictionLevel: string | null
   sourceTitle: string | null
+  evidenceSummary: string | null
+  evidenceQuotes: string[]
 } {
   if (!logic || typeof logic !== "object") {
-    return { regionName: null, jurisdictionLevel: null, sourceTitle: null }
+    return {
+      regionName: null,
+      jurisdictionLevel: null,
+      sourceTitle: null,
+      evidenceSummary: null,
+      evidenceQuotes: [],
+    }
   }
   const evidence = (logic as { evidence?: Record<string, unknown> }).evidence
   if (!evidence || typeof evidence !== "object") {
-    return { regionName: null, jurisdictionLevel: null, sourceTitle: null }
+    return {
+      regionName: null,
+      jurisdictionLevel: null,
+      sourceTitle: null,
+      evidenceSummary: null,
+      evidenceQuotes: [],
+    }
   }
+  const quotesRaw = evidence.evidenceQuotes
+  const evidenceQuotes = Array.isArray(quotesRaw)
+    ? quotesRaw.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
+    : []
   return {
     regionName:
       typeof evidence.regionName === "string" ? evidence.regionName : null,
@@ -351,6 +378,11 @@ function evidenceFromLogic(logic: unknown): {
         : null,
     sourceTitle:
       typeof evidence.sourceTitle === "string" ? evidence.sourceTitle : null,
+    evidenceSummary:
+      typeof evidence.evidenceSummary === "string"
+        ? evidence.evidenceSummary
+        : null,
+    evidenceQuotes,
   }
 }
 
@@ -378,10 +410,22 @@ async function loadCityCheckRules(
       change_summary,
       check_logic,
       knowledge_change_draft_id,
-      ai_check_rules ( id, code, title, status ),
+      ai_check_rules (
+        id,
+        code,
+        title,
+        status,
+        audit_items ( id, title, code, category )
+      ),
       knowledge_document_change_drafts (
         id,
-        knowledge_documents ( id, title, region_name, jurisdiction_level )
+        knowledge_documents (
+          id,
+          title,
+          region_name,
+          jurisdiction_level,
+          source_url
+        )
       )
     `
     )
@@ -408,8 +452,30 @@ async function loadCityCheckRules(
       code: string
       title: string
       status: string
+      audit_items:
+        | {
+            id: string
+            title: string
+            code: string
+            category: AuditItemCategory | null
+          }
+        | Array<{
+            id: string
+            title: string
+            code: string
+            category: AuditItemCategory | null
+          }>
+        | null
     } | null
     if (!rule || rule.status !== "active") continue
+
+    const auditRaw = rule.audit_items
+    const auditItem = (Array.isArray(auditRaw) ? auditRaw[0] : auditRaw) as {
+      id: string
+      title: string
+      code: string
+      category: AuditItemCategory | null
+    } | null
 
     const draftRaw = row.knowledge_document_change_drafts
     const draft = (
@@ -417,22 +483,28 @@ async function loadCityCheckRules(
     ) as {
       knowledge_documents:
         | {
+            id: string
             title: string
             region_name: string | null
             jurisdiction_level: string | null
+            source_url: string | null
           }
         | Array<{
+            id: string
             title: string
             region_name: string | null
             jurisdiction_level: string | null
+            source_url: string | null
           }>
         | null
     } | null
     const docRaw = draft?.knowledge_documents
     const doc = (Array.isArray(docRaw) ? docRaw[0] : docRaw) as {
+      id: string
       title: string
       region_name: string | null
       jurisdiction_level: string | null
+      source_url: string | null
     } | null
 
     const evidence = evidenceFromLogic(row.check_logic)
@@ -468,7 +540,13 @@ async function loadCityCheckRules(
       effectiveFrom: String(row.effective_from ?? asOf),
       changeSummary: (row.change_summary as string | null) ?? null,
       scopeKind: scopeKind as RuleScopeKind,
+      category: auditItem?.category ?? null,
+      auditItemTitle: auditItem?.title ?? null,
+      sourceDocumentId: doc?.id ?? null,
       sourceDocumentTitle: doc?.title ?? evidence.sourceTitle,
+      sourceDocumentUrl: doc?.source_url?.trim() || null,
+      evidenceSummary: evidence.evidenceSummary,
+      evidenceQuotes: evidence.evidenceQuotes,
       reviewStatus: status,
     }
 
@@ -483,7 +561,20 @@ async function loadCityCheckRules(
     }
   }
 
+  const categoryRank: Record<string, number> = {
+    契約: 0,
+    計画: 1,
+    記録: 2,
+    人員: 3,
+    加算: 4,
+    請求: 5,
+    その他: 6,
+  }
+
   const approved = Array.from(bestApprovedByRule.values()).sort((a, b) => {
+    const ca = categoryRank[a.category ?? ""] ?? 99
+    const cb = categoryRank[b.category ?? ""] ?? 99
+    if (ca !== cb) return ca - cb
     const rank = { high: 0, mid: 1, low: 2 }
     const sr = rank[a.severity] - rank[b.severity]
     if (sr !== 0) return sr

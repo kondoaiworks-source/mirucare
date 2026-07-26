@@ -1088,7 +1088,113 @@ export async function reviewAiCheckRuleVersionAction(input: {
   revalidateRules("/admin/rules/pending")
   revalidateRules("/admin/rules/history")
   revalidateRules("/admin/rules/ai-rules")
+  revalidateRules("/admin/rules/regulatory")
   return { ok: true }
+}
+
+/**
+ * 了承済みルールの案内文を直す新版を、承認待ちとして載せる。
+ * 了承されるまで本番チェックには使わない。
+ */
+export async function proposeAiCheckRuleTextRevisionAction(input: {
+  ruleId: string
+  guidanceText: string
+  changeSummary?: string
+}): Promise<ActionResult<{ versionId: string }>> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  const ruleId = input.ruleId?.trim()
+  const guidanceText = input.guidanceText?.trim()
+  if (!ruleId) return { ok: false, error: "対象ルールが指定されていません。" }
+  if (!guidanceText) {
+    return { ok: false, error: "案内文（文言）を入力してください。" }
+  }
+
+  const { data: rule, error: ruleError } = await op.service
+    .from("ai_check_rules")
+    .select("id, code, title, status")
+    .eq("id", ruleId)
+    .maybeSingle()
+
+  if (ruleError) return { ok: false, error: toUserErrorMessage(ruleError) }
+  if (!rule || rule.status !== "active") {
+    return { ok: false, error: "対象の判定ルールが見つかりません。" }
+  }
+
+  const { count: pendingCount } = await op.service
+    .from("ai_check_rule_versions")
+    .select("id", { count: "exact", head: true })
+    .eq("rule_id", ruleId)
+    .eq("review_status", "pending_review")
+
+  if ((pendingCount ?? 0) > 0) {
+    return {
+      ok: false,
+      error:
+        "このルールにはすでに承認待ちの案があります。承認待ち画面で了承または差し戻ししてから再度お試しください。",
+    }
+  }
+
+  const { data: latest, error: latestError } = await op.service
+    .from("ai_check_rule_versions")
+    .select("*")
+    .eq("rule_id", ruleId)
+    .eq("review_status", "approved")
+    .order("version_no", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (latestError) return { ok: false, error: toUserErrorMessage(latestError) }
+  if (!latest) {
+    return {
+      ok: false,
+      error: "了承済みの版がありません。新規登録または承認待ちをご確認ください。",
+    }
+  }
+
+  const nextVersionNo = Number(latest.version_no || 0) + 1
+  const today = new Date()
+  const effectiveFrom = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+  const summary =
+    input.changeSummary?.trim() ||
+    `案内文の修正案（${rule.code} v${nextVersionNo}）`
+
+  const prevLogic =
+    latest.check_logic && typeof latest.check_logic === "object"
+      ? (latest.check_logic as Record<string, unknown>)
+      : {}
+
+  const { data: created, error: insertError } = await op.service
+    .from("ai_check_rule_versions")
+    .insert({
+      rule_id: ruleId,
+      version_no: nextVersionNo,
+      check_logic: {
+        ...prevLogic,
+        notes: guidanceText,
+        revisedFromVersionId: latest.id,
+        revisedBy: "operator_text_edit",
+      },
+      guidance_text: guidanceText,
+      severity: latest.severity,
+      effective_from: effectiveFrom,
+      review_status: "pending_review",
+      change_summary: summary,
+      knowledge_change_draft_id: latest.knowledge_change_draft_id,
+    })
+    .select("id")
+    .single()
+
+  if (insertError || !created) {
+    return { ok: false, error: toUserErrorMessage(insertError) }
+  }
+
+  revalidateRules("/admin/rules/pending")
+  revalidateRules("/admin/rules/history")
+  revalidateRules("/admin/rules/ai-rules")
+  revalidateRules("/admin/rules/regulatory")
+  return { ok: true, data: { versionId: created.id as string } }
 }
 
 export async function listRuleVersionHistoryAction(): Promise<

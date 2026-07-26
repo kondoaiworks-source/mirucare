@@ -63,6 +63,7 @@ export function CityRulebookView({ data }: Props) {
       <RulebookServiceSelect showHeading={false} />
 
       <CityRulebookCheckRulesPanel
+        citySlug={city.slug}
         approved={data.approvedCheckRules}
         pending={data.pendingCheckRules}
       />
