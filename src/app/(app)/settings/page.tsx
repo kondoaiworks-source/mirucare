@@ -12,12 +12,16 @@ import { UnlockLoginPanel } from "@/components/features/settings/unlock-login-pa
 import { DisplayNameForm } from "@/components/features/settings/display-name-form"
 import { BillingPortalButton } from "@/components/features/billing/billing-buttons"
 import { SettingsSkeleton } from "@/components/features/skeletons/page-skeletons"
+import { PageHeader } from "@/components/features/layout/page-header"
+import {
+  CardTitleWithIcon,
+  SectionHeading,
+} from "@/components/features/layout/section-heading"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -32,7 +36,6 @@ import {
   Lock,
   ShieldCheck,
   UserRound,
-  type LucideIcon,
 } from "lucide-react"
 
 export const metadata: Metadata = {
@@ -41,38 +44,6 @@ export const metadata: Metadata = {
 
 type PageProps = {
   searchParams: Promise<{ billing?: string }> | { billing?: string }
-}
-
-function SectionHeading({
-  icon: Icon,
-  children,
-}: {
-  icon: LucideIcon
-  children: React.ReactNode
-}) {
-  return (
-    <h2 className="flex items-center gap-2 text-sm font-bold tracking-wide text-muted-foreground">
-      <Icon className="size-4 shrink-0 text-primary" aria-hidden />
-      {children}
-    </h2>
-  )
-}
-
-function CardTitleWithIcon({
-  icon: Icon,
-  children,
-}: {
-  icon: LucideIcon
-  children: React.ReactNode
-}) {
-  return (
-    <CardTitle className="flex items-center gap-2 text-lg">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        <Icon className="size-5" aria-hidden />
-      </span>
-      {children}
-    </CardTitle>
-  )
 }
 
 export default function SettingsPage({ searchParams }: PageProps) {
@@ -100,12 +71,10 @@ async function SettingsContent({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-primary-dark">設定</h1>
-        <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          ご自身の表示名・事業所情報の確認、同僚の招待ができます。
-        </p>
-      </div>
+      <PageHeader
+        title="設定"
+        description="ご自身の表示名・事業所情報の確認、同僚の招待ができます。"
+      />
 
       {params.billing === "success" ? (
         <Alert className="rounded-lg">
@@ -250,8 +219,8 @@ async function SettingsContent({ searchParams }: PageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button asChild size="lg">
-                  <Link href="/admin/reports">レポート管理を開く</Link>
+                <Button asChild size="lg" variant="outline">
+                  <Link href="/admin/reports">レポート管理</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -263,7 +232,7 @@ async function SettingsContent({ searchParams }: PageProps) {
         <InviteForm isAdmin={isAdmin} />
       )}
 
-      {(isAdmin || isOperator) ? (
+      {isAdmin || isOperator ? (
         <>
           <Separator />
           <section className="space-y-4">
@@ -284,7 +253,7 @@ async function SettingsContent({ searchParams }: PageProps) {
                   運営レビューコンソール
                 </CardTitleWithIcon>
                 <CardDescription className="text-base leading-relaxed">
-                  AI指摘の承認・却下と、フィードバック対応メモ（運営のみ）。
+                  AI指摘の承認・却下と、フィードバック対応メモ（運営のみ）。行政資料・マニュアル変更の承認は「ルール設定」から開けます。
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -292,13 +261,7 @@ async function SettingsContent({ searchParams }: PageProps) {
                   <Link href="/admin">レビューコンソールを開く</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                  <Link href="/admin/rules">ルール設定を開く</Link>
-                </Button>
-                <Button asChild size="lg" variant="outline">
-                  <Link href="/admin/rules/documents">行政資料を開く</Link>
-                </Button>
-                <Button asChild size="lg" variant="outline">
-                  <Link href="/admin/document-changes">マニュアル変更の承認</Link>
+                  <Link href="/admin/rules">ルール設定</Link>
                 </Button>
               </CardContent>
             </Card>

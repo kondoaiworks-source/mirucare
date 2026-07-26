@@ -4,6 +4,7 @@ import { Megaphone, PenLine } from "lucide-react"
 import { getCurrentProfile } from "@/app/actions/auth"
 import { listAnnouncementsAction } from "@/app/actions/announcements"
 import { SectionCard } from "@/components/features/layout/section-card"
+import { PageHeader } from "@/components/features/layout/page-header"
 import { FacilityAnnouncementForm } from "@/components/features/announcements/facility-announcement-form"
 import { Button } from "@/components/ui/button"
 import { OPS_HOME_UI } from "@/lib/copy/home-ui"
@@ -33,19 +34,15 @@ export default async function AnnouncementsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-            お知らせ
-          </h1>
-          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-            ルール更新と、事業所からの連絡です。
-          </p>
-        </div>
-        <Button asChild variant="outline" size="lg">
-          <Link href="/">運用AI監査に戻る</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="お知らせ"
+        description="ルール更新と、事業所からの連絡です。"
+        action={
+          <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+            <Link href="/">運用AI監査に戻る</Link>
+          </Button>
+        }
+      />
 
       {canPost ? (
         <SectionCard

@@ -1,15 +1,12 @@
 import {
-  Activity,
   Bell,
   BookOpen,
   History,
   Hourglass,
-  LayoutDashboard,
   MapPin,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react"
-import { getPurposeSection } from "@/lib/rule-engine/purpose-sections"
 
 export type RulesAdminNavItem = {
   href: string
@@ -27,42 +24,29 @@ export type RulesAdminNavGroup = {
   items: RulesAdminNavItem[]
 }
 
-const rulebook = getPurposeSection("rulebook")
-
 /**
- * ルールブック構想に沿ったサイドナビ。
+ * ルール設定サイドナビ（ホームなし）。
+ * 入口はルールブック設定。詳細・運用監視は日常外。
  * @see docs/ルールブック構想.md
  */
 export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
   {
-    id: "home",
-    items: [
-      {
-        href: "/admin/rules",
-        label: "ホーム",
-        description: "準備状況と更新アラート",
-        icon: LayoutDashboard,
-      },
-    ],
-  },
-  {
     id: "rulebook",
-    label: "ルールブック",
+    label: "ルールブック設定",
     items: [
       {
-        href: rulebook?.href ?? "/admin/rules/regulatory",
+        href: "/admin/rules/regulatory",
         label: "ルールブック設定",
-        description:
-          rulebook?.navDescription ?? "参照URL・資料を整え確定版を保つ",
+        description: "この自治体で従う確定版を整える",
         icon: BookOpen,
-        matchPaths: rulebook?.matchPaths,
+        matchPaths: [
+          "/admin/rules/regulatory",
+          "/admin/rules/documents",
+          "/admin/rules/laws",
+          "/admin/rules/source-urls",
+          "/admin/document-changes",
+        ],
       },
-    ],
-  },
-  {
-    id: "review",
-    label: "確認する",
-    items: [
       {
         href: "/admin/rules/pending",
         label: "新ルール判定通知",
@@ -76,18 +60,6 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
         description: "いつの版に変わったか",
         icon: History,
       },
-    ],
-  },
-  {
-    id: "ops",
-    label: "運用",
-    items: [
-      {
-        href: "/admin/rules/municipalities",
-        label: "自治体マスタ",
-        description: "国・県・市の対応設定",
-        icon: MapPin,
-      },
       {
         href: "/admin/rules/notifications",
         label: "自治体ルール変更通知",
@@ -95,21 +67,28 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
           "自治体ルールの変更を感知して差分承認の依頼を通知",
         icon: Bell,
       },
+    ],
+  },
+  {
+    id: "municipality",
+    label: "自治体管理",
+    items: [
       {
-        href: "/admin/rules/jobs",
-        label: "運用監視",
-        description: "同期・監視の実行状況",
-        icon: Activity,
+        href: "/admin/rules/municipalities",
+        label: "自治体マスタ",
+        description: "国・県・市の対応設定",
+        icon: MapPin,
       },
     ],
   },
   {
     id: "more",
+    label: "詳細設定",
     items: [
       {
         href: "/admin/rules/more",
         label: "詳細設定",
-        description: "監査項目・判定ルール・加算など",
+        description: "監査項目・判定ルール・運用監視など",
         icon: MoreHorizontal,
         matchPaths: [
           "/admin/rules/more",
@@ -117,6 +96,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
           "/admin/rules/audit-items",
           "/admin/rules/ai-rules",
           "/admin/rules/ai",
+          "/admin/rules/jobs",
         ],
       },
     ],
@@ -131,10 +111,6 @@ export function isNavItemActive(
   pathname: string,
   item: RulesAdminNavItem
 ): boolean {
-  if (item.href === "/admin/rules") {
-    return pathname === "/admin/rules"
-  }
-
   const paths = item.matchPaths?.length ? item.matchPaths : [item.href]
 
   return paths.some(

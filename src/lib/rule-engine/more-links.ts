@@ -1,4 +1,5 @@
 import {
+  Activity,
   Bot,
   ClipboardCheck,
   Coins,
@@ -15,7 +16,7 @@ export type RulesMoreLink = {
   label: string
   description: string
   icon: LucideIcon
-  group: "core" | "optional" | "ledger"
+  group: "core" | "optional" | "ledger" | "ops"
 }
 
 export const RULES_MORE_LINKS: RulesMoreLink[] = [
@@ -29,7 +30,7 @@ export const RULES_MORE_LINKS: RulesMoreLink[] = [
   {
     href: "/admin/rules/ai-rules",
     label: "判定ルール",
-    description: "ルールブック内の「どう疑うか」。承認後にチェックへ",
+    description: "ルールブック内の「どう疑うか」。了承後にチェックへ",
     icon: Bot,
     group: "core",
   },
@@ -68,10 +69,18 @@ export const RULES_MORE_LINKS: RulesMoreLink[] = [
     icon: ClipboardCheck,
     group: "ledger",
   },
+  {
+    href: "/admin/rules/jobs",
+    label: "運用監視",
+    description: "行政資料の自動同期の結果（トラブル時）",
+    icon: Activity,
+    group: "ops",
+  },
 ]
 
 export const RULES_MORE_GROUP_LABEL: Record<RulesMoreLink["group"], string> = {
   core: "ルールブックの中身（詳細）",
   optional: "任意・精度向上",
   ledger: "台帳・差分（詳細）",
+  ops: "運用",
 }

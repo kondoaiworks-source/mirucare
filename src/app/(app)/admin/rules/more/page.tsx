@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: "詳細設定",
 }
 
-const GROUP_ORDER = ["core", "optional", "ledger"] as const
+const GROUP_ORDER = ["core", "optional", "ledger", "ops"] as const
 
 export default function RulesMorePage() {
   return (

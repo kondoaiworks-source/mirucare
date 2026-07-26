@@ -35,8 +35,8 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/audit-history",
-    label: "監査結果の履歴",
-    shortLabel: "履歴",
+    label: "監査結果",
+    shortLabel: "結果",
     icon: History,
   },
   {

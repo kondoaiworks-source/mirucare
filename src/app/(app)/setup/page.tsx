@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card"
 import { PHASE1_MUNICIPALITIES } from "@/lib/phase1-audit"
 import { FacilitySettingsForm } from "@/components/features/setup/facility-settings-form"
+import { PageHeader } from "@/components/features/layout/page-header"
 import type { ServiceType } from "@/types/database"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Info } from "lucide-react"
@@ -28,14 +29,10 @@ export default async function SetupPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-          初期設定
-        </h1>
-        <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          事業所の情報を確認・変更します。第1フェーズは訪問介護と神奈川の対象市が中心です。ご自身のお名前は「設定」から変更できます。
-        </p>
-      </div>
+      <PageHeader
+        title="初期設定"
+        description="事業所の情報を確認・変更します。第1フェーズは訪問介護と神奈川の対象市が中心です。ご自身のお名前は「設定」から変更できます。"
+      />
 
       <Card className="rounded-lg shadow-subtle">
         <CardHeader>

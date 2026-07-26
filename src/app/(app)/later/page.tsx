@@ -6,6 +6,7 @@ import { listLaterFindingsAction } from "@/app/actions/findings"
 import { EmptyState } from "@/components/features/empty-state"
 import { RiskBadge, type RiskLevel } from "@/components/features/risk-badge"
 import { LaterListSkeleton } from "@/components/features/skeletons/page-skeletons"
+import { PageHeader } from "@/components/features/layout/page-header"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -31,14 +32,10 @@ function toRiskLevel(severity: FindingSeverity): RiskLevel {
 export default function LaterPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-primary-dark">
-          {CHECK_UI.laterListTitle}
-        </h1>
-        <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          {CHECK_UI.laterListDescription}
-        </p>
-      </div>
+      <PageHeader
+        title={CHECK_UI.laterListTitle}
+        description={CHECK_UI.laterListDescription}
+      />
 
       <Suspense fallback={<LaterListSkeleton />}>
         <LaterListContent />
@@ -68,7 +65,7 @@ async function LaterListContent() {
         description={CHECK_UI.laterListEmptyDescription}
         action={
           <Button asChild size="lg">
-            <Link href="/audit-history">監査結果の履歴を見る</Link>
+            <Link href="/audit-history">監査結果を見る</Link>
           </Button>
         }
       />

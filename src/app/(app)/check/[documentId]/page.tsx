@@ -48,7 +48,7 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
           </AlertDescription>
         </Alert>
         <Button asChild size="lg">
-          <Link href="/audit-history">監査結果の履歴に戻る</Link>
+          <Link href="/audit-history">監査結果に戻る</Link>
         </Button>
       </div>
     )
@@ -113,7 +113,7 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
               上記のマイグレーションを適用したあと、書類一覧から再度この書類を開いてください。
             </p>
             <Button asChild size="lg" className="mt-6">
-              <Link href="/audit-history">監査結果の履歴に戻る</Link>
+              <Link href="/audit-history">監査結果に戻る</Link>
             </Button>
           </>
         ) : null}

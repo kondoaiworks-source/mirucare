@@ -47,14 +47,14 @@ export function RulesAdminShell({ children }: { children: React.ReactNode }) {
                     href={item.href}
                     title={item.description}
                     className={cn(
-                      "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-base transition-colors",
+                      "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-base transition-colors",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       active
                         ? "bg-primary/10 font-semibold text-primary-dark"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
-                    <Icon className="size-4 shrink-0" aria-hidden />
+                    <Icon className="size-5 shrink-0" aria-hidden />
                     <span>{item.label}</span>
                   </Link>
                 )

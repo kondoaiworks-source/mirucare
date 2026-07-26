@@ -19,11 +19,11 @@ export function AdminBreadcrumb({ items }: AdminBreadcrumbProps) {
       <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
         <li className="inline-flex items-center">
           <Link
-            href="/admin/rules"
+            href="/admin/rules/regulatory"
             className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1.5 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Home className="size-3.5" aria-hidden />
-            ホーム
+            ルールブック設定
           </Link>
         </li>
         {items.map((item) => (

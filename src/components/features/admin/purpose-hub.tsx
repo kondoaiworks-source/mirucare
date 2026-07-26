@@ -26,7 +26,7 @@ export function PurposeHub({ section }: PurposeHubProps) {
       <div>
         <AdminBreadcrumb items={[{ label: section.label }]} />
         <div className="mt-2 flex items-start gap-3">
-          <span className="mt-1 flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <span className="mt-1 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Icon className="size-5" aria-hidden />
           </span>
           <div>
@@ -59,12 +59,12 @@ export function PurposeHub({ section }: PurposeHubProps) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <Card className="h-full rounded-xl shadow-subtle transition-colors group-hover:border-primary/30 group-hover:bg-primary/[0.02]">
+                <Card className="h-full rounded-lg shadow-subtle transition-colors group-hover:border-primary/30 group-hover:bg-primary/[0.02]">
                   <CardHeader className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <LinkIcon className="size-5" aria-hidden />
                       </span>
                       <ArrowRight

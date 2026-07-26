@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { RiskBadge, type RiskLevel } from "@/components/features/risk-badge"
 import { SectionCard } from "@/components/features/layout/section-card"
+import { PageHeader } from "@/components/features/layout/page-header"
 import { DEADLINE_UI, toPrivacySubject } from "@/lib/deadlines"
 import { OPS_HOME_UI } from "@/lib/copy/home-ui"
 import { annotateTerms } from "@/lib/copy/check-ui"
@@ -182,17 +183,17 @@ export function DashboardView({ data }: { data: DashboardData }) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-          {OPS_HOME_UI.title}
-        </h1>
-        <Button asChild size="lg" className="w-full sm:w-auto">
-          <Link href="/check/upload">
-            <Upload className="size-4" aria-hidden />
-            {OPS_HOME_UI.ctaUpload}
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title={OPS_HOME_UI.title}
+        action={
+          <Button asChild size="lg" className="w-full sm:w-auto">
+            <Link href="/check/upload">
+              <Upload className="size-4" aria-hidden />
+              {OPS_HOME_UI.ctaUpload}
+            </Link>
+          </Button>
+        }
+      />
 
       <SectionCard
         icon={Megaphone}

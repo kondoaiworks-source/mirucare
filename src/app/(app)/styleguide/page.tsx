@@ -58,7 +58,7 @@ export default function StyleguidePage() {
           スタイルガイド
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          「信頼のプロフェッショナル」デザインシステムの確認用ページです。色・角丸・影・フォントがトークンに従っているかを確認できます。
+          「信頼のプロフェッショナル」デザインシステムの確認用ページです。色・角丸・影・フォントがトークンに従っているかを確認できます。表題は PageHeader（h1: 2xl/md:3xl・補足: text-base）、カードは SectionCard／CardTitleWithIcon（size-9 アイコン枠）、角丸は rounded-lg に揃えます。
         </p>
       </div>
 

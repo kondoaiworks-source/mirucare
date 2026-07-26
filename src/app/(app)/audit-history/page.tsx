@@ -10,27 +10,24 @@ import {
 import { DocumentsSkeleton } from "@/components/features/skeletons/page-skeletons"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+import { PageHeader } from "@/components/features/layout/page-header"
 
 export const metadata: Metadata = {
-  title: "監査結果の履歴",
+  title: "監査結果",
 }
 
 export default function AuditHistoryPage() {
   return (
     <div className="mx-auto w-full min-w-0 max-w-3xl space-y-6">
-      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-primary-dark">
-            監査結果の履歴と対応状況
-          </h1>
-          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-            過去の監査結果と、指摘への対応状況を確認できます。結果は匿名表記で残ります。原本は短期間で削除されます。
-          </p>
-        </div>
-        <Button asChild size="lg" className="w-full shrink-0 sm:w-auto">
-          <Link href="/check/upload">監査書類をアップロードする</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="監査結果"
+        description="過去の監査結果と、指摘への対応状況を確認できます。結果は匿名表記で残ります。原本は短期間で削除されます。"
+        action={
+          <Button asChild size="lg" className="w-full sm:w-auto">
+            <Link href="/check/upload">監査書類をアップロードする</Link>
+          </Button>
+        }
+      />
 
       <Suspense fallback={<DocumentsSkeleton />}>
         <DocumentsListContent />

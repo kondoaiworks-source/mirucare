@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { BookOpen, AlertTriangle } from "lucide-react"
 import { SectionCard } from "@/components/features/layout/section-card"
+import { PageHeader } from "@/components/features/layout/page-header"
 import { GUIDE_UI } from "@/lib/copy/guide-ui"
 
 export const metadata: Metadata = {
@@ -10,14 +11,7 @@ export const metadata: Metadata = {
 export default function GuidePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-          {GUIDE_UI.title}
-        </h1>
-        <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          {GUIDE_UI.lead}
-        </p>
-      </div>
+      <PageHeader title={GUIDE_UI.title} description={GUIDE_UI.lead} />
 
       <SectionCard
         icon={BookOpen}

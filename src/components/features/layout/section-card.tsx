@@ -49,7 +49,7 @@ export function SectionCard({
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
         {description ? (
-          <CardDescription className="text-sm leading-relaxed">
+          <CardDescription className="text-base leading-relaxed">
             {description}
           </CardDescription>
         ) : null}

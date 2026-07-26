@@ -47,7 +47,7 @@ export const CHECK_UI = {
   completeTitle: "今日のWチェックが完了しました",
   completeBody:
     "指摘への対応記録が残りました。月次レポートで振り返ることができます。合否や返還は保証しません。",
-  backToList: "監査結果の履歴に戻る",
+  backToList: "監査結果に戻る",
   sectionOpen: "これから確認",
   sectionLater: "あとで確認",
   sectionDismissed: "違う指摘だった",
