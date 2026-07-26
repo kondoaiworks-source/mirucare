@@ -5,7 +5,6 @@ import {
   Settings,
   Scale,
   Building2,
-  SlidersHorizontal,
   BookOpen,
   type LucideIcon,
 } from "lucide-react"
@@ -54,12 +53,6 @@ export const NAV_ITEMS: NavItem[] = [
     comingSoon: true,
   },
   {
-    href: "/setup",
-    label: "初期設定",
-    shortLabel: "初期設定",
-    icon: SlidersHorizontal,
-  },
-  {
     href: "/settings",
     label: "設定",
     shortLabel: "設定",
@@ -72,17 +65,11 @@ export const MOBILE_TAB_ITEMS: NavItem[] = [
   NAV_ITEMS[0],
   NAV_ITEMS[1],
   NAV_ITEMS[2],
-  NAV_ITEMS[6],
+  NAV_ITEMS[5],
 ]
 
-/** ヘッダーハンバーガー：初期設定・使い方 */
+/** ヘッダーハンバーガー：使い方（事業所設定は「設定」内） */
 export const HEADER_MENU_ITEMS: NavItem[] = [
-  {
-    href: "/setup",
-    label: "初期設定",
-    shortLabel: "初期設定",
-    icon: SlidersHorizontal,
-  },
   {
     href: "/guide",
     label: "使い方",

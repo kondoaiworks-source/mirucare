@@ -16,10 +16,39 @@ type PurposeHubProps = {
 
 /**
  * 複数の管理対象を持つ目的別TOP。
- * ガイド → 操作手順 → 管理一覧カード。
+ * ガイド → 操作手順 → リンクカード。
  */
 export function PurposeHub({ section }: PurposeHubProps) {
   const Icon = section.icon
+  const linksHeading = section.linksHeading ?? "管理一覧"
+  const linksDescription =
+    section.linksDescription ??
+    "目的に合わせて、次のどれかを開いてください。"
+
+  if (section.links.length === 0) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <AdminBreadcrumb items={[{ label: section.label }]} />
+          <div className="mt-2 flex items-start gap-3">
+            <span className="mt-1 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Icon className="size-5" aria-hidden />
+            </span>
+            <div>
+              <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
+                {section.label}
+              </h1>
+              <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
+                {section.navDescription}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <PurposeGuide purpose={section.purpose} steps={section.steps} />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -47,10 +76,10 @@ export function PurposeHub({ section }: PurposeHubProps) {
           id="purpose-manage-heading"
           className="text-xl font-bold text-primary-dark"
         >
-          管理一覧
+          {linksHeading}
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          目的に合わせて、次のどれかを開いてください。
+          {linksDescription}
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {section.links.map((link) => {

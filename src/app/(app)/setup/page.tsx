@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { PHASE1_MUNICIPALITIES } from "@/lib/phase1-audit"
 import { FacilitySettingsForm } from "@/components/features/setup/facility-settings-form"
 import { PageHeader } from "@/components/features/layout/page-header"
 import type { ServiceType } from "@/types/database"
@@ -17,7 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Info } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "初期設定",
+  title: "事業所の設定",
 }
 
 export default async function SetupPage() {
@@ -30,8 +29,8 @@ export default async function SetupPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <PageHeader
-        title="初期設定"
-        description="事業所の情報を確認・変更します。第1フェーズは訪問介護と神奈川の対象市が中心です。ご自身のお名前は「設定」から変更できます。"
+        title="事業所の設定"
+        description="事業所名・サービス種別・自治体を確認・変更します。設定画面の「事業所情報」からも開けます。"
       />
 
       <Card className="rounded-lg shadow-subtle">
@@ -49,24 +48,8 @@ export default async function SetupPage() {
             currentMunicipality={org?.municipality ?? null}
           />
           <Button asChild size="lg" variant="outline">
-            <Link href="/settings">あなたの表示名やその他の設定を開く</Link>
+            <Link href="/settings">設定に戻る</Link>
           </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-lg shadow-subtle">
-        <CardHeader>
-          <CardTitle className="text-lg">Phase1 の対象範囲</CardTitle>
-          <CardDescription className="text-base leading-relaxed">
-            介護サービスは訪問介護、自治体は次の市を優先対応しています（国・県ルールも併用）。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="list-disc space-y-1 pl-5 text-base leading-relaxed">
-            {PHASE1_MUNICIPALITIES.map((name) => (
-              <li key={name}>{name}</li>
-            ))}
-          </ul>
         </CardContent>
       </Card>
 

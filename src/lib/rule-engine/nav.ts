@@ -41,7 +41,6 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
         icon: BookOpen,
         matchPaths: [
           "/admin/rules/regulatory",
-          "/admin/rules/laws",
           "/admin/document-changes",
         ],
       },

@@ -3,7 +3,6 @@ import {
   Bot,
   ClipboardCheck,
   Landmark,
-  Scale,
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react"
@@ -33,6 +32,10 @@ export type PurposeSection = {
   steps: string[]
   /** ハブに出す管理対象カード */
   links: PurposeLink[]
+  /** リンク一覧の見出し（省略時は「管理一覧」） */
+  linksHeading?: string
+  /** リンク一覧の説明（省略時は汎用文） */
+  linksDescription?: string
   /** このセクション配下としてアクティブ判定するパス */
   matchPaths: string[]
   /** ホームの「よく使う」に出すか */
@@ -55,21 +58,17 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     ],
     links: [
       {
-        href: "/admin/rules/laws",
-        label: "法令・根拠",
-        description: "法令・通知のメタ情報（任意）",
-        icon: Scale,
-      },
-      {
         href: "/admin/document-changes",
         label: "更新アラートの確認",
         description: "差分を人が見て台帳へ反映する",
         icon: ClipboardCheck,
       },
     ],
+    linksHeading: "更新アラート管理",
+    linksDescription:
+      "監視で見つかった差分を確認し、問題なければ台帳へ反映します。",
     matchPaths: [
       "/admin/rules/regulatory",
-      "/admin/rules/laws",
       "/admin/document-changes",
     ],
     showOnHome: true,

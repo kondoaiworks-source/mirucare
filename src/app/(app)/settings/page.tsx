@@ -151,7 +151,7 @@ async function SettingsContent({ searchParams }: PageProps) {
           <CardHeader>
             <CardTitleWithIcon icon={Building2}>事業所情報</CardTitleWithIcon>
             <CardDescription className="text-base leading-relaxed">
-              施設共通の情報です。変更は「初期設定」から行えます（管理者のみ）。
+              施設共通の情報です。変更は下のボタンから行えます（管理者のみ）。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-base">

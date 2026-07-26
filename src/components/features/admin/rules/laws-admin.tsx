@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState, useTransition, type FormEvent } from "react"
+import Link from "next/link"
 import { toast } from "sonner"
 import {
   createRuleSourceAction,
@@ -34,7 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { AlertTriangle, Loader2 } from "lucide-react"
+import { AlertTriangle, Info, Loader2 } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { PurposeGuide } from "@/components/features/admin/purpose-guide"
 
@@ -112,16 +113,37 @@ export function LawsAdmin() {
           ]}
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          法令・根拠
+          法令・根拠（詳細・任意）
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          法令・通知などの根拠情報を確認・更新します。PDF本文は「行政資料」で管理します。
+          日常の原文管理は市ルールブックの「自治体ルール設定」で行います。ここは法令・通知メタの任意整理用です。
         </p>
       </div>
 
+      <Alert className="rounded-xl border-primary/30 bg-primary/[0.04]">
+        <Info className="text-primary" aria-hidden />
+        <AlertTitle className="text-base text-primary-dark">
+          日常の操作場所が変わりました
+        </AlertTitle>
+        <AlertDescription className="text-base leading-relaxed">
+          根拠となる公式URLの登録・修正・削除は、
+          <Link
+            href="/admin/rules/regulatory"
+            className="font-medium text-primary underline-offset-2 hover:underline"
+          >
+            ルールブック設定
+          </Link>
+          から市を開き、「自治体ルール設定」で行ってください。この画面は主導線からは外しています。
+        </AlertDescription>
+      </Alert>
+
       <PurposeGuide
-        purpose="判定や監査の根拠となる法令・通知を登録・更新します。法改正時はこちらも合わせてご確認ください。"
-        steps={["根拠を選択または登録", "内容・URLを更新", "保存"]}
+        purpose="法令・通知のメタ情報を任意で整理する画面です。チェックや更新監視には必須ではありません。"
+        steps={[
+          "日常は市ルールブックで参照URLを管理",
+          "必要ならここでメタ情報を追加",
+          "保存",
+        ]}
       />
 
       <h2 className="text-xl font-bold text-primary-dark">管理一覧</h2>
