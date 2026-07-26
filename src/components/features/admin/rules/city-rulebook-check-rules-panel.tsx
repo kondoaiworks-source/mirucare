@@ -19,7 +19,7 @@ type Props = {
 }
 
 /**
- * 了承済み＝この市のチェック用ルールブック中身。承認待ち案も併記。
+ * 了承済み＝この市のチェック用ルールブック中身。
  */
 export function CityRulebookCheckRulesPanel({
   cityName,
@@ -35,30 +35,32 @@ export function CityRulebookCheckRulesPanel({
             className="flex items-center gap-2 text-xl font-bold text-primary-dark"
           >
             <ClipboardList className="size-5 text-primary" aria-hidden />
-            チェック用の中身（了承済み判定ルール）
+            チェック用の中身
+            <span className="font-normal text-muted-foreground tabular-nums">
+              （了承済み {approved.length}件）
+            </span>
           </h2>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
             {cityName}
-            で書類チェックに使う物差しです。国・県の共有分と、この市固有の了承分をまとめています。
+            の書類チェックに使う物差しです。了承したものだけがここに入ります。
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href="/admin/rules/pending">承認待ちを開く</Link>
+        {pending.length > 0 ? (
+          <Button asChild className="min-h-11">
+            <Link href="/admin/rules/pending">
+              承認待ちで了承する（{pending.length}件）
+            </Link>
           </Button>
-          <Button asChild variant="ghost" className="min-h-11">
-            <Link href="/admin/rules/history">更新履歴</Link>
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="secondary" className="rounded-md tabular-nums">
-          了承済み {approved.length}件
-        </Badge>
-        <Badge variant="outline" className="rounded-md tabular-nums">
-          承認待ちの案 {pending.length}件
-        </Badge>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            <Link
+              href="/admin/rules/history"
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              更新履歴
+            </Link>
+          </p>
+        )}
       </div>
 
       {pending.length > 0 ? (
@@ -66,21 +68,21 @@ export function CityRulebookCheckRulesPanel({
           <CardHeader className="space-y-1 pb-2">
             <CardTitle className="flex items-center gap-2 text-base text-primary-dark">
               <Hourglass className="size-4" aria-hidden />
-              了承前の判定ルール案
+              了承前の案（まだチェックには使いません）
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              まだチェックには使われません。承認待ちで了承すると、下の「了承済み」に入ります。
+              承認待ちで了承すると、下の了承済みに入ります。
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {pending.slice(0, 8).map((r) => (
+              {pending.slice(0, 5).map((r) => (
                 <RuleRow key={r.versionId} rule={r} pending />
               ))}
             </ul>
-            {pending.length > 8 ? (
+            {pending.length > 5 ? (
               <p className="mt-2 text-sm text-muted-foreground">
-                ほか {pending.length - 8}件は承認待ち画面で確認できます。
+                ほか {pending.length - 5}件は承認待ち画面で確認できます。
               </p>
             ) : null}
           </CardContent>
@@ -89,7 +91,7 @@ export function CityRulebookCheckRulesPanel({
 
       {approved.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
-          まだ了承済みの判定ルールがありません。行政資料の「判定ルール案を生成する」→承認待ちで了承すると、ここに表示されます。
+          まだ了承済みがありません。根拠の目次で行政資料から「判定ルール案を生成」し、承認待ちで了承してください。
         </p>
       ) : (
         <ul className="space-y-2">
@@ -145,15 +147,9 @@ function RuleRow({
           <p className="text-base leading-relaxed text-muted-foreground line-clamp-3">
             {rule.guidanceText || "（案内文なし）"}
           </p>
-          {rule.sourceDocumentTitle || rule.changeSummary ? (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {rule.sourceDocumentTitle
-                ? `根拠資料: ${rule.sourceDocumentTitle}`
-                : null}
-              {rule.sourceDocumentTitle && rule.changeSummary ? " ／ " : null}
-              {rule.changeSummary
-                ? rule.changeSummary.split("\n")[0]
-                : null}
+          {rule.sourceDocumentTitle ? (
+            <p className="text-sm text-muted-foreground line-clamp-1">
+              根拠資料: {rule.sourceDocumentTitle}
             </p>
           ) : null}
         </CardContent>

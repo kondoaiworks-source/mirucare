@@ -48,6 +48,8 @@ type Props = {
   cityName: string
   jurisdictionId: string
   sources: CityRulebookSource[]
+  /** 親の details 内など、外側見出しを出さない */
+  embedded?: boolean
 }
 
 type EditDraft = {
@@ -68,6 +70,7 @@ export function CityRulebookSourcesPanel({
   cityName,
   jurisdictionId,
   sources,
+  embedded = false,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -169,7 +172,41 @@ export function CityRulebookSourcesPanel({
   }
 
   return (
-    <section className="space-y-3" aria-labelledby="city-sources-heading">
+    <section
+      className="space-y-3"
+      aria-labelledby={embedded ? undefined : "city-sources-heading"}
+    >
+      {embedded ? (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant={showAdd ? "default" : "outline"}
+            className="min-h-11"
+            disabled={pending}
+            onClick={() => {
+              setEditing(null)
+              setShowAdd((v) => !v)
+            }}
+          >
+            {showAdd ? (
+              <>
+                <X className="size-4" aria-hidden />
+                追加をやめる
+              </>
+            ) : (
+              <>
+                <Plus className="size-4" aria-hidden />
+                参照URLを追加する
+              </>
+            )}
+          </Button>
+          <Button asChild variant="ghost" className="min-h-11">
+            <Link href={`/admin/rules/source-urls?city=${citySlug}`}>
+              詳細画面で編集する
+            </Link>
+          </Button>
+        </div>
+      ) : (
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2
@@ -213,6 +250,7 @@ export function CityRulebookSourcesPanel({
           </Button>
         </div>
       </div>
+      )}
 
       {showAdd ? (
         <Card className="rounded-xl border-primary/20 bg-primary/[0.02] shadow-subtle">

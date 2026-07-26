@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { BookMarked, ExternalLink, FileText, Link2 } from "lucide-react"
 import type { CityRulebookData } from "@/app/actions/city-rulebook"
+import { ProposeRulesFromDocumentButton } from "@/components/features/admin/rules/propose-rules-from-document-button"
 import {
   HUMAN_REVIEW_STATUS_LABEL,
   MATERIAL_CATEGORY_LABEL,
@@ -51,7 +52,7 @@ type Props = {
 }
 
 /**
- * 国＋県＋市を「1冊のルールブック」として上から読める目次ビュー。
+ * 根拠（参照URL・行政資料）を国→県→市の1目次にまとめる。
  */
 export function CityRulebookBookToc({ data }: Props) {
   const { city, sources, documents, counts } = data
@@ -121,25 +122,38 @@ export function CityRulebookBookToc({ data }: Props) {
   return (
     <section className="space-y-4" aria-labelledby="book-toc-heading">
       <Card className="rounded-xl border-primary/20 bg-primary/[0.02] shadow-subtle">
-        <CardHeader className="space-y-2">
-          <div className="flex flex-wrap items-start gap-3">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <BookMarked className="size-5" aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <CardTitle
-                id="book-toc-heading"
-                className="text-xl text-primary-dark"
-              >
-                {city.name}ルールブック（確定版の目次）
-              </CardTitle>
-              <CardDescription className="mt-1 text-base leading-relaxed">
-                国 → {city.prefectureName} → {city.name}{" "}
-                の順で束ねた1冊です。下の一覧が「この自治体で従う根拠」の全体像です。
-              </CardDescription>
+        <CardHeader className="space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-wrap items-start gap-3">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <BookMarked className="size-5" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <CardTitle
+                  id="book-toc-heading"
+                  className="text-xl text-primary-dark"
+                >
+                  根拠の目次（国 → {city.prefectureName} → {city.name}）
+                </CardTitle>
+                <CardDescription className="mt-1 text-base leading-relaxed">
+                  従う根拠の一覧です。行政資料からは判定ルール案を生成できます。
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="min-h-11">
+                <Link href={`/admin/rules/source-urls?city=${city.slug}`}>
+                  参照URLを編集する
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="min-h-11">
+                <Link href={`/admin/rules/documents?city=${city.slug}`}>
+                  行政資料を編集する
+                </Link>
+              </Button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="rounded-md tabular-nums">
               合計 {totalItems}件
             </Badge>
@@ -153,21 +167,14 @@ export function CityRulebookBookToc({ data }: Props) {
               <Badge variant="destructive" className="rounded-md tabular-nums">
                 確認が必要 {attentionCount}件
               </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className="rounded-md border-primary/30 text-primary"
-              >
-                いま確認待ちの項目はありません
-              </Badge>
-            )}
+            ) : null}
           </div>
         </CardHeader>
       </Card>
 
       {entries.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
-          まだ根拠がありません。下の「参照URLを追加する」か、行政資料から登録してください。
+          まだ根拠がありません。下の「参照URLを追加・修正する」か、行政資料の編集から登録してください。
         </p>
       ) : (
         <ol className="space-y-2">
@@ -235,26 +242,34 @@ export function CityRulebookBookToc({ data }: Props) {
                               {e.kind === "source" ? `／${e.reviewLabel}` : ""}
                             </p>
                           </div>
-                          {e.url ? (
-                            <Button
-                              asChild
-                              variant="outline"
-                              size="sm"
-                              className="min-h-11"
-                            >
-                              <a
-                                href={e.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                          <div className="flex flex-wrap gap-2">
+                            {e.url ? (
+                              <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="min-h-11"
                               >
-                                原文を開く
-                                <ExternalLink
-                                  className="size-4"
-                                  aria-hidden
-                                />
-                              </a>
-                            </Button>
-                          ) : null}
+                                <a
+                                  href={e.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  原文を開く
+                                  <ExternalLink
+                                    className="size-4"
+                                    aria-hidden
+                                  />
+                                </a>
+                              </Button>
+                            ) : null}
+                            {e.kind === "document" ? (
+                              <ProposeRulesFromDocumentButton
+                                knowledgeDocumentId={e.id}
+                                documentTitle={e.title}
+                              />
+                            ) : null}
+                          </div>
                         </CardContent>
                       </Card>
                     </li>
@@ -265,17 +280,6 @@ export function CityRulebookBookToc({ data }: Props) {
           })}
         </ol>
       )}
-
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        目次は「従う根拠の一覧」です。チェックに使う疑い方の変更は{" "}
-        <Link
-          href="/admin/rules/ai-rules"
-          className="font-medium text-primary underline-offset-4 hover:underline"
-        >
-          詳細設定の判定ルール
-        </Link>
-        と承認待ちで行います。
-      </p>
     </section>
   )
 }
