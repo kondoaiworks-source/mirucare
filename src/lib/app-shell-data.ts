@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getCurrentProfile } from "@/app/actions/auth"
 import { countLaterFindingsAction } from "@/app/actions/findings"
 import { countIncompleteDocumentsAction } from "@/app/actions/documents"
+import { countUnreadAnnouncements } from "@/lib/announcements-unread"
 
 export type AppShellData = {
   facilityName: string | undefined
@@ -31,21 +32,23 @@ export const getAppShellData = cache(async (): Promise<AppShellData> => {
     facilityName = org?.name
     displayName = profile?.display_name?.trim() || undefined
 
-    const [later, incomplete, announcements] = await Promise.all([
+    const [later, incomplete, supabase] = await Promise.all([
       countLaterFindingsAction(),
       countIncompleteDocumentsAction(),
-      createClient()
-        .from("app_announcements")
-        .select("id", { count: "exact", head: true }),
+      createClient(),
     ])
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
     if (later.ok && later.data) {
       laterCount = later.data.count
     }
     if (incomplete.ok && incomplete.data) {
       incompleteDocumentsCount = incomplete.data.count
     }
-    if (!announcements.error) {
-      announcementCount = announcements.count ?? 0
+    if (user) {
+      announcementCount = await countUnreadAnnouncements(supabase, user.id)
     }
   } catch {
     // Supabase 未設定時などはバッジなしでシェルを表示

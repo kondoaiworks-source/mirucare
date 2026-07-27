@@ -5,6 +5,16 @@ import { requireOperator } from "@/lib/operator"
 import { toUserErrorMessage } from "@/lib/auth-errors"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
 import { PHASE1_AI_RULE_SEEDS } from "@/lib/phase1-ai-rules-seed"
+import {
+  buildRulebookSetupReadiness,
+  type RulebookSetupReadiness,
+} from "@/lib/rule-engine/rulebook-setup-readiness"
+import { hasDocumentEvidenceInCheckLogic } from "@/lib/rule-engine/phase1-rule-groups"
+import {
+  KANAGAWA_JURISDICTION_CODE,
+  NATIONAL_JURISDICTION_CODE,
+  PHASE1_CITIES,
+} from "@/lib/rule-engine/phase1-cities"
 import { ensureKnowledgeDocumentFromRuleSource } from "@/lib/knowledge/ensure-from-rule-source"
 import type {
   AiCheckRule,
@@ -1476,4 +1486,218 @@ export async function listRuleJobsAction(): Promise<
       alerts: (alerts.data ?? []) as KnowledgeSyncAlert[],
     },
   }
+}
+
+export async function getRulebookSetupStatusAction(): Promise<
+  ActionResult<RulebookSetupReadiness>
+> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  const cityCodes = PHASE1_CITIES.map((c) => c.code)
+  const jurisdictionCodes = [
+    NATIONAL_JURISDICTION_CODE,
+    KANAGAWA_JURISDICTION_CODE,
+    ...cityCodes,
+  ]
+
+  const [
+    supported,
+    jurisdictions,
+    sources,
+    documents,
+    auditItems,
+    ruleSets,
+    rules,
+    versions,
+    pendingVersions,
+    drafts,
+    alerts,
+  ] = await Promise.all([
+    op.service
+      .from("rule_jurisdictions")
+      .select("id", { count: "exact", head: true })
+      .eq("level", "municipality")
+      .eq("is_supported", true),
+    op.service
+      .from("rule_jurisdictions")
+      .select("id, code, name, municipality_name")
+      .in("code", jurisdictionCodes),
+    op.service
+      .from("rule_sources")
+      .select("id, jurisdiction_id")
+      .eq("status", "active"),
+    op.service
+      .from("knowledge_documents")
+      .select("id, region_name, jurisdiction_level")
+      .eq("status", "active"),
+    op.service.from("audit_items").select("code, rule_set_id").eq("status", "active"),
+    op.service
+      .from("rule_sets")
+      .select("id, jurisdiction_id")
+      .eq("service_type", "訪問介護"),
+    op.service.from("ai_check_rules").select("id, code").eq("status", "active"),
+    op.service
+      .from("ai_check_rule_versions")
+      .select("rule_id, review_status, check_logic, knowledge_change_draft_id, version_no")
+      .eq("review_status", "approved"),
+    op.service
+      .from("ai_check_rule_versions")
+      .select("id", { count: "exact", head: true })
+      .eq("review_status", "pending_review"),
+    op.service
+      .from("knowledge_document_change_drafts")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending"),
+    op.service
+      .from("knowledge_sync_alerts")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "open"),
+  ])
+
+  const firstError =
+    supported.error ||
+    jurisdictions.error ||
+    sources.error ||
+    documents.error ||
+    auditItems.error ||
+    ruleSets.error ||
+    rules.error ||
+    versions.error ||
+    pendingVersions.error ||
+    drafts.error ||
+    alerts.error
+
+  if (firstError) {
+    return { ok: false, error: toUserErrorMessage(firstError) }
+  }
+
+  const jurisdictionById = new Map<string, { code: string; name: string }>()
+  for (const row of jurisdictions.data ?? []) {
+    jurisdictionById.set(String(row.id), {
+      code: String(row.code),
+      name: String(row.name ?? row.municipality_name ?? ""),
+    })
+  }
+
+  const sourceCountByCode = new Map<string, number>()
+  for (const src of sources.data ?? []) {
+    const j = jurisdictionById.get(String(src.jurisdiction_id))
+    if (!j) continue
+    sourceCountByCode.set(j.code, (sourceCountByCode.get(j.code) ?? 0) + 1)
+  }
+
+  function countDocumentsForLayer(label: string, code: string): number {
+    let count = 0
+    for (const doc of documents.data ?? []) {
+      const region = String(doc.region_name ?? "")
+      const level = String(doc.jurisdiction_level ?? "")
+      if (code === NATIONAL_JURISDICTION_CODE) {
+        if (level === "国" || region.includes("国") || region === "日本") {
+          count += 1
+        }
+        continue
+      }
+      if (code === KANAGAWA_JURISDICTION_CODE) {
+        if (
+          level === "都道府県" ||
+          region.includes("神奈川") ||
+          region === "神奈川県"
+        ) {
+          count += 1
+        }
+        continue
+      }
+      const city = PHASE1_CITIES.find((c) => c.code === code)
+      if (city && region.includes(city.name.replace("市", ""))) {
+        count += 1
+      }
+    }
+    return count
+  }
+
+  const ruleSetIdToJurisdiction = new Map<string, string>()
+  for (const set of ruleSets.data ?? []) {
+    const j = jurisdictionById.get(String(set.jurisdiction_id))
+    if (j) ruleSetIdToJurisdiction.set(String(set.id), j.code)
+  }
+
+  const auditCodesByJurisdiction = new Map<string, Set<string>>()
+  const allAuditCodes = new Set<string>()
+  for (const item of auditItems.data ?? []) {
+    const code = String(item.code)
+    allAuditCodes.add(code)
+    const jCode = ruleSetIdToJurisdiction.get(String(item.rule_set_id))
+    if (!jCode) continue
+    if (!auditCodesByJurisdiction.has(jCode)) {
+      auditCodesByJurisdiction.set(jCode, new Set())
+    }
+    auditCodesByJurisdiction.get(jCode)!.add(code)
+  }
+
+  const ruleIdToCode = new Map<string, string>()
+  for (const rule of rules.data ?? []) {
+    ruleIdToCode.set(String(rule.id), String(rule.code))
+  }
+
+  const approvedByCode: Record<
+    string,
+    { hasApproved: boolean; hasEvidence: boolean }
+  > = {}
+
+  const bestVersionByRule = new Map<string, Record<string, unknown>>()
+  for (const ver of versions.data ?? []) {
+    const ruleId = String(ver.rule_id)
+    if (bestVersionByRule.has(ruleId)) continue
+    bestVersionByRule.set(ruleId, ver as Record<string, unknown>)
+  }
+
+  for (const [ruleId, ver] of Array.from(bestVersionByRule.entries())) {
+    const code = ruleIdToCode.get(ruleId)
+    if (!code) continue
+    const logic =
+      ver.check_logic && typeof ver.check_logic === "object"
+        ? (ver.check_logic as Record<string, unknown>)
+        : null
+    const hasEvidence =
+      hasDocumentEvidenceInCheckLogic(logic) ||
+      Boolean(ver.knowledge_change_draft_id)
+    approvedByCode[code] = { hasApproved: true, hasEvidence }
+  }
+
+  const cityRows = PHASE1_CITIES.map((city) => {
+    const codes = auditCodesByJurisdiction.get(city.code)
+    return {
+      slug: city.slug,
+      name: city.name,
+      sourceUrlCount: sourceCountByCode.get(city.code) ?? 0,
+      documentCount: countDocumentsForLayer(city.name, city.code),
+      auditItemCount: codes?.size ?? 0,
+      phase1AuditItemCodes: codes ? Array.from(codes) : [],
+    }
+  })
+
+  const readiness = buildRulebookSetupReadiness({
+    supportedMunicipalityCount: supported.count ?? 0,
+    nationalSourceUrlCount:
+      sourceCountByCode.get(NATIONAL_JURISDICTION_CODE) ?? 0,
+    prefectureSourceUrlCount:
+      sourceCountByCode.get(KANAGAWA_JURISDICTION_CODE) ?? 0,
+    nationalDocumentCount: countDocumentsForLayer(
+      "国",
+      NATIONAL_JURISDICTION_CODE
+    ),
+    prefectureDocumentCount: countDocumentsForLayer(
+      "神奈川県",
+      KANAGAWA_JURISDICTION_CODE
+    ),
+    cityRows,
+    registeredAuditItemCodes: Array.from(allAuditCodes),
+    approvedRulesByCode: approvedByCode,
+    pendingVersionCount: pendingVersions.count ?? 0,
+    pendingKnowledgeDraftCount: drafts.count ?? 0,
+    openSyncAlertCount: alerts.count ?? 0,
+  })
+
+  return { ok: true, data: readiness }
 }

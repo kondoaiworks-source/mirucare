@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { countUnreadAnnouncements } from "@/lib/announcements-unread"
 import { toUserErrorMessage } from "@/lib/auth-errors"
 import type { AppAnnouncement } from "@/types/database"
 
@@ -111,5 +112,42 @@ export async function createFacilityAnnouncementAction(input: {
 
   revalidatePath("/")
   revalidatePath("/announcements")
+  await ctx.supabase
+    .from("profiles")
+    .update({ announcements_seen_at: new Date().toISOString() })
+    .eq("id", ctx.user.id)
+  revalidatePath("/", "layout")
   return { ok: true, data: { announcement: data as AppAnnouncement } }
+}
+
+/** お知らせ一覧を開いたときに既読にする（バッジ用） */
+export async function markAnnouncementsSeenAction(): Promise<ActionResult> {
+  const ctx = await requireOrgContext()
+  if ("error" in ctx) return { ok: false, error: ctx.error }
+
+  const { error } = await ctx.supabase
+    .from("profiles")
+    .update({ announcements_seen_at: new Date().toISOString() })
+    .eq("id", ctx.user.id)
+
+  if (error) {
+    return {
+      ok: false,
+      error: toUserErrorMessage(error, "既読の更新に失敗しました。"),
+    }
+  }
+
+  revalidatePath("/", "layout")
+  revalidatePath("/announcements")
+  return { ok: true }
+}
+
+export async function countUnreadAnnouncementsAction(): Promise<
+  ActionResult<{ count: number }>
+> {
+  const ctx = await requireOrgContext()
+  if ("error" in ctx) return { ok: false, error: ctx.error }
+
+  const count = await countUnreadAnnouncements(ctx.supabase, ctx.user.id)
+  return { ok: true, data: { count } }
 }

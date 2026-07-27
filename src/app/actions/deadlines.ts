@@ -12,6 +12,7 @@ import {
   type DeadlineTab,
 } from "@/lib/deadline-status"
 import { toPrivacySubject } from "@/lib/deadlines"
+import { countUnreadAnnouncements } from "@/lib/announcements-unread"
 import { canUseAlerts } from "@/lib/plans"
 import type {
   Deadline,
@@ -240,7 +241,7 @@ export type DashboardData = {
   >
   /** アプリ内お知らせ（最新3件） */
   announcements: AppAnnouncement[]
-  /** お知らせ総数（バッジ用。未読管理はしない） */
+  /** お知らせ総数（バッジ用・未読件数） */
   announcementCount: number
   /** 事業所お知らせを投稿できるか（admin） */
   canPostAnnouncement: boolean
@@ -259,7 +260,6 @@ export async function getDashboardDataAction(): Promise<
     incompleteDocsRes,
     recentRes,
     announcementsRes,
-    announcementCountRes,
   ] = await Promise.all([
     ctx.supabase
       .from("deadlines")
@@ -300,10 +300,12 @@ export async function getDashboardDataAction(): Promise<
       .select("*")
       .order("created_at", { ascending: false })
       .limit(3),
-    ctx.supabase
-      .from("app_announcements")
-      .select("id", { count: "exact", head: true }),
   ])
+
+  const unreadAnnouncementCount = await countUnreadAnnouncements(
+    ctx.supabase,
+    ctx.user.id
+  )
 
   const deadlines = refreshDeadlineStatuses(
     (deadlinesRes.data ?? []) as Deadline[]
@@ -339,9 +341,7 @@ export async function getDashboardDataAction(): Promise<
       announcements: announcementsRes.error
         ? []
         : ((announcementsRes.data ?? []) as AppAnnouncement[]),
-      announcementCount: announcementCountRes.error
-        ? 0
-        : (announcementCountRes.count ?? 0),
+      announcementCount: unreadAnnouncementCount,
       canPostAnnouncement: ctx.role === "admin",
     },
   }

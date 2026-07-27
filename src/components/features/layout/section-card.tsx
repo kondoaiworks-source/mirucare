@@ -18,6 +18,7 @@ type SectionCardProps = {
   children: ReactNode
   className?: string
   contentClassName?: string
+  id?: string
 }
 
 /**
@@ -34,9 +35,10 @@ export function SectionCard({
   children,
   className,
   contentClassName,
+  id,
 }: SectionCardProps) {
   return (
-    <Card className={cn("rounded-lg shadow-subtle", className)}>
+    <Card id={id} className={cn("rounded-lg shadow-subtle", className)}>
       <CardHeader className="gap-2 pb-3">
         <div className="flex items-start justify-between gap-3">
           <CardTitle className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-lg">

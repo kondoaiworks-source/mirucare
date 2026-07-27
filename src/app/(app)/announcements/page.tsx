@@ -2,7 +2,10 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { Megaphone, PenLine } from "lucide-react"
 import { getCurrentProfile } from "@/app/actions/auth"
-import { listAnnouncementsAction } from "@/app/actions/announcements"
+import {
+  listAnnouncementsAction,
+  markAnnouncementsSeenAction,
+} from "@/app/actions/announcements"
 import { SectionCard } from "@/components/features/layout/section-card"
 import { PageHeader } from "@/components/features/layout/page-header"
 import { FacilityAnnouncementForm } from "@/components/features/announcements/facility-announcement-form"
@@ -24,6 +27,8 @@ function KindLabel({ row }: { row: AppAnnouncement }) {
 }
 
 export default async function AnnouncementsPage() {
+  await markAnnouncementsSeenAction()
+
   const [profile, listed] = await Promise.all([
     getCurrentProfile(),
     listAnnouncementsAction(50),
@@ -44,19 +49,9 @@ export default async function AnnouncementsPage() {
         }
       />
 
-      {canPost ? (
-        <SectionCard
-          icon={PenLine}
-          title="お知らせを投稿する"
-          description="自分と招待したメンバーに届きます（個人情報は書かないでください）。"
-        >
-          <FacilityAnnouncementForm />
-        </SectionCard>
-      ) : null}
-
       <SectionCard
         icon={Megaphone}
-        title="一覧"
+        title="お知らせ"
         description="新しい順に表示します。"
       >
         {!listed.ok ? (
@@ -93,6 +88,17 @@ export default async function AnnouncementsPage() {
           </ul>
         )}
       </SectionCard>
+
+      {canPost ? (
+        <SectionCard
+          id="post"
+          icon={PenLine}
+          title="お知らせを投稿する"
+          description="自分と招待したメンバーに届きます（個人情報は書かないでください）。"
+        >
+          <FacilityAnnouncementForm />
+        </SectionCard>
+      ) : null}
     </div>
   )
 }

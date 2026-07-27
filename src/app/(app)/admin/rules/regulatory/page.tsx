@@ -1,27 +1,45 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { getRulebookSetupStatusAction } from "@/app/actions/rule-engine"
 import { PurposeHub } from "@/components/features/admin/purpose-hub"
-import { RulebookPhase1SetupCard } from "@/components/features/admin/rules/rulebook-phase1-setup-card"
+import { RulebookSetupGuide } from "@/components/features/admin/rules/rulebook-setup-guide"
 import { getPurposeSection } from "@/lib/rule-engine/purpose-sections"
 import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ArrowRight, BookOpen } from "lucide-react"
+import { AlertCircle, ArrowRight, BookOpen } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "ルールブック設定",
 }
 
-export default function RegulatoryHubPage() {
+export const dynamic = "force-dynamic"
+
+export default async function RegulatoryHubPage() {
   const section = getPurposeSection("rulebook")
+  const setupResult = await getRulebookSetupStatusAction()
+
   if (!section) return null
+
   return (
     <div className="space-y-8">
-      <RulebookPhase1SetupCard />
+      {setupResult.ok && setupResult.data ? (
+        <RulebookSetupGuide readiness={setupResult.data} />
+      ) : (
+        <Alert variant="destructive" className="rounded-xl">
+          <AlertCircle />
+          <AlertTitle>初回登録の状態を読み込めませんでした</AlertTitle>
+          <AlertDescription>
+            {setupResult.error ??
+              "しばらくしてから再度お試しください。ルールエンジンのマイグレーション適用もご確認ください。"}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <section className="space-y-4" aria-labelledby="city-rulebook-heading">
         <h2

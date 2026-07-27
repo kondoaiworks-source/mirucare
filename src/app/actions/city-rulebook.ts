@@ -21,6 +21,10 @@ import type {
   RuleSource,
   AuditItemCategory,
 } from "@/types/database"
+import {
+  buildCityRulebookSetupReadiness,
+  type CityRulebookSetupReadiness,
+} from "@/lib/rule-engine/city-rulebook-setup-readiness"
 
 export type ActionResult<T = undefined> = {
   ok: boolean
@@ -107,6 +111,8 @@ export type CityRulebookData = {
     approvedCheckRules: number
     pendingCheckRules: number
   }
+  /** この市の初回登録チェックリスト用 */
+  setupReadiness: CityRulebookSetupReadiness
 }
 
 function docLayer(
@@ -323,10 +329,46 @@ export async function getCityRulebookAction(
 
   const citySources = sources.filter((s) => s.layer === "city")
   const sharedSources = sources.filter((s) => s.layer !== "city")
+  const nationalSources = sources.filter((s) => s.layer === "national")
+  const prefectureSources = sources.filter((s) => s.layer === "prefecture")
   const cityDocuments = documents.filter((d) => d.layer === "city")
   const sharedDocuments = documents.filter((d) => d.layer !== "city")
+  const nationalDocuments = documents.filter((d) => d.layer === "national")
+  const prefectureDocuments = documents.filter((d) => d.layer === "prefecture")
 
   const checkRules = await loadCityCheckRules(op.service, city)
+
+  const { data: ruleSet } = await op.service
+    .from("rule_sets")
+    .select("id")
+    .eq("jurisdiction_id", cityJurisdiction.id as string)
+    .eq("service_type", "訪問介護")
+    .maybeSingle()
+
+  let phase1AuditItemCodes: string[] = []
+  if (ruleSet?.id) {
+    const { data: auditRows } = await op.service
+      .from("audit_items")
+      .select("code")
+      .eq("rule_set_id", ruleSet.id as string)
+      .eq("status", "active")
+    phase1AuditItemCodes = (auditRows ?? []).map((r) => String(r.code))
+  }
+
+  const setupReadiness = buildCityRulebookSetupReadiness({
+    city,
+    nationalSourceCount: nationalSources.length,
+    prefectureSourceCount: prefectureSources.length,
+    citySourceCount: citySources.length,
+    nationalDocumentCount: nationalDocuments.length,
+    prefectureDocumentCount: prefectureDocuments.length,
+    cityDocumentCount: cityDocuments.length,
+    phase1AuditItemCodes,
+    approvedRules: checkRules.approved,
+    pendingRuleCount: checkRules.pending.length,
+    pendingDraftCount: pendingDrafts.length,
+    openAlertCount: openAlerts.length,
+  })
 
   return {
     ok: true,
@@ -354,6 +396,7 @@ export async function getCityRulebookAction(
         approvedCheckRules: checkRules.approved.length,
         pendingCheckRules: checkRules.pending.length,
       },
+      setupReadiness,
     },
   }
 }
