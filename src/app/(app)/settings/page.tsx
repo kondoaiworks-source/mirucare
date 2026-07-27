@@ -99,9 +99,6 @@ async function SettingsContent({ searchParams }: PageProps) {
         <Card className="rounded-lg shadow-subtle">
           <CardHeader>
             <CardTitleWithIcon icon={UserRound}>表示名</CardTitleWithIcon>
-            <CardDescription className="text-base leading-relaxed">
-              事業所名とは別に、ログイン中のスタッフ個人のお名前を保存します。
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <DisplayNameForm
@@ -150,9 +147,6 @@ async function SettingsContent({ searchParams }: PageProps) {
         <Card className="rounded-lg shadow-subtle">
           <CardHeader>
             <CardTitleWithIcon icon={Building2}>事業所情報</CardTitleWithIcon>
-            <CardDescription className="text-base leading-relaxed">
-              施設共通の情報です。変更は下のボタンから行えます（管理者のみ）。
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-base">
             <div>
@@ -160,19 +154,15 @@ async function SettingsContent({ searchParams }: PageProps) {
               <p className="font-semibold">{org?.name ?? "未設定"}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">
-                サービス種別（訪問介護／通所介護など）
-              </p>
+              <p className="text-sm text-muted-foreground">サービス種別</p>
               <p className="font-semibold">{org?.service_type ?? "未設定"}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">
-                自治体（チェック基準の選択に使用）
-              </p>
+              <p className="text-sm text-muted-foreground">自治体</p>
               <p className="font-semibold">
                 {org?.municipality
-                  ? `${org.municipality}のローカル基準でチェックします`
-                  : "未設定（あとで設定できます）"}
+                  ? `${org.municipality}のローカルルールでチェックします`
+                  : "未設定"}
               </p>
             </div>
             <div>
@@ -181,9 +171,11 @@ async function SettingsContent({ searchParams }: PageProps) {
                 {isAdmin ? "管理者" : "スタッフ"}
               </p>
             </div>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/setup">事業所の設定を変更する</Link>
-            </Button>
+            {isOperator ? (
+              <Button asChild size="lg">
+                <Link href="/admin/rules">ルール設定</Link>
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       </section>
@@ -219,7 +211,7 @@ async function SettingsContent({ searchParams }: PageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button asChild size="lg" variant="outline">
+                <Button asChild size="lg">
                   <Link href="/admin/reports">レポート管理</Link>
                 </Button>
               </CardContent>
@@ -250,18 +242,15 @@ async function SettingsContent({ searchParams }: PageProps) {
             <Card className="rounded-lg shadow-subtle">
               <CardHeader>
                 <CardTitleWithIcon icon={ClipboardList}>
-                  運営レビューコンソール
+                  運営管理
                 </CardTitleWithIcon>
                 <CardDescription className="text-base leading-relaxed">
-                  AI指摘の承認・却下と、フィードバック対応メモ（運営のみ）。行政資料・マニュアル変更の承認は「ルール設定」から開けます。
+                  AI指摘の承認・却下と、フィードバック対応メモ（運営のみ）。
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <CardContent>
                 <Button asChild size="lg">
-                  <Link href="/admin">レビューコンソールを開く</Link>
-                </Button>
-                <Button asChild size="lg" variant="outline">
-                  <Link href="/admin/rules">ルール設定</Link>
+                  <Link href="/admin">運営管理を開く</Link>
                 </Button>
               </CardContent>
             </Card>

@@ -71,7 +71,7 @@ export function UnlockLoginPanel({ canManage }: UnlockLoginPanelProps) {
           ログインロック解除
         </CardTitle>
         <CardDescription className="text-base leading-relaxed">
-          パスワードを連続で間違えると約15分間ログインできなくなります。同一事業所の管理者、または運営が解除できます。他事業所のユーザーは解除できません。
+          同一事業所の管理者が解除できます。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -107,7 +107,6 @@ export function UnlockLoginPanel({ canManage }: UnlockLoginPanelProps) {
                 <Button
                   type="button"
                   size="lg"
-                  variant="outline"
                   className="shrink-0"
                   disabled={pending}
                   onClick={() => onUnlock(row.profileId)}

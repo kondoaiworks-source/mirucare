@@ -45,7 +45,7 @@ export function InviteForm({ isAdmin }: InviteFormProps) {
             同僚を招待する
           </CardTitle>
           <CardDescription className="text-base leading-relaxed">
-            招待できるのは管理者のみです。管理者の方にご依頼ください。
+            招待は管理者のみができます。
           </CardDescription>
         </CardHeader>
       </Card>

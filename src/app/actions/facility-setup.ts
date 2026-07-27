@@ -112,7 +112,7 @@ export async function updateFacilityMunicipalityAction(input: {
     return { ok: false, error: toUserErrorMessage(error) }
   }
 
-  revalidatePath("/setup")
+  revalidatePath("/settings")
   revalidatePath("/settings")
   revalidatePath("/")
   return { ok: true }
@@ -177,7 +177,7 @@ export async function updateFacilitySettingsAction(input: {
     return { ok: false, error: toUserErrorMessage(error) }
   }
 
-  revalidatePath("/setup")
+  revalidatePath("/settings")
   revalidatePath("/settings")
   revalidatePath("/")
   return { ok: true }
@@ -231,6 +231,6 @@ export async function updateDisplayNameAction(input: {
   }
 
   revalidatePath("/settings")
-  revalidatePath("/setup")
+  revalidatePath("/settings")
   return { ok: true }
 }

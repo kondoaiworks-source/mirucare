@@ -19,9 +19,6 @@ export function DisplayNameForm({ currentDisplayName }: Props) {
     <div className="space-y-3">
       <div className="space-y-2">
         <Label htmlFor="profile-display-name">あなたの表示名</Label>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          ログインしている方ご自身のお名前です。同じ事業所の他のスタッフとは別々に保存されます。
-        </p>
         <Input
           id="profile-display-name"
           value={displayName}
