@@ -157,7 +157,7 @@ SEED_OPERATOR_PROFILE_ID=<あなたのprofiles.id> npm run seed:phase1-ai-rules
 ### 3-B. 設定の事業所情報
 
 - [ ] 設定の事業所情報に事業所名・サービス種別・自治体が表示される
-- [ ] 運営アカウントで「ルール設定」から `/admin/rules` が開ける
+- [ ] 運営アカウントで設定の「運営管理」から `/admin/rules` が開ける
 
 ### 3-C. 運用AI・同意・結果
 

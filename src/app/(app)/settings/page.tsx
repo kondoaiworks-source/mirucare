@@ -171,11 +171,6 @@ async function SettingsContent({ searchParams }: PageProps) {
                 {isAdmin ? "管理者" : "スタッフ"}
               </p>
             </div>
-            {isOperator ? (
-              <Button asChild size="lg">
-                <Link href="/admin/rules">ルール設定</Link>
-              </Button>
-            ) : null}
           </CardContent>
         </Card>
       </section>
@@ -248,9 +243,12 @@ async function SettingsContent({ searchParams }: PageProps) {
                   AI指摘の承認・却下と、フィードバック対応メモ（運営のみ）。
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Button asChild size="lg">
-                  <Link href="/admin">運営管理を開く</Link>
+                  <Link href="/admin">レビューコンソール</Link>
+                </Button>
+                <Button asChild size="lg">
+                  <Link href="/admin/rules">ルール設定</Link>
                 </Button>
               </CardContent>
             </Card>
