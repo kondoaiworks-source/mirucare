@@ -85,7 +85,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
       {
         href: "/admin/rules/more",
         label: "監視トラブル",
-        description: "行政資料台帳・同期の結果（通常は触らない）",
+        description: "連携監視（通常は触らない）",
         icon: MoreHorizontal,
         matchPaths: [
           "/admin/rules/more",

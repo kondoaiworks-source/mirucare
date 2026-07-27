@@ -6,11 +6,13 @@ import { useSearchParams } from "next/navigation"
 import { useDropzone } from "react-dropzone"
 import {
   Archive,
-  AlertTriangle,
+  Check,
   FileText,
   Loader2,
+  Plus,
   RefreshCw,
   Upload,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -49,13 +51,46 @@ import {
   resolveKnowledgeSyncAlertAction,
   runKnowledgeSyncNowAction,
 } from "@/app/actions/knowledge-documents"
+import { listPendingChangeDraftsAction } from "@/app/actions/knowledge-change-drafts"
 import { getPhase1CityBySlug } from "@/lib/rule-engine/phase1-cities"
+import {
+  buildLinkageMonitorEvents,
+  linkageResultLabel,
+  type LinkageMonitorEvent,
+  type LinkageMonitorResult,
+  type PendingDraftForMonitor,
+} from "@/lib/rule-engine/linkage-monitoring"
 import type {
   JurisdictionLevel,
   KnowledgeDocument,
   KnowledgeSyncAlert,
   KnowledgeWatchKind,
 } from "@/types/database"
+
+const MONITOR_PREVIEW_LIMIT = 5
+
+function formatMonitorDt(iso: string | null | undefined) {
+  if (!iso) return "—"
+  try {
+    return new Intl.DateTimeFormat("ja-JP", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(iso))
+  } catch {
+    return iso
+  }
+}
+
+function monitorResultBadgeClass(result: LinkageMonitorResult) {
+  switch (result) {
+    case "ok":
+      return "border-primary/30 bg-primary/10 text-primary-dark"
+    case "ng":
+      return "border-danger/40 bg-danger/10 text-danger"
+    case "diff":
+      return "border-warning/40 bg-warning/10 text-warning"
+  }
+}
 
 const JURISDICTION_OPTIONS: {
   value: JurisdictionLevel
@@ -103,12 +138,6 @@ function watchKindLabel(kind: KnowledgeDocument["watch_kind"]) {
   return kind === "index" ? "一覧監視" : "PDF直リンク"
 }
 
-function alertKindLabel(kind: KnowledgeSyncAlert["kind"]) {
-  if (kind === "failed") return "取得失敗"
-  if (kind === "suspicious") return "内容疑い"
-  return "セレクタ破損"
-}
-
 async function fileToBase64(file: File): Promise<string> {
   const buf = await file.arrayBuffer()
   const bytes = new Uint8Array(buf)
@@ -129,12 +158,18 @@ export function KnowledgeDocumentsAdmin(props?: {
   const cityFromQuery = citySlug ? getPhase1CityBySlug(citySlug) : undefined
   const regionFilter =
     searchParams.get("region")?.trim() || cityFromQuery?.name || ""
+  const wantRegister = searchParams.get("register") === "1"
+  const wantAllMonitor = searchParams.get("view") === "all"
 
   const [rows, setRows] = useState<KnowledgeDocument[]>([])
   const [alerts, setAlerts] = useState<KnowledgeSyncAlert[]>([])
+  const [drafts, setDrafts] = useState<PendingDraftForMonitor[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loadingList, setLoadingList] = useState(true)
   const [pending, startTransition] = useTransition()
+  const [showRegisterForm, setShowRegisterForm] = useState(wantRegister)
+  const [showAllMonitor, setShowAllMonitor] = useState(wantAllMonitor)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
 
   const [title, setTitle] = useState("")
   const [jurisdictionLevel, setJurisdictionLevel] =
@@ -154,9 +189,10 @@ export function KnowledgeDocumentsAdmin(props?: {
     setLoadingList(true)
     setLoadError(null)
     try {
-      const [docs, openAlerts] = await Promise.all([
+      const [docs, openAlerts, pendingDrafts] = await Promise.all([
         listKnowledgeDocumentsAction(),
         listOpenKnowledgeSyncAlertsAction(),
+        listPendingChangeDraftsAction(),
       ])
       if (!docs.ok) {
         setLoadError(
@@ -169,6 +205,21 @@ export function KnowledgeDocumentsAdmin(props?: {
       }
       if (openAlerts.ok) {
         setAlerts(openAlerts.data?.alerts ?? [])
+      }
+      if (pendingDrafts.ok) {
+        setDrafts(
+          (pendingDrafts.data?.drafts ?? []).map((d) => ({
+            id: d.id,
+            created_at: d.created_at,
+            ai_summary: d.ai_summary,
+            knowledge_documents: d.knowledge_documents
+              ? {
+                  id: d.knowledge_documents.id,
+                  title: d.knowledge_documents.title,
+                }
+              : null,
+          }))
+        )
       }
     } catch {
       setLoadError("一覧を取得できませんでした。")
@@ -186,6 +237,36 @@ export function KnowledgeDocumentsAdmin(props?: {
     setJurisdictionLevel("市区町村")
     setRegionName(regionFilter)
   }, [regionFilter])
+
+  useEffect(() => {
+    if (wantRegister) setShowRegisterForm(true)
+  }, [wantRegister])
+
+  useEffect(() => {
+    if (wantAllMonitor) setShowAllMonitor(true)
+  }, [wantAllMonitor])
+
+  const monitorEvents = useMemo(
+    () =>
+      buildLinkageMonitorEvents({
+        documents: rows,
+        alerts,
+        drafts,
+      }),
+    [rows, alerts, drafts]
+  )
+
+  const visibleMonitorEvents = showAllMonitor
+    ? monitorEvents
+    : monitorEvents.slice(0, MONITOR_PREVIEW_LIMIT)
+
+  const selectedEvent: LinkageMonitorEvent | null =
+    monitorEvents.find((e) => e.id === selectedEventId) ?? null
+
+  function onSelectMonitorEvent(event: LinkageMonitorEvent) {
+    if (event.result === "ok") return
+    setSelectedEventId((prev) => (prev === event.id ? null : event.id))
+  }
 
   const onDrop = useCallback((accepted: File[]) => {
     const next = accepted[0]
@@ -291,6 +372,7 @@ export function KnowledgeDocumentsAdmin(props?: {
           "台帳に登録しました。監視URLがある場合は同期も試しています。"
         )
         resetForm()
+        setShowRegisterForm(false)
         await refreshList()
       } catch {
         toast.error("登録に失敗しました。通信状況をご確認ください。")
@@ -367,10 +449,10 @@ export function KnowledgeDocumentsAdmin(props?: {
       {hidePageHeader ? null : (
         <div>
           <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-            行政資料
+            連携監視
           </h1>
           <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-            AIが参照する行政マニュアルを登録・更新します。PDF監視や一覧監視の設定もここから行えます。
+            参照URLと連携した行政マニュアルの監視結果を確認し、必要なら手動で台帳登録します。
           </p>
         </div>
       )}
@@ -391,63 +473,258 @@ export function KnowledgeDocumentsAdmin(props?: {
         </Alert>
       ) : null}
 
-      {alerts.length > 0 ? (
-        <Card className="rounded-lg border-warning/40 shadow-subtle">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg text-warning">
-              <AlertTriangle className="size-5" aria-hidden />
-              要対応（自動収集）
-            </CardTitle>
-            <CardDescription className="text-base leading-relaxed">
-              自動取得の失敗・内容の疑い・セレクタ破損の可能性があるため、人が確認してください。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {alerts.map((a) => {
-              const doc = Array.isArray(a.knowledge_documents)
-                ? a.knowledge_documents[0]
-                : a.knowledge_documents
-              return (
-                <div
-                  key={a.id}
-                  className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-start sm:justify-between"
-                >
-                  <div className="min-w-0 space-y-1">
-                    <p className="font-semibold text-foreground">
-                      {doc?.title ?? "（マニュアル不明）"}
+      <section id="monitor-status" className="space-y-4" aria-labelledby="monitor-status-heading">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2
+              id="monitor-status-heading"
+              className="text-lg font-bold text-primary-dark"
+            >
+              監視状況
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              監視した日時・対象PDF・結果（OK／NG／差分あり）です。NGと差分ありはタップで詳細を開けます。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="min-h-11"
+              onClick={() => void refreshList()}
+              disabled={loadingList || pending}
+            >
+              {loadingList ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <RefreshCw className="size-4" aria-hidden />
+              )}
+              再読み込み
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              className="min-h-11"
+              onClick={() => {
+                setShowRegisterForm(true)
+                requestAnimationFrame(() => {
+                  document
+                    .getElementById("manual-register")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                })
+              }}
+            >
+              <Plus className="size-4" aria-hidden />
+              手動登録
+            </Button>
+          </div>
+        </div>
+
+        <Card className="rounded-xl shadow-subtle">
+          <CardContent className="space-y-3 p-4 sm:p-5">
+            {loadingList && monitorEvents.length === 0 ? (
+              <p className="py-6 text-center text-base text-muted-foreground">
+                読み込み中…
+              </p>
+            ) : null}
+            {!loadingList && monitorEvents.length === 0 ? (
+              <p className="py-6 text-center text-base text-muted-foreground">
+                まだ監視結果がありません。自治体ルール設定でPDF直リンクを登録すると、ここに出ます。
+              </p>
+            ) : null}
+            <ul className="space-y-2" aria-label="監視状況の一覧">
+              {visibleMonitorEvents.map((event) => {
+                const clickable = event.result === "ng" || event.result === "diff"
+                const selected = selectedEventId === event.id
+                return (
+                  <li key={event.id}>
+                    <button
+                      type="button"
+                      disabled={!clickable}
+                      onClick={() => onSelectMonitorEvent(event)}
+                      className={cn(
+                        "flex min-h-11 w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        clickable
+                          ? "border-border bg-white hover:border-primary/30"
+                          : "cursor-default border-border/60 bg-muted/20",
+                        selected && "border-primary/40 bg-primary/[0.03]"
+                      )}
+                    >
+                      <span className="text-sm tabular-nums text-muted-foreground">
+                        {formatMonitorDt(event.checkedAt)}
+                      </span>
+                      <span className="min-w-0 flex-1 font-medium text-primary-dark">
+                        {event.title}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "rounded-md tabular-nums",
+                          monitorResultBadgeClass(event.result)
+                        )}
+                      >
+                        {event.result === "ok" ? (
+                          <Check className="mr-1 size-3.5" aria-hidden />
+                        ) : event.result === "ng" ? (
+                          <X className="mr-1 size-3.5" aria-hidden />
+                        ) : null}
+                        {linkageResultLabel(event.result)}
+                      </Badge>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+
+            {monitorEvents.length > MONITOR_PREVIEW_LIMIT ? (
+              <div className="pt-1">
+                {showAllMonitor ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="min-h-11"
+                    onClick={() => setShowAllMonitor(false)}
+                  >
+                    最新{MONITOR_PREVIEW_LIMIT}件だけ表示する
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="min-h-11"
+                    onClick={() => setShowAllMonitor(true)}
+                  >
+                    全部見る（{monitorEvents.length}件）
+                  </Button>
+                )}
+              </div>
+            ) : null}
+
+            {selectedEvent ? (
+              <div
+                id="monitor-detail"
+                className="rounded-xl border border-primary/20 bg-primary/[0.02] px-4 py-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-muted-foreground">
+                      詳細
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      {alertKindLabel(a.kind)}
-                      {" · "}
-                      {new Date(a.created_at).toLocaleString("ja-JP")}
+                    <p className="mt-1 text-base font-bold text-primary-dark">
+                      {selectedEvent.title}
                     </p>
-                    <p className="text-base leading-relaxed text-foreground">
-                      {a.message}
+                    <p className="mt-1 text-sm tabular-nums text-muted-foreground">
+                      {formatMonitorDt(selectedEvent.checkedAt)} ·{" "}
+                      {linkageResultLabel(selectedEvent.result)}
                     </p>
                   </div>
                   <Button
                     type="button"
-                    variant="outline"
-                    size="lg"
-                    className="shrink-0"
-                    disabled={pending}
-                    onClick={() => onResolveAlert(a.id)}
+                    variant="ghost"
+                    size="sm"
+                    className="min-h-11"
+                    onClick={() => setSelectedEventId(null)}
                   >
-                    対応済みにする
+                    閉じる
                   </Button>
                 </div>
-              )
-            })}
+                <p className="mt-3 text-base leading-relaxed whitespace-pre-wrap text-foreground">
+                  {selectedEvent.detail}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {selectedEvent.result === "diff" ? (
+                    <Button asChild size="lg" className="min-h-11">
+                      <Link
+                        href={
+                          selectedEvent.draftId
+                            ? `/admin/document-changes#draft-${selectedEvent.draftId}`
+                            : "/admin/document-changes"
+                        }
+                      >
+                        差分の詳細を確認する
+                      </Link>
+                    </Button>
+                  ) : null}
+                  {selectedEvent.result === "ng" && selectedEvent.alertId ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      className="min-h-11"
+                      disabled={pending}
+                      onClick={() => onResolveAlert(selectedEvent.alertId!)}
+                    >
+                      対応済みにする
+                    </Button>
+                  ) : null}
+                  {selectedEvent.documentId ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      className="min-h-11"
+                      disabled={pending}
+                      onClick={() => onSyncOne(selectedEvent.documentId!)}
+                    >
+                      今すぐ再同期する
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
-      ) : null}
+      </section>
 
-      <Card className="rounded-lg shadow-subtle">
-        <CardHeader>
-          <CardTitle className="text-lg">新規登録</CardTitle>
-          <CardDescription className="text-base leading-relaxed">
-            監視方式を選び、PDF直リンクまたは新着一覧ページを登録します。
-          </CardDescription>
+      <div className="flex flex-wrap gap-2">
+        {!showRegisterForm ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="min-h-11"
+            onClick={() => setShowRegisterForm(true)}
+          >
+            <Plus className="size-4" aria-hidden />
+            手動登録する
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          size="lg"
+          className="min-h-11"
+          onClick={onSyncAll}
+          disabled={pending}
+        >
+          {pending ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+          ) : null}
+          今すぐ一括同期
+        </Button>
+      </div>
+
+      {showRegisterForm ? (
+      <Card id="manual-register" className="rounded-lg shadow-subtle">
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
+          <div className="space-y-1">
+            <CardTitle className="text-lg">手動登録</CardTitle>
+            <CardDescription className="text-base leading-relaxed">
+              監視方式を選び、PDF直リンクまたは新着一覧ページを登録します。日常は自治体ルール設定からの自動登録を優先してください。
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-h-11"
+            onClick={() => setShowRegisterForm(false)}
+          >
+            閉じる
+          </Button>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-6">
@@ -671,42 +948,31 @@ export function KnowledgeDocumentsAdmin(props?: {
           </form>
         </CardContent>
       </Card>
+      ) : null}
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-primary-dark">登録済み台帳</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              同期結果と監視URLを確認できます。
+              連携監視の対象マニュアルです。同期結果と監視URLを確認できます。
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              onClick={() => void refreshList()}
-              disabled={loadingList || pending}
-            >
-              {loadingList ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : (
-                <RefreshCw className="size-4" aria-hidden />
-              )}
-              再読み込み
-            </Button>
-            <Button
-              type="button"
-              size="lg"
-              onClick={onSyncAll}
-              disabled={pending}
-            >
-              {pending ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : null}
-              今すぐ一括同期
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="min-h-11"
+            onClick={() => void refreshList()}
+            disabled={loadingList || pending}
+          >
+            {loadingList ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="size-4" aria-hidden />
+            )}
+            再読み込み
+          </Button>
         </div>
 
         {loadError ? (

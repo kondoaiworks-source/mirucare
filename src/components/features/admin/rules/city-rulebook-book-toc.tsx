@@ -44,12 +44,12 @@ export function CityRulebookBookToc({ data }: Props) {
       headingId="book-toc-heading"
       icon={<BookMarked className="size-5" aria-hidden />}
       title="自治体ルール設定"
-      countLabel={`（参照URL ${sources.length}／行政資料 ${documents.length}）`}
-      description="国・県・市の公開情報URLをここで追加・修正・削除します。更新アラートにはPDF直リンクが必要です。行政資料台帳の詳細は監視トラブル向けです。"
+      countLabel={`（参照URL ${sources.length}／連携監視 ${documents.length}）`}
+      description="国・県・市の公開情報URLをここで追加・修正・削除します。更新アラートにはPDF直リンクが必要です。監視状況の詳細は連携監視で確認できます。"
       action={
         <Button asChild variant="outline" className="min-h-11">
           <Link href={`/admin/rules/documents?city=${city.slug}`}>
-            行政資料台帳を開く
+            連携監視を開く
           </Link>
         </Button>
       }
@@ -90,7 +90,7 @@ export function CityRulebookBookToc({ data }: Props) {
 
                 <div className="space-y-3 border-t border-border pt-4">
                   <p className="text-base font-semibold text-primary-dark">
-                    行政資料（台帳）
+                    連携監視（台帳）
                   </p>
                   {layerDocuments.length === 0 ? (
                     <p className="text-base text-muted-foreground">
@@ -141,7 +141,7 @@ export function CityRulebookBookToc({ data }: Props) {
                                     className="mr-1 size-3.5"
                                     aria-hidden
                                   />
-                                  行政資料
+                                  台帳
                                 </Badge>
                                 {needsAttention || !url ? (
                                   <Badge

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { getPurposeSection } from "@/lib/rule-engine/purpose-sections"
 
 export const metadata: Metadata = {
-  title: "行政資料",
+  title: "連携監視",
 }
 
 export default async function RulesDocumentsPage() {
@@ -28,19 +28,19 @@ export default async function RulesDocumentsPage() {
                 label: "ルールブック設定",
                 href: "/admin/rules/regulatory",
               },
-              { label: "行政資料" },
+              { label: "連携監視" },
             ]}
           />
           <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-            行政資料
+            連携監視
           </h1>
           <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            ルールブック用の行政マニュアルを登録し、更新を自動監視します。
+            参照URLと連携したマニュアルの監視状況を確認します。台帳の手動登録もここから行えます。
           </p>
         </div>
         <Button asChild variant="outline" className="relative min-h-11">
           <Link href="/admin/document-changes">
-            変更を承認する
+            差分を確認する
             {count > 0 ? (
               <Badge
                 variant="destructive"
@@ -55,8 +55,12 @@ export default async function RulesDocumentsPage() {
 
       {section ? (
         <PurposeGuide
-          purpose="行政マニュアルのPDFや監視URLを最新の状態に保ちます。法改正時はここから更新してください。"
-          steps={["資料を選択または登録", "URLまたはPDFを更新", "保存"]}
+          purpose="監視結果（OK／NG／差分あり）を確認し、必要なら手動で台帳へ登録します。"
+          steps={[
+            "監視状況を確認する",
+            "NG・差分ありは詳細を開く",
+            "必要なら手動登録または再同期",
+          ]}
         />
       ) : null}
 

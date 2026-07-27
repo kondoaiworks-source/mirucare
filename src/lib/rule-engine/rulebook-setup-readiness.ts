@@ -269,16 +269,16 @@ export function buildRulebookSetupReadiness(
     {
       id: "documents",
       order: 3,
-      label: "行政資料を台帳化する",
+      label: "行政資料を連携監視へ載せる",
       description:
-        "参照URLからPDF等が行政資料台帳に載っているか確認します。載っていないと根拠付きルール案が作れません。",
+        "参照URLからPDF等が連携監視（台帳）に載っているか確認します。載っていないと根拠付きルール案が作れません。",
       howTo: [
         "参照URL登録後、同期ジョブまたは手動取込で台帳へ反映する",
         "国・県・市の表で「資料0件」の行がないか目視する",
         "更新アラート用にはPDF直リンクが必要です",
       ],
       href: "/admin/rules/documents",
-      actionLabel: "行政資料台帳を開く",
+      actionLabel: "連携監視を開く",
       done:
         sharedLayers.every((l) => l.documentCount > 0) &&
         cities.every((c) => c.documentCount > 0),

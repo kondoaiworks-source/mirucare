@@ -1,8 +1,6 @@
-import type { Metadata } from "next"
-import { RulesJobsAdmin } from "@/components/features/admin/rules/rules-jobs-admin"
+import { redirect } from "next/navigation"
 
-export const metadata: Metadata = { title: "同期の結果" }
-
+/** 同期の結果は連携監視へ統合 */
 export default function Page() {
-  return <RulesJobsAdmin />
+  redirect("/admin/rules/documents?view=all")
 }

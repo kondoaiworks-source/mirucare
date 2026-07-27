@@ -244,7 +244,7 @@ export function CityRulebookSetupPanel({ readiness, citySlug }: Props) {
           </Button>
           <Button asChild variant="outline" size="sm" className="min-h-11">
             <Link href={`/admin/rules/documents?city=${citySlug}`}>
-              行政資料台帳
+              連携監視
             </Link>
           </Button>
         </div>

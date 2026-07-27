@@ -446,7 +446,7 @@ export function SourceUrlsAdmin() {
               href="/admin/rules/documents"
               className="font-medium text-primary underline-offset-2 hover:underline"
             >
-              監視トラブルの行政資料台帳
+              監視トラブルの連携監視
             </Link>
             から行えます。
           </p>

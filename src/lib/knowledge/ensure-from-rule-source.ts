@@ -204,7 +204,7 @@ export async function ensureKnowledgeDocumentFromRuleSource(
           synced: false,
           monitoringReady: false,
           message:
-            "行政資料台帳の自動作成に失敗しました。詳細設定の行政資料から登録してください。",
+            "行政資料台帳の自動作成に失敗しました。監視トラブルの連携監視から登録してください。",
         }
       }
       documentId = inserted.id as string

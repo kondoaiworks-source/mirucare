@@ -27,7 +27,7 @@ export default function RulesMorePage() {
         <div className="mt-2">
           <PageHeader
             title="監視トラブル"
-            description="日常はルールブック設定と新ルール判定通知だけで足ります。ここは行政資料の自動監視がうまくいかないときだけ使います。"
+            description="日常はルールブック設定と新ルール判定通知だけで足ります。ここは連携監視の確認・手動登録など、トラブル時だけ使います。"
           />
         </div>
       </div>

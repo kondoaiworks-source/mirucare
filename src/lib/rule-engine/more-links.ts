@@ -1,12 +1,11 @@
 import {
   Activity,
-  FileText,
   type LucideIcon,
 } from "lucide-react"
 
 /**
- * 「監視トラブル」（旧・詳細設定）に残すリンク。
- * 判定ルール・監査項目は市ルールブック／新ルール判定通知側。
+ * 「監視トラブル」に残すリンク。
+ * 同期の結果は連携監視へ統合済み。
  * @see docs/ルールブック構想.md
  */
 export type RulesMoreLink = {
@@ -20,15 +19,9 @@ export type RulesMoreLink = {
 export const RULES_MORE_LINKS: RulesMoreLink[] = [
   {
     href: "/admin/rules/documents",
-    label: "行政資料台帳",
-    description: "自動登録の失敗や手動同期など、トラブル時だけ開きます",
-    icon: FileText,
-    group: "trouble",
-  },
-  {
-    href: "/admin/rules/jobs",
-    label: "同期の結果",
-    description: "行政資料の自動取得が成功／失敗したかの確認",
+    label: "連携監視",
+    description:
+      "監視状況（OK／NG／差分あり）・登録済み台帳・手動登録。トラブル時や確認用です",
     icon: Activity,
     group: "trouble",
   },
