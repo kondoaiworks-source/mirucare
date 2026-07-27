@@ -71,7 +71,7 @@ export function primarySourceUrl(row: {
 export const SOURCE_URL_MONITORING_ALERT_TITLE = "自動監視について"
 
 export const SOURCE_URL_MONITORING_ALERT_BODY =
-  "参照URLを登録すると連携監視（台帳）へ自動で紐付きます。ただし一覧ページURLだけの登録だと、台帳には載っても「以降の変更を自動監視」までは行かないことがあります。更新アラートを受け取るには、PDFなどの直リンク（直接ファイルURL）を入れてください。"
+  "参照URLを登録すると手動管理へ自動で紐付きます。ただし一覧ページURLだけの登録だと、台帳には載っても「以降の変更を自動監視」までは行かないことがあります。更新アラートを受け取るには、PDFなどの直リンク（直接ファイルURL）を入れてください。"
 
 /** 直接ファイルURL欄の短い補足 */
 export const SOURCE_URL_DIRECT_FILE_HINT =

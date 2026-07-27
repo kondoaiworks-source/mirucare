@@ -1,6 +1,6 @@
 /**
  * 「監視トラブル」配下の補助リンク定義。
- * 同期結果は /admin/rules/more 本体に表示。台帳手動登録は documents へ。
+ * 同期結果は /admin/rules/more 本体に表示。例外の台帳操作は手動管理（documents）へ。
  * @see docs/ルールブック構想.md
  */
 export type RulesMoreLink = {
@@ -14,9 +14,9 @@ export type RulesMoreLink = {
 export const RULES_MORE_LINKS: RulesMoreLink[] = [
   {
     href: "/admin/rules/documents?register=1",
-    label: "手動登録",
+    label: "手動管理",
     description:
-      "例外時のみ。台帳へマニュアルを直接登録します（日常は自治体ルール設定）",
+      "例外時のみ。台帳へマニュアルを直接登録・確認します（日常は自治体ルール設定）",
     group: "trouble",
   },
 ]

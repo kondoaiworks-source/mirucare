@@ -216,7 +216,7 @@ export function DocumentChangesAdmin() {
             マニュアル変更の承認
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
-            監視で検知した変更を確認し、問題なければ<strong>行政資料の台帳</strong>
+            監視で検知した変更を確認し、問題なければ<strong>手動管理</strong>
             へ反映します。チェック用の判定ルールは、差分から
             <strong>判定ルール案を生成</strong>
             し、新ルール判定通知で了承してから使います。
@@ -275,7 +275,7 @@ export function DocumentChangesAdmin() {
         <AlertTitle>辞書反映は2段階です</AlertTitle>
         <AlertDescription className="space-y-2 text-base leading-relaxed">
           <p>
-            ①この画面の承認＝行政資料の<strong>台帳・版履歴</strong>への反映。
+            ①この画面の承認＝手動管理の<strong>台帳・版履歴</strong>への反映。
             ②チェック用の判定ルールは「判定ルール案を生成する」→
             <strong>新ルール判定通知</strong>
             で了承して初めて使われます（自動では載りません）。

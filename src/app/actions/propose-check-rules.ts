@@ -220,7 +220,7 @@ export async function proposeAiCheckRulesFromDraftAction(input: {
     jurisdiction_level: string | null
   } | null
 
-  const sourceTitle = doc?.title ?? "行政資料"
+  const sourceTitle = doc?.title ?? "マニュアル"
   const changes = (Array.isArray(draft.changes)
     ? draft.changes
     : []) as KnowledgeChangeItem[]
@@ -269,7 +269,7 @@ export async function proposeAiCheckRulesFromDraftAction(input: {
 }
 
 /**
- * 行政資料の最新スナップショット本文から判定ルール案を生成し、承認待ちへ載せる。
+ * 手動管理の最新スナップショット本文から判定ルール案を生成し、承認待ちへ載せる。
  * 初回登録後（差分がなくても）ルールブックの中身を提案する用途。
  */
 export async function proposeAiCheckRulesFromDocumentAction(input: {
@@ -282,7 +282,7 @@ export async function proposeAiCheckRulesFromDocumentAction(input: {
 
   const documentId = input.knowledgeDocumentId?.trim()
   if (!documentId) {
-    return { ok: false, error: "対象の行政資料が指定されていません。" }
+    return { ok: false, error: "対象の資料が指定されていません。" }
   }
 
   const { data: doc, error: docError } = await op.service
@@ -297,7 +297,7 @@ export async function proposeAiCheckRulesFromDocumentAction(input: {
     return { ok: false, error: toUserErrorMessage(docError) }
   }
   if (!doc) {
-    return { ok: false, error: "行政資料が見つかりません。" }
+    return { ok: false, error: "資料が見つかりません。" }
   }
 
   const hash = (doc.content_hash as string | null)?.trim()

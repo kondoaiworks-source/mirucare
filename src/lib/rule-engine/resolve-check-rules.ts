@@ -98,7 +98,7 @@ function isEffectiveOn(
 }
 
 /**
- * 承認済み AI 判定ルールと行政資料タイトルを解決する（Service Role 前提）。
+ * 承認済み AI 判定ルールと根拠資料タイトルを解決する（Service Role 前提）。
  * 自治体×ルールセットの厳密フィルタは将来拡張。まずは承認済み・有効・書類種別で絞る。
  */
 export async function resolveApprovedRulesForCheck(

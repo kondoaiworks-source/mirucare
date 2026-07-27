@@ -151,9 +151,9 @@ export function buildCityRulebookSetupReadiness(
     {
       id: "documents",
       order: 2,
-      label: "行政資料を連携監視へ載せる",
+      label: "資料を手動管理へ載せる",
       description:
-        "参照URLのPDFが連携監視（台帳）に載っているか確認します。",
+        "参照URLのPDFが手動管理に載っているか確認します。",
       done:
         input.nationalDocumentCount > 0 &&
         input.prefectureDocumentCount > 0 &&

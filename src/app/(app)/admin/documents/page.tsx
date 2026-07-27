@@ -3,10 +3,10 @@ import { redirect } from "next/navigation"
 import { requireOperator } from "@/lib/operator"
 
 export const metadata: Metadata = {
-  title: "行政資料",
+  title: "手動管理",
 }
 
-/** 旧URL互換：チェック設定配下の行政資料へ誘導 */
+/** 旧URL互換：チェック設定配下の手動管理へ誘導 */
 export default async function AdminKnowledgeDocumentsRedirectPage() {
   const op = await requireOperator()
   if ("error" in op) {

@@ -1,5 +1,5 @@
 /**
- * 行政資料の差分／本文から、チェック用「判定ルール案」を AI が提案する。
+ * 手動管理の資料差分／本文から、チェック用「判定ルール案」を AI が提案する。
  * 本番反映は人が承認するまで行わない（提案＝pending_review 前提）。
  */
 
@@ -179,7 +179,7 @@ function buildProposeFromSourcePrompt(input: {
     .join("\n")
 
   return `あなたは介護保険の実地指導（運営指導）向けWチェック支援のルール設計者です。
-行政資料の本文から、書類チェック用の「判定ルール案」をJSONのみで提案してください。
+根拠資料の本文から、書類チェック用の「判定ルール案」をJSONのみで提案してください。
 
 重要方針:
 - 断定・合否判定は禁止。案内文は「〜の可能性があります」「〜をご確認ください」形式
@@ -301,7 +301,7 @@ export async function proposeRulesFromChangeDraft(input: {
 }
 
 /**
- * 行政資料の本文から初期の判定ルール案を生成する（差分がなくても可）。
+ * 行政マニュアル等の本文から初期の判定ルール案を生成する（差分がなくても可）。
  */
 export async function proposeRulesFromSourceText(input: {
   documentTitle: string
@@ -347,7 +347,7 @@ export function formatProposalChangeSummary(
   sourceTitle: string
 ): string {
   const parts = [
-    proposal.changeSummary || "行政資料からのAI提案",
+    proposal.changeSummary || "手動管理の資料からのAI提案",
     `根拠資料: ${sourceTitle}`,
   ]
   if (proposal.evidenceSummary) {

@@ -262,7 +262,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
             id="shared-layers-heading"
             className="mb-3 text-lg font-bold text-primary-dark"
           >
-            国・県・市の参照URLと連携監視
+            国・県・市の参照URLと手動管理
           </h3>
           <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
             参照URLと台帳化された資料が揃っているか、層ごとに目視してください。
@@ -276,7 +276,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
                     参照URL
                   </th>
                   <th className="px-4 py-3 font-semibold tabular-nums">
-                    連携監視
+                    手動管理
                   </th>
                   <th className="px-4 py-3 font-semibold">状態</th>
                 </tr>

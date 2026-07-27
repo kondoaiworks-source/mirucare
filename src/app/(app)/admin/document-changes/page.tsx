@@ -33,7 +33,7 @@ export default async function AdminDocumentChangesPage() {
           </Badge>
         ) : null}
         <Button asChild variant="outline">
-          <Link href="/admin/rules/documents">連携監視</Link>
+          <Link href="/admin/rules/documents">手動管理</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/admin">レビューコンソール</Link>

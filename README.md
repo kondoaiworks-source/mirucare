@@ -143,7 +143,7 @@ SQL Editor で次を **順番に** 実行します。
 4. 本番ではモックを黙って使わずエラーにします（監視が 0 のまま成功する事故を防ぐ）
 5. Workflow 入力変数は次を想定:
    - `document_text` / `prefecture` / `municipality` / `doc_type` / `national`（`"1"`=国基準・`"0"`=自治体基準）
-   - `approved_rules_json` / `regulatory_basis_json` / `check_as_of`（承認済みルール・行政資料タイトル・基準日。未定義でも Workflow は動く想定）
+   - `approved_rules_json` / `regulatory_basis_json` / `check_as_of`（承認済みルール・根拠資料タイトル・基準日。未定義でも Workflow は動く想定）
    - 画像・スキャンPDF時: File Upload API のあと、**リクエスト top-level の `files`** に `variable: "document_image"` で載せる（`inputs` 内に File を埋め込まない）
    - **Dify 開始ノード**: ファイルリスト変数 **`document_image`** を追加（必須オフ）。LLM Vision には LEGACY `files` ではなく **`document_image`** を接続して公開
    - 変数名が違う場合は Vercel / `.env.local` の `DIFY_FILE_INPUT_KEY` を合わせる（既定: `document_image`）
@@ -294,7 +294,7 @@ SQL Editor で次を **順番に** 実行します。
    - サーバーログに `[check] applied_rules`（件数）が出ること
    - モック時は `[dify] mock_rules_payload` で rules/basis の有無が出ること
 4. `/check/[documentId]` で **「このチェックで使った基準」** が表示されること
-   - 基準日・適用ルール版（開閉）・行政資料タイトル（あれば）
+   - 基準日・適用ルール版（開閉）・根拠資料タイトル（あれば）
    - 各指摘の「根拠」テキストも従来どおり表示
 5. `/documents` の完了／レビュー済みカードに **基準日** が出ること
 6. `/admin/document-changes`（またはルール配下の変更承認）で
@@ -357,7 +357,7 @@ npm install -D @types/papaparse
      curl -X POST http://localhost:3000/api/cron/knowledge-sync \
        -H "Authorization: Bearer $CRON_SECRET"
      ```
-8. 設定画面の運営カードから「ルール設定」へ遷移できること（行政資料・マニュアル変更の承認はルール設定内）
+8. 設定画面の運営カードから「ルール設定」へ遷移できること（手動管理・マニュアル変更の承認はルール設定内）
 9. 変更承認: [http://localhost:3000/admin/document-changes](http://localhost:3000/admin/document-changes)
    - ハッシュ変更後に承認待ちが表示されること
    - 「要精査」案件は理由10文字以上がないと承認できないこと
@@ -424,7 +424,7 @@ npm install -D @types/papaparse
 4. 左メニューが次の構成であること
    - ルールブック設定（ルールブック設定／新ルール判定通知／更新履歴／自治体ルール変更通知）
    - 自治体管理（自治体マスタ）
-   - 監視トラブル（同期結果をこの画面で表示。手動登録へのリンクあり）
+   - 監視トラブル（同期結果をこの画面で表示。手動管理へのリンクあり）
    - 詳細設定（監査項目・判定ルール）は主導線に出ないこと（市ルールブック／初回セットアップへ）
 5. `/admin/rules` がルールブック設定（`/admin/rules/regulatory`）へリダイレクトすること
 6. 「ルールブック設定」に Phase1市カードがあり、各市ルールブックが開けること（重複ガイド・サービス選択UIは出ないこと）
@@ -434,10 +434,10 @@ npm install -D @types/papaparse
 10. 自治体ルール設定で国／県／市が折りたたみ表示され、各層で参照URLの追加・修正・削除ができること（「更新アラート管理」に更新アラートの確認だけがあり、参照URL登録・法令・根拠が無いこと）
 11. 市ルールブックで新ルール判定を「台帳へ反映する／判定ルール案を生成する／差し戻す／解消する」できること
 12. 空の新ルール判定は「現在判定案件は0件です。」と出ること
-13. 更新アラートまたは連携監視の資料から「判定ルール案を生成する」→ `/admin/rules/pending` に案＋根拠が載り、了承するまでチェックに使われないこと
-14. 「連携監視を開く」で `/admin/rules/documents?city=...` が開き、監視状況（OK／NG／差分あり）と登録済み台帳があること
+13. 更新アラートまたは手動管理の資料から「判定ルール案を生成する」→ `/admin/rules/pending` に案＋根拠が載り、了承するまでチェックに使われないこと
+14. 「手動管理を開く」で `/admin/rules/documents?city=...` が開き、監視状況（OK／NG／差分あり）と登録済み台帳があること
 15. [http://localhost:3000/admin/rules/more](http://localhost:3000/admin/rules/more) が「監視トラブル」で、未解消アラートと最終同期一覧を直接表示すること
-16. 監視トラブル内の「手動登録」で `/admin/rules/documents?register=1` が開き、登録フォームが出ること
+16. 監視トラブル内の「手動管理」で `/admin/rules/documents?register=1` が開き、登録フォームが出ること
 17. `/admin/rules/jobs` が監視トラブルへリダイレクトすること
 18. ルールブック設定に「初回登録の手順」があり、7ステップの進捗・国県市の参照URL表・Phase1突合（項目1・3・7・8）の網羅表で抜け漏れを目視できること
 19. 各市ルールブック（`/admin/rules/regulatory/[slug]`）上部に「○○市の初回登録」があり、市ごとの手順・Phase1網羅表・該当セクションへのジャンプリンクがあること
@@ -496,14 +496,14 @@ npm install -D @types/papaparse
       -H "Authorization: Bearer $CRON_SECRET"
     ```
 
-## 動作確認手順（参照URL登録→連携監視）
+## 動作確認手順（参照URL登録→手動管理）
 
 1. 運営アカウントで市ルールブック（`/admin/rules/regulatory/[slug]`）を開く
 2. 「自治体ルール設定」の国／県／市のいずれかで「参照URLを追加する」→ 資料名・PDF直リンクを登録する
 3. 成功メッセージに「監視を開始」系の文言が出ること
 4. 監視トラブル（`/admin/rules/more`）に未解消アラートと最終同期が一覧で出ること
-5. 監視トラブルの「手動登録」で `/admin/rules/documents?register=1` が開き、登録フォームが出ること
-6. 連携監視の「監視状況」に OK／NG／差分ありが出ること（最大5件＋全部見る）
+5. 監視トラブルの「手動管理」で `/admin/rules/documents?register=1` が開き、登録フォームが出ること
+6. 手動管理の「監視状況」に OK／NG／差分ありが出ること（最大5件＋全部見る）
 7. NG・差分ありをタップすると詳細が開き、再同期や差分確認へ進めること
 8. `rule_sources.knowledge_document_id` が埋まっていること（SQLまたは編集画面）
 9. HTML／一覧ページのみ（PDF直リンクなし）の場合は台帳には載るが、画面上の注意どおり「以降の変更を自動監視」までは行かないことがあること
@@ -524,7 +524,7 @@ npm install -D @types/papaparse
 
 1. サイドバー／下部タブに「監査結果」（短縮「結果」）とあること（「監査結果の履歴」ではない）
 2. `/audit-history` の表題が「監査結果」であること
-3. 設定（運営アカウント）の運営向けに「レビューコンソールを開く」「ルール設定」のみあること（行政資料・マニュアル変更の承認の直リンクが無いこと）
+3. 設定（運営アカウント）の運営向けに「レビューコンソールを開く」「ルール設定」のみあること（手動管理・マニュアル変更の承認の直リンクが無いこと）
 4. レビューコンソール（`/admin`）右上も「ルール設定」「月次レポート管理」のみであること
 5. 主要画面（運用AI監査・あとで確認・監査結果・設定・お知らせ・使い方）の表題サイズが揃っていること（h1: 2xl / md:3xl）
 
@@ -590,9 +590,9 @@ npm install -D @types/papaparse
 | `/admin/rules` | ルール設定（ルールブック中心・運営のみ） |
 | `/admin/rules/regulatory` | ルールブック設定ハブ |
 | `/admin/rules/regulatory/[slug]` | Phase1市ルールブック（閲覧・修正導線） |
-| `/admin/rules/more` | 監視トラブル（同期結果を直接表示・手動登録リンク） |
+| `/admin/rules/more` | 監視トラブル（同期結果を直接表示・手動管理リンク） |
 | `/admin/rules/jobs` | 監視トラブルへリダイレクト |
-| `/admin/rules/documents` | 連携監視（監視状況・台帳・手動登録）。旧 `/admin/documents` はリダイレクト |
+| `/admin/rules/documents` | 手動管理（監視状況・台帳・例外登録）。旧 `/admin/documents` はリダイレクト |
 | `/admin/reports` | 月次レポート管理（管理者のみ） |
 | `/settings` | 設定・招待・ログアウト |
 | `/styleguide` | デザインシステム確認用 |

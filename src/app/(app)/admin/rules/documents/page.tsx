@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { getPurposeSection } from "@/lib/rule-engine/purpose-sections"
 
 export const metadata: Metadata = {
-  title: "連携監視",
+  title: "手動管理",
 }
 
 export default async function RulesDocumentsPage() {
@@ -28,11 +28,11 @@ export default async function RulesDocumentsPage() {
                 label: "ルールブック設定",
                 href: "/admin/rules/regulatory",
               },
-              { label: "連携監視" },
+              { label: "手動管理" },
             ]}
           />
           <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-            連携監視
+            手動管理
           </h1>
           <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
             監視状況の確認と、例外時の台帳手動登録です。参照URLの登録は市ルールブックの自治体ルール設定で行ってください。

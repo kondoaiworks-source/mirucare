@@ -66,7 +66,7 @@ function resolveMonitorUrl(source: Pick<
 }
 
 /**
- * 参照URL（rule_sources）から行政資料台帳を確保し、PDFなら初回同期する。
+ * 参照URL（rule_sources）から手動管理を確保し、PDFなら初回同期する。
  * 既に knowledge_document_id があれば再利用。同一 source_url の台帳があれば紐付ける。
  */
 export async function ensureKnowledgeDocumentFromRuleSource(
@@ -145,7 +145,7 @@ export async function ensureKnowledgeDocumentFromRuleSource(
   const jurisdictionLevel = mapJurisdictionLevel(jurisdiction.level)
   const regionName = regionNameFor(jurisdictionLevel, jurisdiction)
   const year = new Date().getFullYear()
-  const title = source.title.trim() || "無題の行政資料"
+  const title = source.title.trim() || "無題のマニュアル"
 
   let documentId = source.knowledge_document_id
   let created = false
@@ -204,7 +204,7 @@ export async function ensureKnowledgeDocumentFromRuleSource(
           synced: false,
           monitoringReady: false,
           message:
-            "行政資料台帳の自動作成に失敗しました。監視トラブルの連携監視から登録してください。",
+            "手動管理の自動作成に失敗しました。監視トラブルから「手動管理」を開いて登録してください。",
         }
       }
       documentId = inserted.id as string
@@ -261,8 +261,8 @@ export async function ensureKnowledgeDocumentFromRuleSource(
     monitoringReady: true,
     message: synced
       ? created
-        ? "参照URLを登録し、行政資料の監視を開始しました。"
-        : "行政資料の監視を更新しました。"
+        ? "参照URLを登録し、手動管理の監視を開始しました。"
+        : "手動管理の監視を更新しました。"
       : `台帳は用意しましたが、初回取得に問題があります（${syncResult.message}）。監視トラブルの「同期の結果」でご確認ください。`,
   }
 }

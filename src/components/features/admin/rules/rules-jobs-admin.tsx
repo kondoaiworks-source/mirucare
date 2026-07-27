@@ -113,7 +113,7 @@ export function RulesJobsAdmin({ embedded = false }: Props) {
             同期の結果
           </h1>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            連携したマニュアルの自動取得が成功したか確認します。問題があれば手動登録から対応してください。
+            連携したマニュアルの自動取得が成功したか確認します。問題があれば手動管理から対応してください。
           </p>
         </div>
       )}
@@ -122,7 +122,7 @@ export function RulesJobsAdmin({ embedded = false }: Props) {
         <Button asChild size="lg" className="min-h-11">
           <Link href={MANUAL_REGISTER_HREF}>
             <Plus className="size-4" aria-hidden />
-            手動登録
+            手動管理
           </Link>
         </Button>
         <Button
@@ -158,7 +158,7 @@ export function RulesJobsAdmin({ embedded = false }: Props) {
             </CardDescription>
           </div>
           <Button asChild variant="outline" size="lg" className="min-h-11">
-            <Link href={MANUAL_REGISTER_HREF}>手動登録へ</Link>
+            <Link href={MANUAL_REGISTER_HREF}>手動管理へ</Link>
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">

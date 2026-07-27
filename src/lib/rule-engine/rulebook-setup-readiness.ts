@@ -254,7 +254,7 @@ export function buildRulebookSetupReadiness(
       howTo: [
         "下の「国・県・市の参照URL」表で未登録の層がないか確認する",
         "各市ルールブック → 自治体ルール設定 → 参照URLを追加する",
-        "PDF直リンクがあれば行政資料の自動監視が始まります",
+        "PDF直リンクがあれば手動管理の自動監視が始まります",
         "横断確認は参照URL一覧（監視トラブル）でも可能です",
       ],
       href: "/admin/rules/regulatory/yokohama",
@@ -269,16 +269,16 @@ export function buildRulebookSetupReadiness(
     {
       id: "documents",
       order: 3,
-      label: "行政資料を連携監視へ載せる",
+      label: "資料を手動管理へ載せる",
       description:
-        "参照URLからPDF等が連携監視（台帳）に載っているか確認します。載っていないと根拠付きルール案が作れません。",
+        "参照URLからPDF等が手動管理に載っているか確認します。載っていないと根拠付きルール案が作れません。",
       howTo: [
         "参照URL登録後、同期ジョブまたは手動取込で台帳へ反映する",
         "国・県・市の表で「資料0件」の行がないか目視する",
         "更新アラート用にはPDF直リンクが必要です",
       ],
       href: "/admin/rules/documents",
-      actionLabel: "連携監視を開く",
+      actionLabel: "手動管理を開く",
       done:
         sharedLayers.every((l) => l.documentCount > 0) &&
         cities.every((c) => c.documentCount > 0),
@@ -286,7 +286,7 @@ export function buildRulebookSetupReadiness(
       detail:
         sharedLayers.every((l) => l.documentCount > 0) &&
         cities.every((c) => c.documentCount > 0)
-          ? "国・県・5市すべてに行政資料があります"
+          ? "国・県・5市すべてに資料があります"
           : `国 ${input.nationalDocumentCount}件 / 県 ${input.prefectureDocumentCount}件 / 資料0の市 ${cities.filter((c) => c.documentCount === 0).length}件`,
       icon: FileText,
     },
@@ -315,7 +315,7 @@ export function buildRulebookSetupReadiness(
       order: 5,
       label: "判定ルール案を生成する",
       description:
-        "行政資料の本文から、判定ルール案＋根拠をAIが提案します。了承前はチェックに使われません。",
+        "手動管理の資料本文から、判定ルール案＋根拠をAIが提案します。了承前はチェックに使われません。",
       howTo: [
         "市ルールブック → 自治体ルール設定で資料を確認する",
         "「判定ルール案を生成する」を実行する",
@@ -402,7 +402,7 @@ export function buildRulebookSetupReadiness(
   } else if (!isReady) {
     statusLabel = allPhase1Approved && !allPhase1Evidence ? "要確認" : "準備中"
     statusHint = allPhase1Approved && !allPhase1Evidence
-      ? "ルールは了承済みですが、行政資料に紐づく根拠が不足している項目があります。市ルールブックから案を再生成してください。"
+      ? "ルールは了承済みですが、手動管理の資料に紐づく根拠が不足している項目があります。市ルールブックから案を再生成してください。"
       : "手順の途中です。次のステップから進め、Phase1突合の表で抜け漏れがないか目視してください。"
   } else {
     statusLabel = "完了"

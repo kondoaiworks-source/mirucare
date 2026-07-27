@@ -1111,7 +1111,7 @@ export async function createAiCheckRuleWithVersionAction(input: {
   effectiveFrom: string
   changeSummary?: string
   submitForReview: boolean
-  /** 行政資料変更ドラフトから起こした場合の紐付け */
+  /** 手動管理の変更ドラフトから起こした場合の紐付け */
   knowledgeChangeDraftId?: string
 }): Promise<ActionResult> {
   const op = await requireOperator()

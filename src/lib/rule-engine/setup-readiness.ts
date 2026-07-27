@@ -154,14 +154,14 @@ export function buildSetupReadiness(
       id: "regulatory",
       label: "ルールブックの根拠を用意する（任意）",
       description:
-        "参照URLや行政資料があると、更新アラートと根拠確認がしやすくなります。",
+        "参照URLや手動管理の資料があると、更新アラートと根拠確認がしやすくなります。",
       href: "/admin/rules/regulatory",
       actionLabel: "ルールブック設定を開く",
       done: input.knowledgeDocumentCount + input.sourceUrlCount > 0,
       required: false,
       detail:
         input.knowledgeDocumentCount + input.sourceUrlCount > 0
-          ? `行政資料 ${input.knowledgeDocumentCount}件 / 参照URL ${input.sourceUrlCount}件`
+          ? `手動管理 ${input.knowledgeDocumentCount}件 / 参照URL ${input.sourceUrlCount}件`
           : "未登録でも最低限のチェックは始められます",
       icon: Landmark,
     },

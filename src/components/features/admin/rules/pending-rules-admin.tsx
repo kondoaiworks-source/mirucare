@@ -103,7 +103,7 @@ export function PendingRulesAdmin() {
               現在、確認する新ルール判定はありません
             </CardTitle>
             <CardDescription className="text-base">
-              差分や行政資料から判定ルール案を生成すると、ここに表示されます。
+              差分や手動管理の資料から判定ルール案を生成すると、ここに表示されます。
             </CardDescription>
           </CardHeader>
         </Card>

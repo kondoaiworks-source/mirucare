@@ -34,7 +34,7 @@ export const CHECK_UI = {
     "承認済みのAI判定ルールがまだないか、この書類種別に該当するものがありませんでした。",
   appliedRulesMissing:
     "この書類には、まだ適用ルール版の記録がありません（再チェック後に表示されます）。最終判断は貴施設の責任で行ってください。",
-  regulatoryBasisLabel: "参照した行政資料（タイトル）",
+  regulatoryBasisLabel: "参照した根拠資料（タイトル）",
   suggestionLabel: "修正の参考案",
   actionFixed: "対応した",
   actionLater: "あとで",

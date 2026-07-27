@@ -12,7 +12,7 @@ type Props = {
 }
 
 /**
- * 行政資料の本文から判定ルール案を生成し、承認待ちへ載せる。
+ * 手動管理の資料本文から判定ルール案を生成し、承認待ちへ載せる。
  */
 export function ProposeRulesFromDocumentButton({
   knowledgeDocumentId,

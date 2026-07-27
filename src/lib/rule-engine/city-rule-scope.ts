@@ -10,7 +10,7 @@ export type RuleScopeKind = "city" | "shared" | "other_city" | "unscoped"
 export type RuleScopeInput = {
   cityName: string
   prefectureName: string
-  /** 紐づく行政資料の地域名 */
+  /** 紐づく資料の地域名 */
   regionName?: string | null
   jurisdictionLevel?: string | null
   /** check_logic.evidence に保存した地域 */

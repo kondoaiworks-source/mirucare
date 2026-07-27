@@ -27,7 +27,7 @@ export default function RulesMorePage() {
         <Button asChild size="lg" className="min-h-11">
           <Link href="/admin/rules/documents?register=1">
             <Plus className="size-4" aria-hidden />
-            手動登録
+            手動管理
           </Link>
         </Button>
       </div>
@@ -36,7 +36,7 @@ export default function RulesMorePage() {
         purpose="監視の結果（成功・失敗・要確認）を確認し、問題があるときだけ対応します。日常の参照URL登録はルールブック側です。"
         steps={[
           "未解消アラートと最終同期を確認する",
-          "問題があれば手動登録または再同期で対応する",
+          "問題があれば手動管理または再同期で対応する",
           "判定ルールの了承は新ルール判定通知へ進む",
         ]}
       />
@@ -54,7 +54,7 @@ export default function RulesMorePage() {
           href="/admin/rules/documents?register=1"
           className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
         >
-          手動登録
+          手動管理
         </Link>
         を使います。
       </p>

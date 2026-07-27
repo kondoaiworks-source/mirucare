@@ -31,7 +31,7 @@ export type DifyCheckInput = {
   imageMimeType?: string
   /** 承認済み AI 判定ルール（JSON文字列） */
   approvedRulesJson?: string
-  /** 行政資料タイトル等の根拠一覧（JSON文字列） */
+  /** 根拠資料タイトル等一覧（JSON文字列） */
   regulatoryBasisJson?: string
   /** チェック基準日 YYYY-MM-DD */
   checkAsOf?: string

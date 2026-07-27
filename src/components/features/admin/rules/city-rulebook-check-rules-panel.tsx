@@ -293,7 +293,7 @@ function RuleRow({
 
           {!hasSourceLink && !hasEvidenceBody ? (
             <p className="text-sm text-muted-foreground">
-              原本URL・根拠引用は未登録です。自治体ルール設定の行政資料をご確認ください。
+              原本URL・根拠引用は未登録です。自治体ルール設定の資料をご確認ください。
             </p>
           ) : null}
         </CardContent>
