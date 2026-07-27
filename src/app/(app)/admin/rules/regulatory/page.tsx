@@ -1,18 +1,16 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { PurposeHub } from "@/components/features/admin/purpose-hub"
-import { RulebookServiceSelect } from "@/components/features/admin/rules/rulebook-service-select"
 import { RulebookPhase1SetupCard } from "@/components/features/admin/rules/rulebook-phase1-setup-card"
 import { getPurposeSection } from "@/lib/rule-engine/purpose-sections"
 import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ArrowRight, BookOpen, Info } from "lucide-react"
+import { ArrowRight, BookOpen } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "ルールブック設定",
@@ -23,19 +21,7 @@ export default function RegulatoryHubPage() {
   if (!section) return null
   return (
     <div className="space-y-8">
-      <Alert className="rounded-lg border-primary/20 bg-primary/[0.03]">
-        <Info />
-        <AlertTitle>Phase1 のルールブック範囲</AlertTitle>
-        <AlertDescription className="space-y-2 text-base leading-relaxed">
-          <p>
-            サービスを選び、市のルールブックを開いて更新アラートを人が確認します。いま使えるサービスは訪問介護です。
-          </p>
-        </AlertDescription>
-      </Alert>
-
       <RulebookPhase1SetupCard />
-
-      <RulebookServiceSelect />
 
       <section className="space-y-4" aria-labelledby="city-rulebook-heading">
         <h2
@@ -78,7 +64,7 @@ export default function RegulatoryHubPage() {
         </div>
       </section>
 
-      <PurposeHub section={section} />
+      <PurposeHub section={section} linksOnly />
     </div>
   )
 }

@@ -19,9 +19,6 @@ export function RulesAdminShell({ children }: { children: React.ReactNode }) {
           <p className="px-2 text-sm font-semibold text-primary-dark">
             ルール設定
           </p>
-          <p className="px-2 pb-3 text-sm leading-relaxed text-muted-foreground">
-            この自治体なら、このルールブックに従う
-          </p>
         </div>
 
         <nav
