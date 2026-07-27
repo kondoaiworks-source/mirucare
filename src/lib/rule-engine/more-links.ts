@@ -1,28 +1,22 @@
-import {
-  Activity,
-  type LucideIcon,
-} from "lucide-react"
-
 /**
- * 「監視トラブル」に残すリンク。
- * 同期の結果は連携監視へ統合済み。
+ * 「監視トラブル」配下の補助リンク定義。
+ * 同期結果は /admin/rules/more 本体に表示。台帳手動登録は documents へ。
  * @see docs/ルールブック構想.md
  */
 export type RulesMoreLink = {
   href: string
   label: string
   description: string
-  icon: LucideIcon
   group: "trouble"
 }
 
+/** ナビカード用（ページ本体では同期結果を直接表示するため、カード一覧は使わない） */
 export const RULES_MORE_LINKS: RulesMoreLink[] = [
   {
-    href: "/admin/rules/documents",
-    label: "連携監視",
+    href: "/admin/rules/documents?register=1",
+    label: "手動登録",
     description:
-      "監視状況（OK／NG／差分あり）・登録済み台帳・手動登録。トラブル時や確認用です",
-    icon: Activity,
+      "例外時のみ。台帳へマニュアルを直接登録します（日常は自治体ルール設定）",
     group: "trouble",
   },
 ]

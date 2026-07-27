@@ -35,7 +35,7 @@ export default async function RulesDocumentsPage() {
             連携監視
           </h1>
           <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            参照URLと連携したマニュアルの監視状況を確認します。台帳の手動登録もここから行えます。
+            監視状況の確認と、例外時の台帳手動登録です。参照URLの登録は市ルールブックの自治体ルール設定で行ってください。
           </p>
         </div>
         <Button asChild variant="outline" className="relative min-h-11">
@@ -55,11 +55,11 @@ export default async function RulesDocumentsPage() {
 
       {section ? (
         <PurposeGuide
-          purpose="監視結果（OK／NG／差分あり）を確認し、必要なら手動で台帳へ登録します。"
+          purpose="連携したマニュアルの監視結果を確認し、問題があるときだけ対応します。URLの追加・更新はルールブック側です。"
           steps={[
             "監視状況を確認する",
-            "NG・差分ありは詳細を開く",
-            "必要なら手動登録または再同期",
+            "NG・差分ありは詳細を開いて対応する",
+            "どうしても必要なときだけ手動登録する",
           ]}
         />
       ) : null}

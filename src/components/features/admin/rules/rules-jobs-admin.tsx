@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, Plus, RefreshCw } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 
 type DocRow = Pick<
@@ -36,6 +36,11 @@ type DocRow = Pick<
   | "last_error"
   | "status"
 >
+
+type Props = {
+  /** 監視トラブルページに埋め込むとき true（見出し・パンくずを出さない） */
+  embedded?: boolean
+}
 
 function formatDt(iso: string | null | undefined) {
   if (!iso) return "—"
@@ -66,20 +71,28 @@ function statusLabel(s: KnowledgeDocument["last_sync_status"]) {
   }
 }
 
-export function RulesJobsAdmin() {
+const MANUAL_REGISTER_HREF = "/admin/rules/documents?register=1"
+
+export function RulesJobsAdmin({ embedded = false }: Props) {
   const [documents, setDocuments] = useState<DocRow[]>([])
   const [alerts, setAlerts] = useState<KnowledgeSyncAlert[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
     setError(null)
-    const result = await listRuleJobsAction()
-    if (!result.ok) {
-      setError(result.error ?? "取得に失敗しました。")
-      return
+    setLoading(true)
+    try {
+      const result = await listRuleJobsAction()
+      if (!result.ok) {
+        setError(result.error ?? "取得に失敗しました。")
+        return
+      }
+      setDocuments(result.data?.documents ?? [])
+      setAlerts(result.data?.alerts ?? [])
+    } finally {
+      setLoading(false)
     }
-    setDocuments(result.data?.documents ?? [])
-    setAlerts(result.data?.alerts ?? [])
   }, [])
 
   useEffect(() => {
@@ -88,19 +101,44 @@ export function RulesJobsAdmin() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <AdminBreadcrumb
-          items={[
-            { label: "監視トラブル", href: "/admin/rules/more" },
-            { label: "同期の結果" },
-          ]}
-        />
-        <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          同期の結果
-        </h1>
-        <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          行政資料の自動取得が成功したか確認します。問題があれば行政資料台帳で対応してください。
-        </p>
+      {embedded ? null : (
+        <div>
+          <AdminBreadcrumb
+            items={[
+              { label: "監視トラブル", href: "/admin/rules/more" },
+              { label: "同期の結果" },
+            ]}
+          />
+          <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
+            同期の結果
+          </h1>
+          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
+            連携したマニュアルの自動取得が成功したか確認します。問題があれば手動登録から対応してください。
+          </p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <Button asChild size="lg" className="min-h-11">
+          <Link href={MANUAL_REGISTER_HREF}>
+            <Plus className="size-4" aria-hidden />
+            手動登録
+          </Link>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="min-h-11"
+          onClick={() => void refresh()}
+          disabled={loading}
+        >
+          <RefreshCw
+            className={loading ? "size-4 animate-spin" : "size-4"}
+            aria-hidden
+          />
+          再読み込み
+        </Button>
       </div>
 
       {error ? (
@@ -120,36 +158,43 @@ export function RulesJobsAdmin() {
             </CardDescription>
           </div>
           <Button asChild variant="outline" size="lg" className="min-h-11">
-            <Link href="/admin/rules/documents">行政資料台帳で対応する</Link>
+            <Link href={MANUAL_REGISTER_HREF}>手動登録へ</Link>
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
-          {alerts.length === 0 ? (
-            <p className="text-base text-muted-foreground">未解消アラートはありません。</p>
-          ) : (
-            alerts.map((a) => (
-              <div
-                key={a.id}
-                className="rounded-xl border border-border p-3 text-base leading-relaxed"
-              >
-                <div className="mb-1 flex flex-wrap gap-2">
-                  <Badge variant="destructive" className="rounded-lg">
-                    {a.kind}
-                  </Badge>
-                  <span className="text-sm tabular-nums text-muted-foreground">
-                    {formatDt(a.created_at)}
-                  </span>
-                </div>
-                <p>{a.message}</p>
+          {loading && alerts.length === 0 ? (
+            <p className="text-base text-muted-foreground">読み込み中…</p>
+          ) : null}
+          {!loading && alerts.length === 0 ? (
+            <p className="text-base text-muted-foreground">
+              未解消アラートはありません。
+            </p>
+          ) : null}
+          {alerts.map((a) => (
+            <div
+              key={a.id}
+              className="rounded-xl border border-border p-3 text-base leading-relaxed"
+            >
+              <div className="mb-1 flex flex-wrap gap-2">
+                <Badge variant="destructive" className="rounded-lg">
+                  {a.kind}
+                </Badge>
+                <span className="text-sm tabular-nums text-muted-foreground">
+                  {formatDt(a.created_at)}
+                </span>
               </div>
-            ))
-          )}
+              <p>{a.message}</p>
+            </div>
+          ))}
         </CardContent>
       </Card>
 
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
           <CardTitle className="text-lg">監視対象の最終同期</CardTitle>
+          <CardDescription className="text-base leading-relaxed">
+            URLの登録は市ルールブックの「自治体ルール設定」で行います。こちらは結果の確認用です。
+          </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
@@ -187,10 +232,17 @@ export function RulesJobsAdmin() {
                   </TableCell>
                 </TableRow>
               ))}
-              {documents.length === 0 ? (
+              {!loading && documents.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-muted-foreground">
-                    監視対象のマニュアルがありません。
+                    監視対象のマニュアルがありません。市ルールブックでPDF直リンクを登録してください。
+                  </TableCell>
+                </TableRow>
+              ) : null}
+              {loading && documents.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-muted-foreground">
+                    読み込み中…
                   </TableCell>
                 </TableRow>
               ) : null}

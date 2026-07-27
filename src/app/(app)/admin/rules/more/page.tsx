@@ -1,19 +1,11 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import {
-  RULES_MORE_GROUP_LABEL,
-  RULES_MORE_GROUP_ORDER,
-  RULES_MORE_LINKS,
-} from "@/lib/rule-engine/more-links"
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { RulesJobsAdmin } from "@/components/features/admin/rules/rules-jobs-admin"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { PageHeader } from "@/components/features/layout/page-header"
-import { ArrowRight } from "lucide-react"
+import { PurposeGuide } from "@/components/features/admin/purpose-guide"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "監視トラブル",
@@ -22,15 +14,32 @@ export const metadata: Metadata = {
 export default function RulesMorePage() {
   return (
     <div className="space-y-8">
-      <div>
-        <AdminBreadcrumb items={[{ label: "監視トラブル" }]} />
-        <div className="mt-2">
-          <PageHeader
-            title="監視トラブル"
-            description="日常はルールブック設定と新ルール判定通知だけで足ります。ここは連携監視の確認・手動登録など、トラブル時だけ使います。"
-          />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <AdminBreadcrumb items={[{ label: "監視トラブル" }]} />
+          <div className="mt-2">
+            <PageHeader
+              title="監視トラブル"
+              description="連携したマニュアルの同期結果を確認します。登録・URLの追加は市ルールブックの自治体ルール設定で行ってください。"
+            />
+          </div>
         </div>
+        <Button asChild size="lg" className="min-h-11">
+          <Link href="/admin/rules/documents?register=1">
+            <Plus className="size-4" aria-hidden />
+            手動登録
+          </Link>
+        </Button>
       </div>
+
+      <PurposeGuide
+        purpose="監視の結果（成功・失敗・要確認）を確認し、問題があるときだけ対応します。日常の参照URL登録はルールブック側です。"
+        steps={[
+          "未解消アラートと最終同期を確認する",
+          "問題があれば手動登録または再同期で対応する",
+          "判定ルールの了承は新ルール判定通知へ進む",
+        ]}
+      />
 
       <p className="text-base leading-relaxed text-muted-foreground">
         判定ルールの追加・了承は
@@ -40,53 +49,17 @@ export default function RulesMorePage() {
         >
           ルールブック設定
         </Link>
-        から行ってください。
+        から行ってください。例外で台帳へ直接載せる場合のみ
+        <Link
+          href="/admin/rules/documents?register=1"
+          className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
+        >
+          手動登録
+        </Link>
+        を使います。
       </p>
 
-      {RULES_MORE_GROUP_ORDER.map((groupId) => {
-        const items = RULES_MORE_LINKS.filter((l) => l.group === groupId)
-        if (items.length === 0) return null
-        return (
-          <section key={groupId} className="space-y-3">
-            <h2 className="text-lg font-bold text-primary-dark">
-              {RULES_MORE_GROUP_LABEL[groupId]}
-            </h2>
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {items.map((item) => {
-                const Icon = item.icon
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className="group block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <Card className="h-full rounded-lg shadow-subtle transition-colors group-hover:border-primary/30">
-                        <CardHeader className="space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                              <Icon className="size-5" aria-hidden />
-                            </span>
-                            <ArrowRight
-                              className="size-4 text-muted-foreground group-hover:text-primary"
-                              aria-hidden
-                            />
-                          </div>
-                          <CardTitle className="text-base text-primary-dark">
-                            {item.label}
-                          </CardTitle>
-                          <CardDescription className="text-base leading-relaxed">
-                            {item.description}
-                          </CardDescription>
-                        </CardHeader>
-                      </Card>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        )
-      })}
+      <RulesJobsAdmin embedded />
     </div>
   )
 }
