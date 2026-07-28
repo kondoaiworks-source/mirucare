@@ -11,7 +11,6 @@ import {
 import {
   getPhase1ExpectedRules,
   getPhase1OperationCheckMeta,
-  hasDocumentEvidenceInCheckLogic,
 } from "@/lib/rule-engine/phase1-rule-groups"
 import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
 import {
