@@ -8,7 +8,6 @@ import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   Card,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -46,7 +45,7 @@ export default async function RegulatoryHubPage() {
           id="city-rulebook-heading"
           className="text-xl font-bold text-primary-dark"
         >
-          閲覧・修正（Phase1市）
+          ルールブック管理
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
           「この市で運営するならこのルールブック」を開きます。国・県・市の参照URLの登録・修正・削除、判定ルール案の生成・了承はここから進めます。
@@ -72,9 +71,6 @@ export default async function RegulatoryHubPage() {
                   <CardTitle className="text-lg text-primary-dark">
                     {city.name}
                   </CardTitle>
-                  <CardDescription className="text-base leading-relaxed">
-                    国・{city.prefectureName}・{city.name}を束ねて確認する
-                  </CardDescription>
                 </CardHeader>
               </Card>
             </Link>

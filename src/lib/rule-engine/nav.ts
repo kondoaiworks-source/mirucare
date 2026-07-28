@@ -32,7 +32,6 @@ export type RulesAdminNavGroup = {
 export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
   {
     id: "rulebook",
-    label: "ルールブック設定",
     items: [
       {
         href: "/admin/rules/regulatory",
@@ -85,7 +84,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
       {
         href: "/admin/rules/more",
         label: "監視トラブル",
-        description: "同期結果の確認・手動管理（通常は触らない）",
+        description: "同期結果の確認・行政ルール台帳（通常は触らない）",
         icon: MoreHorizontal,
         matchPaths: [
           "/admin/rules/more",

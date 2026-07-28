@@ -283,7 +283,7 @@ export function CityRulebookAlertsPanel({
                     </Button>
                     <Button asChild size="lg" variant="ghost">
                       <Link href={`/admin/rules/documents?city=${citySlug}`}>
-                        手動管理を開く
+                        行政ルール台帳を開く
                       </Link>
                     </Button>
                   </CardContent>

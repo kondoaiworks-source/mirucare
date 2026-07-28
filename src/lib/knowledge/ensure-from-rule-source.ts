@@ -66,7 +66,7 @@ function resolveMonitorUrl(source: Pick<
 }
 
 /**
- * 参照URL（rule_sources）から手動管理を確保し、PDFなら初回同期する。
+ * 参照URL（rule_sources）から行政ルール台帳を確保し、PDFなら初回同期する。
  * 既に knowledge_document_id があれば再利用。同一 source_url の台帳があれば紐付ける。
  */
 export async function ensureKnowledgeDocumentFromRuleSource(
@@ -204,7 +204,7 @@ export async function ensureKnowledgeDocumentFromRuleSource(
           synced: false,
           monitoringReady: false,
           message:
-            "手動管理の自動作成に失敗しました。監視トラブルから「手動管理」を開いて登録してください。",
+            "行政ルール台帳の自動作成に失敗しました。監視トラブルから「行政ルール台帳」を開いて登録してください。",
         }
       }
       documentId = inserted.id as string
@@ -261,8 +261,8 @@ export async function ensureKnowledgeDocumentFromRuleSource(
     monitoringReady: true,
     message: synced
       ? created
-        ? "参照URLを登録し、手動管理の監視を開始しました。"
-        : "手動管理の監視を更新しました。"
+        ? "参照URLを登録し、行政ルール台帳の監視を開始しました。"
+        : "行政ルール台帳の監視を更新しました。"
       : `台帳は用意しましたが、初回取得に問題があります（${syncResult.message}）。監視トラブルの「同期の結果」でご確認ください。`,
   }
 }

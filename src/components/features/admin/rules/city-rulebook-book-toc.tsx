@@ -33,7 +33,7 @@ function documentEditHref(opts: { citySlug: string; layer: string }) {
 }
 
 /**
- * 根拠（参照URL・手動管理）を国→県→市の折りたたみ一覧にまとめる。
+ * 根拠（参照URL・行政ルール台帳）を国→県→市の折りたたみ一覧にまとめる。
  * 参照URLの追加・修正・削除は各レイヤ内で完結する。
  */
 export function CityRulebookBookToc({ data }: Props) {
@@ -44,12 +44,12 @@ export function CityRulebookBookToc({ data }: Props) {
       headingId="book-toc-heading"
       icon={<BookMarked className="size-5" aria-hidden />}
       title="自治体ルール設定"
-      countLabel={`（参照URL ${sources.length}／手動管理 ${documents.length}）`}
-      description="国・県・市の公開情報URLをここで追加・修正・削除します。更新アラートにはPDF直リンクが必要です。監視状況の詳細は手動管理で確認できます。"
+      countLabel={`（参照URL ${sources.length}／行政ルール台帳 ${documents.length}）`}
+      description="ルールブックの元になる国・県・市で公開している情報へのリンク先を設定してください。"
       action={
         <Button asChild variant="outline" className="min-h-11">
           <Link href={`/admin/rules/documents?city=${city.slug}`}>
-            手動管理を開く
+            行政ルール台帳を開く
           </Link>
         </Button>
       }
@@ -90,7 +90,7 @@ export function CityRulebookBookToc({ data }: Props) {
 
                 <div className="space-y-3 border-t border-border pt-4">
                   <p className="text-base font-semibold text-primary-dark">
-                    手動管理
+                    行政ルール台帳
                   </p>
                   {layerDocuments.length === 0 ? (
                     <p className="text-base text-muted-foreground">

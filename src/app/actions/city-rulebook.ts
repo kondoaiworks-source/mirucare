@@ -71,7 +71,7 @@ export type CityRulebookCheckRule = {
   auditItemTitle: string | null
   sourceDocumentId: string | null
   sourceDocumentTitle: string | null
-  /** 原本（手動管理の資料）の公開URL */
+  /** 原本（行政ルール台帳の資料）の公開URL */
   sourceDocumentUrl: string | null
   evidenceSummary: string | null
   evidenceQuotes: string[]
