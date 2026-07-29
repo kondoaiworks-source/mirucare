@@ -27,17 +27,17 @@ export default function RulesMorePage() {
         <Button asChild size="lg" className="min-h-11">
           <Link href="/admin/rules/documents?register=1">
             <Plus className="size-4" aria-hidden />
-            行政ルール台帳
+            公開情報監視
           </Link>
         </Button>
       </div>
 
       <PurposeGuide
-        purpose="監視の結果（成功・失敗・要確認）を確認し、問題があるときだけ対応します。日常の参照URL登録はルールブック側です。"
+        purpose="監視の結果（成功・失敗・要確認）を確認し、問題があるときだけ対応します。日常の公開情報登録はルールブック側です。"
         steps={[
           "未解消アラートと最終同期を確認する",
-          "問題があれば行政ルール台帳または再同期で対応する",
-          "判定ルールの了承は新ルール判定通知へ進む",
+          "問題があれば公開情報監視または再同期で対応する",
+          "判定ルールの了承はルール管理へ進む",
         ]}
       />
 
@@ -47,14 +47,14 @@ export default function RulesMorePage() {
           href="/admin/rules/regulatory"
           className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
         >
-          ルールブック設定
+          ルールブック管理
         </Link>
         から行ってください。例外で台帳へ直接載せる場合のみ
         <Link
           href="/admin/rules/documents?register=1"
           className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
         >
-          行政ルール台帳
+          公開情報監視
         </Link>
         を使います。
       </p>

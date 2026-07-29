@@ -14,7 +14,7 @@ import {
 import { AlertCircle, ArrowRight, BookOpen } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "ルールブック設定",
+  title: "ルールブック管理",
 }
 
 export const dynamic = "force-dynamic"
@@ -48,7 +48,7 @@ export default async function RegulatoryHubPage() {
           ルールブック管理
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          「この市で運営するならこのルールブック」を開きます。国・県・市の参照URLの登録・修正・削除、判定ルール案の生成・了承はここから進めます。
+          「この市で運営するならこのルールブック」を開きます。国・県・市の公開情報（PDF／リンク）の登録・修正・削除、判定ルール案の生成・了承はここから進めます。
         </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PHASE1_CITIES.map((city) => (

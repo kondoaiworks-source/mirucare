@@ -254,7 +254,7 @@ export function SourceUrlsAdmin() {
         return
       }
       setEditOpenedFromQuery(true)
-      toast.message("指定の参照URLが見つかりませんでした。一覧から選んで修正してください。")
+      toast.message("指定の公開情報が見つかりませんでした。一覧から選んで修正してください。")
       return
     }
 
@@ -306,7 +306,7 @@ export function SourceUrlsAdmin() {
         toast.error(result.error ?? "保存に失敗しました。")
         return
       }
-      toast.success("参照URLを更新しました。")
+      toast.success("公開情報を更新しました。")
       setEditing(null)
       await refresh()
     })
@@ -339,7 +339,7 @@ export function SourceUrlsAdmin() {
         toast.error(result.error ?? "登録に失敗しました。")
         return
       }
-      toast.success(result.data?.monitorMessage ?? "参照URLを登録しました。")
+      toast.success(result.data?.monitorMessage ?? "公開情報を登録しました。")
       setNewTitle("")
       setNewParentUrl("")
       setNewDirectUrl("")
@@ -355,7 +355,7 @@ export function SourceUrlsAdmin() {
           <AdminBreadcrumb
             items={[
               {
-                label: "ルールブック設定",
+                label: "ルールブック管理",
                 href: "/admin/rules/regulatory",
               },
               { label: "参照サイト" },
@@ -403,12 +403,12 @@ export function SourceUrlsAdmin() {
           日常の操作場所が変わりました
         </AlertTitle>
         <AlertDescription className="text-base leading-relaxed">
-          国・県・市の参照URLの登録・修正・削除は、
+          国・県・市の公開情報の登録・修正・削除は、
           <Link
             href="/admin/rules/regulatory"
             className="font-medium text-primary underline-offset-2 hover:underline"
           >
-            ルールブック設定
+            ルールブック管理
           </Link>
           から市を開き、「自治体ルール設定」で行ってください。
         </AlertDescription>
@@ -446,7 +446,7 @@ export function SourceUrlsAdmin() {
               href="/admin/rules/documents"
               className="font-medium text-primary underline-offset-2 hover:underline"
             >
-              監視トラブルの行政ルール台帳
+              監視トラブルの公開情報監視
             </Link>
             から行えます。
           </p>
@@ -564,7 +564,7 @@ export function SourceUrlsAdmin() {
 
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
-          <CardTitle className="text-lg">参照URLを登録する</CardTitle>
+          <CardTitle className="text-lg">公開情報を登録する</CardTitle>
           <CardDescription className="text-base">
             初期データは seed で投入できます。追加はこちらから行えます。
           </CardDescription>
@@ -632,7 +632,7 @@ export function SourceUrlsAdmin() {
             </Select>
           </div>
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="new-parent">親ページURL（一覧ページ可）</Label>
+            <Label htmlFor="new-parent">公開情報リンク（HTML・一覧ページ可）</Label>
             <Input
               id="new-parent"
               type="url"
@@ -647,7 +647,7 @@ export function SourceUrlsAdmin() {
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="new-direct">
-              直接ファイルURL（PDF直リンク・自動監視用）
+              公開情報PDF（直リンク・自動監視用）
             </Label>
             <Input
               id="new-direct"
@@ -655,7 +655,7 @@ export function SourceUrlsAdmin() {
               className="h-11 min-h-11 text-base"
               value={newDirectUrl}
               onChange={(e) => setNewDirectUrl(e.target.value)}
-              placeholder="https://（PDF直リンク等）"
+              placeholder="https://（公開情報PDFの直リンク）"
             />
             <p className="text-sm leading-relaxed text-muted-foreground">
               {SOURCE_URL_DIRECT_FILE_HINT}
@@ -689,7 +689,7 @@ export function SourceUrlsAdmin() {
 
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
-          <CardTitle className="text-lg">参照URL一覧</CardTitle>
+          <CardTitle className="text-lg">公開情報一覧</CardTitle>
           <CardDescription className="text-base">
             自治体別・資料カテゴリ別の根拠資料です。原文URLを正本として保管します。
           </CardDescription>
@@ -798,7 +798,7 @@ export function SourceUrlsAdmin() {
               {!loading && rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-muted-foreground">
-                    該当する参照URLがありません。seed を実行するか、上のフォームから登録してください。
+                    該当する公開情報がありません。seed を実行するか、上のフォームから登録してください。
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -813,7 +813,7 @@ export function SourceUrlsAdmin() {
           className="rounded-xl border-primary/30 shadow-subtle"
         >
           <CardHeader>
-            <CardTitle className="text-lg">参照URLを編集する</CardTitle>
+            <CardTitle className="text-lg">公開情報を編集する</CardTitle>
             <CardDescription>{editing.title}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -872,7 +872,7 @@ export function SourceUrlsAdmin() {
               </Select>
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="edit-parent">親ページURL（一覧ページ可）</Label>
+              <Label htmlFor="edit-parent">公開情報リンク（HTML・一覧ページ可）</Label>
               <Input
                 id="edit-parent"
                 type="url"
@@ -888,7 +888,7 @@ export function SourceUrlsAdmin() {
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="edit-direct">
-                直接ファイルURL（PDF直リンク・自動監視用）
+                公開情報PDF（直リンク・自動監視用）
               </Label>
               <Input
                 id="edit-direct"

@@ -44,7 +44,12 @@ function formatDt(iso: string) {
   }
 }
 
-export function RulesHistoryAdmin() {
+type Props = {
+  /** ルール管理ページ内に埋め込むとき、ページ見出しを出さない */
+  embedded?: boolean
+}
+
+export function RulesHistoryAdmin({ embedded = false }: Props) {
   const [rows, setRows] = useState<Row[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -64,14 +69,30 @@ export function RulesHistoryAdmin() {
   }, [refresh])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <AdminBreadcrumb items={[{ label: "更新履歴" }]} />
-        <h1 className="mt-2 text-2xl font-bold text-primary-dark">更新履歴</h1>
-        <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          AI判定ルールの作成・承認の履歴です（新しい順）。
-        </p>
-      </div>
+    <div className="space-y-6" id={embedded ? "history" : undefined}>
+      {embedded ? (
+        <div>
+          <h2 className="text-xl font-bold text-primary-dark">更新履歴</h2>
+          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
+            ルールの作成・承認の履歴です（新しい順）。
+          </p>
+        </div>
+      ) : (
+        <div>
+          <AdminBreadcrumb
+            items={[
+              { label: "ルール管理", href: "/admin/rules/pending" },
+              { label: "更新履歴" },
+            ]}
+          />
+          <h1 className="mt-2 text-2xl font-bold text-primary-dark">
+            更新履歴
+          </h1>
+          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
+            ルールの作成・承認の履歴です（新しい順）。ルール管理からも確認できます。
+          </p>
+        </div>
+      )}
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">

@@ -104,7 +104,7 @@ export function buildSetupReadiness(
             : "/admin/rules/ai-rules",
       actionLabel:
         input.pendingVersionCount > 0
-          ? "新ルール判定通知を確認する"
+          ? "ルール管理を確認する"
           : "判定ルールを開く（詳細）",
       done: input.approvedAiRuleCount > 0,
       required: true,
@@ -112,7 +112,7 @@ export function buildSetupReadiness(
         input.approvedAiRuleCount > 0
           ? `承認済みルールが ${input.approvedAiRuleCount}件あります`
           : input.pendingVersionCount > 0
-            ? `新ルール判定通知が ${input.pendingVersionCount}件あります`
+            ? `ルール管理が ${input.pendingVersionCount}件あります`
             : "承認済みの判定ルールがありません",
       icon: Bot,
     },
@@ -120,7 +120,7 @@ export function buildSetupReadiness(
       id: "clearQueue",
       label: "確認待ちを残さない",
       description:
-        "新ルール判定通知・自治体ルール変更（差分）・同期アラートを解消します。",
+        "ルール管理・自治体ルール変更（差分）・同期アラートを解消します。",
       href:
         input.pendingVersionCount > 0
           ? "/admin/rules/pending"
@@ -154,14 +154,14 @@ export function buildSetupReadiness(
       id: "regulatory",
       label: "ルールブックの根拠を用意する（任意）",
       description:
-        "参照URLや行政ルール台帳の資料があると、更新アラートと根拠確認がしやすくなります。",
+        "公開情報や公開情報監視の資料があると、更新アラートと根拠確認がしやすくなります。",
       href: "/admin/rules/regulatory",
-      actionLabel: "ルールブック設定を開く",
+      actionLabel: "ルールブック管理を開く",
       done: input.knowledgeDocumentCount + input.sourceUrlCount > 0,
       required: false,
       detail:
         input.knowledgeDocumentCount + input.sourceUrlCount > 0
-          ? `行政ルール台帳 ${input.knowledgeDocumentCount}件 / 参照URL ${input.sourceUrlCount}件`
+          ? `公開情報監視 ${input.knowledgeDocumentCount}件 / 公開情報 ${input.sourceUrlCount}件`
           : "未登録でも最低限のチェックは始められます",
       icon: Landmark,
     },

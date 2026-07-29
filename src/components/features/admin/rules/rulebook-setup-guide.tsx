@@ -282,10 +282,10 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
             id="shared-layers-heading"
             className="mb-3 text-lg font-bold text-primary-dark"
           >
-            国・県・市の参照URLと行政ルール台帳
+            国・県・市の公開情報と公開情報監視
           </h3>
           <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-            参照URLと台帳化された資料が揃っているか、層ごとに目視してください。
+            公開情報と台帳化された資料が揃っているか、層ごとに目視してください。
           </p>
           <div className="overflow-x-auto rounded-xl border bg-white">
             <table className="w-full min-w-[480px] text-left text-base">
@@ -293,10 +293,10 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
                 <tr className="border-b bg-muted/40 text-sm text-muted-foreground">
                   <th className="px-4 py-3 font-semibold">層</th>
                   <th className="px-4 py-3 font-semibold tabular-nums">
-                    参照URL
+                    公開情報
                   </th>
                   <th className="px-4 py-3 font-semibold tabular-nums">
-                    行政ルール台帳
+                    公開情報監視
                   </th>
                   <th className="px-4 py-3 font-semibold">状態</th>
                 </tr>

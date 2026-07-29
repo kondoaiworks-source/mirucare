@@ -391,7 +391,7 @@ export type RuleJurisdiction = {
 export type RuleSourceKind = "law" | "notification" | "manual" | "other"
 export type RuleSourceStatus = "active" | "archived"
 
-/** 参照URLマスタの資料カテゴリ */
+/** 公開情報マスタの資料カテゴリ */
 export type RuleMaterialCategory =
   | "訪問介護"
   | "総合事業訪問型"

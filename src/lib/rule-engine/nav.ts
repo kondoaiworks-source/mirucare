@@ -1,7 +1,6 @@
 import {
   Bell,
   BookOpen,
-  History,
   Hourglass,
   MapPin,
   MoreHorizontal,
@@ -26,7 +25,7 @@ export type RulesAdminNavGroup = {
 
 /**
  * ルール設定サイドナビ（ホームなし）。
- * 入口はルールブック設定。詳細・運用監視は日常外。
+ * 入口はルールブック管理。詳細・運用監視は日常外。
  * @see docs/ルールブック構想.md
  */
 export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
@@ -35,8 +34,8 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
     items: [
       {
         href: "/admin/rules/regulatory",
-        label: "ルールブック設定",
-        description: "この自治体で従う確定版を整える",
+        label: "ルールブック管理",
+        description: "地域ごとのルール集（ルールブック）を整える",
         icon: BookOpen,
         matchPaths: [
           "/admin/rules/regulatory",
@@ -45,22 +44,17 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
       },
       {
         href: "/admin/rules/pending",
-        label: "新ルール判定通知",
+        label: "ルール管理",
         description:
-          "自治体ルールからAIが生成したチェックルールを確認して反映",
+          "チェック用ルールの了承・差し戻しと更新履歴",
         icon: Hourglass,
-      },
-      {
-        href: "/admin/rules/history",
-        label: "更新履歴",
-        description: "いつの版に変わったか",
-        icon: History,
+        matchPaths: ["/admin/rules/pending", "/admin/rules/history"],
       },
       {
         href: "/admin/rules/notifications",
-        label: "自治体ルール変更通知",
+        label: "公開情報台帳管理",
         description:
-          "自治体ルールの変更を感知して差分承認の依頼を通知",
+          "公開情報の変更を感知し、台帳反映の承認を依頼する",
         icon: Bell,
       },
     ],
@@ -84,7 +78,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
       {
         href: "/admin/rules/more",
         label: "監視トラブル",
-        description: "同期結果の確認・行政ルール台帳（通常は触らない）",
+        description: "同期結果の確認・公開情報監視（通常は触らない）",
         icon: MoreHorizontal,
         matchPaths: [
           "/admin/rules/more",

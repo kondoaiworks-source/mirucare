@@ -269,7 +269,7 @@ export async function proposeAiCheckRulesFromDraftAction(input: {
 }
 
 /**
- * 行政ルール台帳の最新スナップショット本文から判定ルール案を生成し、承認待ちへ載せる。
+ * 公開情報監視の最新スナップショット本文から判定ルール案を生成し、承認待ちへ載せる。
  * 初回登録後（差分がなくても）ルールブックの中身を提案する用途。
  */
 export async function proposeAiCheckRulesFromDocumentAction(input: {

@@ -61,13 +61,13 @@ export function CityRulebookCheckRulesPanel({
         pending.length > 0 ? (
           <Button asChild className="min-h-11">
             <Link href="/admin/rules/pending">
-              新ルール判定通知で了承する（{pending.length}件）
+              ルール管理で了承する（{pending.length}件）
             </Link>
           </Button>
         ) : (
           <p className="text-sm text-muted-foreground">
             <Link
-              href="/admin/rules/history"
+              href="/admin/rules/pending#history"
               className="text-primary underline-offset-4 hover:underline"
             >
               更新履歴
@@ -84,7 +84,7 @@ export function CityRulebookCheckRulesPanel({
               了承前の案（まだチェックには使いません）
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              新ルール判定通知で了承すると、下の了承済みに入ります。
+              ルール管理で了承すると、下の了承済みに入ります。
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -100,7 +100,7 @@ export function CityRulebookCheckRulesPanel({
             </ul>
             {pending.length > 5 ? (
               <p className="mt-2 text-sm text-muted-foreground">
-                ほか {pending.length - 5}件は新ルール判定通知で確認できます。
+                ほか {pending.length - 5}件はルール管理で確認できます。
               </p>
             ) : null}
           </CardContent>
@@ -114,7 +114,7 @@ export function CityRulebookCheckRulesPanel({
         <div className="mt-4 space-y-2 border-t border-border pt-4">
           {approved.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
-              まだ了承済みがありません。下の「自治体ルール設定」で国・県・市の参照URL（PDF）を登録し「判定ルール案を生成」するか、手入力で1件追加してから、新ルール判定通知で了承してください。
+              まだ了承済みがありません。下の「自治体ルール設定」で国・県・市の公開情報PDFを登録し「判定ルール案を生成」するか、手入力で1件追加してから、ルール管理で了承してください。
             </p>
           ) : (
             CATEGORY_ORDER.map((category) => {
@@ -153,7 +153,7 @@ export function CityRulebookCheckRulesPanel({
         </summary>
         <div className="mt-4 space-y-3 border-t border-border pt-4">
           <p className="text-base leading-relaxed text-muted-foreground">
-            AI案が出せないときや、急ぎで1件足したいときに使います。登録すると必ず新ルール判定通知に載り、了承するまでチェックには使いません。
+            AI案が出せないときや、急ぎで1件足したいときに使います。登録すると必ずルール管理に載り、了承するまでチェックには使いません。
           </p>
           <ManualCheckRuleForm />
         </div>
@@ -268,7 +268,7 @@ function RuleRow({
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm" className="min-h-11">
-                <Link href="/admin/rules/pending">新ルール判定通知で確認する</Link>
+                <Link href="/admin/rules/pending">ルール管理で確認する</Link>
               </Button>
             )}
           </div>

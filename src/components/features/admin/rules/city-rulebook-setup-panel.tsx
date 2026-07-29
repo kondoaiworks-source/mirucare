@@ -240,11 +240,11 @@ export function CityRulebookSetupPanel({ readiness, citySlug }: Props) {
             <Link href="/admin/rules/audit-items">監査項目を開く</Link>
           </Button>
           <Button asChild variant="outline" size="sm" className="min-h-11">
-            <Link href="/admin/rules/pending">新ルール判定通知</Link>
+            <Link href="/admin/rules/pending">ルール管理</Link>
           </Button>
           <Button asChild variant="outline" size="sm" className="min-h-11">
             <Link href={`/admin/rules/documents?city=${citySlug}`}>
-              行政ルール台帳
+              公開情報監視
             </Link>
           </Button>
         </div>

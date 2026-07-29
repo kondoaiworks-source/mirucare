@@ -106,7 +106,7 @@ export function LawsAdmin() {
         <AdminBreadcrumb
           items={[
             {
-              label: "ルールブック設定",
+              label: "ルールブック管理",
               href: "/admin/rules/regulatory",
             },
             { label: "法令・根拠" },
@@ -131,7 +131,7 @@ export function LawsAdmin() {
             href="/admin/rules/regulatory"
             className="font-medium text-primary underline-offset-2 hover:underline"
           >
-            ルールブック設定
+            ルールブック管理
           </Link>
           から市を開き、「自治体ルール設定」で行ってください。この画面は主導線からは外しています。
         </AlertDescription>
@@ -140,7 +140,7 @@ export function LawsAdmin() {
       <PurposeGuide
         purpose="法令・通知のメタ情報を任意で整理する画面です。チェックや更新監視には必須ではありません。"
         steps={[
-          "日常は市ルールブックで参照URLを管理",
+          "日常は市ルールブックで公開情報を管理",
           "必要ならここでメタ情報を追加",
           "保存",
         ]}

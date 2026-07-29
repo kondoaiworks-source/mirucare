@@ -66,7 +66,7 @@ function resolveMonitorUrl(source: Pick<
 }
 
 /**
- * 参照URL（rule_sources）から行政ルール台帳を確保し、PDFなら初回同期する。
+ * 公開情報（rule_sources）から公開情報監視を確保し、PDFなら初回同期する。
  * 既に knowledge_document_id があれば再利用。同一 source_url の台帳があれば紐付ける。
  */
 export async function ensureKnowledgeDocumentFromRuleSource(
@@ -102,7 +102,7 @@ export async function ensureKnowledgeDocumentFromRuleSource(
       created: false,
       synced: false,
       monitoringReady: false,
-      message: "参照URLが見つかりませんでした。",
+      message: "公開情報が見つかりませんでした。",
     }
   }
 
@@ -204,7 +204,7 @@ export async function ensureKnowledgeDocumentFromRuleSource(
           synced: false,
           monitoringReady: false,
           message:
-            "行政ルール台帳の自動作成に失敗しました。監視トラブルから「行政ルール台帳」を開いて登録してください。",
+            "公開情報監視の自動作成に失敗しました。監視トラブルから「公開情報監視」を開いて登録してください。",
         }
       }
       documentId = inserted.id as string
@@ -224,7 +224,7 @@ export async function ensureKnowledgeDocumentFromRuleSource(
       synced: false,
       monitoringReady: false,
       message: created
-        ? "参照URLを台帳に登録しました。PDFの直リンクがあると自動監視が始まります。"
+        ? "公開情報を台帳に登録しました。PDFの直リンクがあると自動監視が始まります。"
         : "台帳と紐付けました。PDFの直リンクがあると自動監視が始まります。",
     }
   }
@@ -261,8 +261,8 @@ export async function ensureKnowledgeDocumentFromRuleSource(
     monitoringReady: true,
     message: synced
       ? created
-        ? "参照URLを登録し、行政ルール台帳の監視を開始しました。"
-        : "行政ルール台帳の監視を更新しました。"
+        ? "公開情報を登録し、公開情報監視の監視を開始しました。"
+        : "公開情報監視の監視を更新しました。"
       : `台帳は用意しましたが、初回取得に問題があります（${syncResult.message}）。監視トラブルの「同期の結果」でご確認ください。`,
   }
 }

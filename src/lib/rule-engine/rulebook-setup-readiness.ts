@@ -235,36 +235,36 @@ export function buildRulebookSetupReadiness(
     {
       id: "referenceUrls",
       order: 2,
-      label: "参照URLを登録する（国・県・市）",
+      label: "公開情報を登録する（国・県・市）",
       description:
         "運営指導マニュアル等の公式URLを、国・神奈川県・各市のルールブックに登録します。",
       howTo: [
-        "下の「国・県・市の参照URL」表で未登録の層がないか確認する",
-        "各市ルールブック → 自治体ルール設定 → 参照URLを追加する",
-        "PDF直リンクがあれば行政ルール台帳の自動監視が始まります",
-        "横断確認は参照URL一覧（監視トラブル）でも可能です",
+        "下の「国・県・市の公開情報」表で未登録の層がないか確認する",
+        "各市ルールブック → 自治体ルール設定 → 公開情報を追加する",
+        "PDF直リンクがあれば公開情報監視の自動監視が始まります",
+        "横断確認は公開情報一覧（監視トラブル）でも可能です",
       ],
       href: "/admin/rules/regulatory/yokohama",
       actionLabel: "横浜市ルールブックを開く（例）",
       done: allSharedDone && allCitySources,
       required: true,
       detail: allSharedDone && allCitySources
-        ? "国・県・5市すべてに参照URLがあります"
+        ? "国・県・5市すべてに公開情報があります"
         : `国 ${input.nationalSourceUrlCount}件 / 県 ${input.prefectureSourceUrlCount}件 / 市未登録 ${cities.filter((c) => c.sourceUrlCount === 0).length}件`,
     },
     {
       id: "documents",
       order: 3,
-      label: "資料を行政ルール台帳へ載せる",
+      label: "資料を公開情報監視へ載せる",
       description:
-        "参照URLからPDF等が行政ルール台帳に載っているか確認します。載っていないと根拠付きルール案が作れません。",
+        "公開情報からPDF等が公開情報監視に載っているか確認します。載っていないと根拠付きルール案が作れません。",
       howTo: [
-        "参照URL登録後、同期ジョブまたは手動取込で台帳へ反映する",
+        "公開情報登録後、同期ジョブまたは手動取込で台帳へ反映する",
         "国・県・市の表で「資料0件」の行がないか目視する",
         "更新アラート用にはPDF直リンクが必要です",
       ],
       href: "/admin/rules/documents",
-      actionLabel: "行政ルール台帳を開く",
+      actionLabel: "公開情報監視を開く",
       done:
         sharedLayers.every((l) => l.documentCount > 0) &&
         cities.every((c) => c.documentCount > 0),
@@ -299,11 +299,11 @@ export function buildRulebookSetupReadiness(
       order: 5,
       label: "判定ルール案を生成する",
       description:
-        "行政ルール台帳の資料本文から、判定ルール案＋根拠をAIが提案します。了承前はチェックに使われません。",
+        "公開情報監視の資料本文から、判定ルール案＋根拠をAIが提案します。了承前はチェックに使われません。",
       howTo: [
         "市ルールブック → 自治体ルール設定で資料を確認する",
         "「判定ルール案を生成する」を実行する",
-        "生成された案は新ルール判定通知に載ります",
+        "生成された案はルール管理に載ります",
       ],
       href: "/admin/rules/regulatory/yokohama",
       actionLabel: "市ルールブックで案を生成する",
@@ -321,15 +321,15 @@ export function buildRulebookSetupReadiness(
       order: 6,
       label: "判定ルールを了承する",
       description:
-        "新ルール判定通知で根拠を確認し、了承したものだけがチェック基準になります。",
+        "ルール管理で根拠を確認し、了承したものだけがチェック基準になります。",
       howTo: [
-        "新ルール判定通知を開く",
+        "ルール管理を開く",
         "根拠・引用・対象書類を目視確認する",
         "問題なければ了承する",
         "下の「Phase1突合の網羅」ですべて✓になるか確認する",
       ],
       href: "/admin/rules/pending",
-      actionLabel: "新ルール判定通知を開く",
+      actionLabel: "ルール管理を開く",
       done: allPhase1Approved,
       required: true,
       detail: allPhase1Approved
@@ -343,8 +343,8 @@ export function buildRulebookSetupReadiness(
       description:
         "承認待ち・差分・同期アラートを解消し、確定版ルールブックの状態にします。",
       howTo: [
-        "新ルール判定通知の未処理を了承または差し戻す",
-        "自治体ルール変更通知・更新アラートを確認する",
+        "ルール管理の未処理を了承または差し戻す",
+        "公開情報台帳管理・更新アラートを確認する",
         "同期エラーがあれば監視トラブルから対応する",
       ],
       href:
@@ -383,7 +383,7 @@ export function buildRulebookSetupReadiness(
   } else if (!isReady) {
     statusLabel = allPhase1Approved && !allPhase1Evidence ? "要確認" : "準備中"
     statusHint = allPhase1Approved && !allPhase1Evidence
-      ? "ルールは了承済みですが、行政ルール台帳の資料に紐づく根拠が不足している項目があります。市ルールブックから案を再生成してください。"
+      ? "ルールは了承済みですが、公開情報監視の資料に紐づく根拠が不足している項目があります。市ルールブックから案を再生成してください。"
       : "手順の途中です。次のステップから進め、Phase1突合の表で抜け漏れがないか目視してください。"
   } else {
     statusLabel = "完了"

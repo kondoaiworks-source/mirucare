@@ -1,5 +1,5 @@
 /**
- * 行政ルール台帳の資料差分／本文から、チェック用「判定ルール案」を AI が提案する。
+ * 公開情報監視の資料差分／本文から、チェック用「判定ルール案」を AI が提案する。
  * 本番反映は人が承認するまで行わない（提案＝pending_review 前提）。
  */
 
@@ -347,7 +347,7 @@ export function formatProposalChangeSummary(
   sourceTitle: string
 ): string {
   const parts = [
-    proposal.changeSummary || "行政ルール台帳の資料からのAI提案",
+    proposal.changeSummary || "公開情報監視の資料からのAI提案",
     `根拠資料: ${sourceTitle}`,
   ]
   if (proposal.evidenceSummary) {

@@ -29,12 +29,12 @@ const DOC_TYPES: DocType[] = [
 ]
 
 type Props = {
-  /** 登録後に新ルール判定通知へ誘導するとき */
+  /** 登録後にルール管理へ誘導するとき */
   onCreated?: () => void
 }
 
 /**
- * 手入力で判定ルール＋初版を作り、必ず新ルール判定通知へ載せる。
+ * 手入力で判定ルール＋初版を作り、必ずルール管理へ載せる。
  * 市ルールブックのチェックルールから使う。
  */
 export function ManualCheckRuleForm({ onCreated }: Props) {
@@ -91,9 +91,9 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         toast.error(result.error ?? "登録に失敗しました。")
         return
       }
-      toast.success("判定ルールを新ルール判定通知に載せました。", {
+      toast.success("判定ルールをルール管理に載せました。", {
         action: {
-          label: "新ルール判定通知を開く",
+          label: "ルール管理を開く",
           onClick: () => {
             window.location.href = "/admin/rules/pending"
           },
@@ -128,7 +128,7 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         </Select>
         {auditItems.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            監査項目がありません。ルールブック設定の「初回セットアップ」でテンプレートを登録してください。
+            監査項目がありません。ルールブック管理の「初回セットアップ」でテンプレートを登録してください。
           </p>
         ) : null}
       </div>
@@ -221,7 +221,7 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
           {pending ? (
             <Loader2 className="size-4 animate-spin" aria-hidden />
           ) : null}
-          新ルール判定通知に載せる
+          ルール管理に載せる
         </Button>
       </div>
     </form>

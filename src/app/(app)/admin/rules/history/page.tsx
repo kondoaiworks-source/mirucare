@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
-import { RulesHistoryAdmin } from "@/components/features/admin/rules/rules-history-admin"
+import { redirect } from "next/navigation"
 
 export const metadata: Metadata = { title: "更新履歴" }
 
+/** 更新履歴はルール管理ページ内へ集約。旧URL互換。 */
 export default function Page() {
-  return <RulesHistoryAdmin />
+  redirect("/admin/rules/pending#history")
 }

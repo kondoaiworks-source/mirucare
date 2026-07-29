@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 }
 
 /**
- * ルール設定の入口はルールブック設定（市一覧・確定版）。
+ * ルール設定の入口はルールブック管理（市一覧・確定版）。
  * 旧ホームは廃止。
  */
 export default function RulesDashboardPage() {

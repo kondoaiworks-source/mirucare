@@ -23,7 +23,7 @@ export function AdminBreadcrumb({ items }: AdminBreadcrumbProps) {
             className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1.5 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Home className="size-3.5" aria-hidden />
-            ルールブック設定
+            ルールブック管理
           </Link>
         </li>
         {items.map((item) => (

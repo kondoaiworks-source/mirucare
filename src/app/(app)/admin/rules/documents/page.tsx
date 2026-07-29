@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { getPurposeSection } from "@/lib/rule-engine/purpose-sections"
 
 export const metadata: Metadata = {
-  title: "行政ルール台帳",
+  title: "公開情報監視",
 }
 
 export default async function RulesDocumentsPage() {
@@ -25,17 +25,17 @@ export default async function RulesDocumentsPage() {
           <AdminBreadcrumb
             items={[
               {
-                label: "ルールブック設定",
+                label: "ルールブック管理",
                 href: "/admin/rules/regulatory",
               },
-              { label: "行政ルール台帳" },
+              { label: "公開情報監視" },
             ]}
           />
           <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-            行政ルール台帳
+            公開情報監視
           </h1>
           <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            監視状況の確認と、例外時の台帳手動登録です。参照URLの登録は市ルールブックの自治体ルール設定で行ってください。
+            監視状況の確認と、例外時の台帳手動登録です。公開情報の登録は市ルールブックの自治体ルール設定で行ってください。
           </p>
         </div>
         <Button asChild variant="outline" className="relative min-h-11">

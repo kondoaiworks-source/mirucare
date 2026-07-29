@@ -44,7 +44,7 @@ export type ActionResult<T = undefined> = {
 
 function revalidateRules(path?: string) {
   revalidatePath("/admin/rules")
-  // 市ルールブック（国＋県＋市の合成ビュー）も参照URL・台帳変更で更新する
+  // 市ルールブック（国＋県＋市の合成ビュー）も公開情報・台帳変更で更新する
   revalidatePath("/admin/rules/regulatory", "layout")
   if (path) revalidatePath(path)
 }
@@ -558,7 +558,7 @@ export async function createMunicipalitySourceUrlAction(input: {
       ok: false,
       error: error
         ? toUserErrorMessage(error)
-        : "参照URLの登録に失敗しました。",
+        : "公開情報の登録に失敗しました。",
     }
   }
 
@@ -582,7 +582,7 @@ export async function createMunicipalitySourceUrlAction(input: {
 }
 
 /**
- * 参照URLを一覧から外す（論理削除＝archived）。
+ * 公開情報を一覧から外す（論理削除＝archived）。
  * 市ルールブックの自治体ルール設定から使う。
  */
 export async function archiveRuleSourceUrlAction(input: {
@@ -1111,7 +1111,7 @@ export async function createAiCheckRuleWithVersionAction(input: {
   effectiveFrom: string
   changeSummary?: string
   submitForReview: boolean
-  /** 行政ルール台帳の変更ドラフトから起こした場合の紐付け */
+  /** 公開情報監視の変更ドラフトから起こした場合の紐付け */
   knowledgeChangeDraftId?: string
 }): Promise<ActionResult> {
   const op = await requireOperator()

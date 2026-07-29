@@ -76,7 +76,7 @@ type EditDraft = {
 }
 
 /**
- * 市ルールブック「自治体ルール設定」内で、国／県／市の参照URLを
+ * 市ルールブック「自治体ルール設定」内で、国／県／市の公開情報を
  * 追加・修正・削除（無効化）する。
  */
 export function CityRulebookSourcesPanel({
@@ -133,11 +133,11 @@ export function CityRulebookSourcesPanel({
         return
       }
       const monitorMessage =
-        result.data?.monitorMessage ?? "参照URLを追加しました。"
+        result.data?.monitorMessage ?? "公開情報を追加しました。"
       toast.success(monitorMessage, {
         description: result.data?.monitoringReady
           ? "以降の変更は自動で監視します。差分があれば更新アラートに出ます。"
-          : "PDFの直リンクを入れると自動監視が始まります。",
+          : "公開情報PDFの直リンクを入れると自動監視が始まります。",
         duration: 10000,
       })
       setNewTitle("")
@@ -164,7 +164,7 @@ export function CityRulebookSourcesPanel({
         toast.error(result.error ?? "保存に失敗しました。")
         return
       }
-      toast.success("参照URLを更新しました。")
+      toast.success("公開情報を更新しました。")
       setEditing(null)
       refresh()
     })
@@ -196,17 +196,17 @@ export function CityRulebookSourcesPanel({
         toast.error(result.error ?? "削除に失敗しました。")
         return
       }
-      toast.success("参照URLを一覧から外しました。")
+      toast.success("公開情報を一覧から外しました。")
       if (editing?.id === source.id) setEditing(null)
       refresh()
     })
   }
 
   return (
-    <section className="space-y-3" aria-label={`${layerLabel}の参照URL`}>
+    <section className="space-y-3" aria-label={`${layerLabel}の公開情報`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-base font-semibold text-primary-dark">
-          参照URL（{LAYER_BADGE[layer]}）
+          公開情報（{LAYER_BADGE[layer]}）
         </p>
         <Button
           type="button"
@@ -226,7 +226,7 @@ export function CityRulebookSourcesPanel({
           ) : (
             <>
               <Plus className="size-4" aria-hidden />
-              参照URLを追加する
+              公開情報を追加する
             </>
           )}
         </Button>
@@ -254,10 +254,10 @@ export function CityRulebookSourcesPanel({
         <Card className="rounded-xl border-primary/20 bg-primary/[0.02] shadow-subtle">
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg text-primary-dark">
-              {layerLabel}の参照URLを追加
+              {layerLabel}の公開情報を追加
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              公式ページまたはPDFのURLを登録します。チェックに使う判定ルールは「判定ルール案を生成→了承」が必要です。
+              公式の公開情報PDF（直リンク）または公開情報リンク（HTML）を登録します。チェックに使うルールは「判定ルール案を生成→了承」が必要です。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -298,7 +298,7 @@ export function CityRulebookSourcesPanel({
             </div>
             <div className="space-y-2">
               <Label htmlFor={`new-parent-url-${layer}`}>
-                公式ページURL（一覧ページ可）
+                公開情報リンク（HTML・一覧ページ可）
               </Label>
               <Input
                 id={`new-parent-url-${layer}`}
@@ -315,7 +315,7 @@ export function CityRulebookSourcesPanel({
             </div>
             <div className="space-y-2">
               <Label htmlFor={`new-direct-url-${layer}`}>
-                PDFなどの直接URL（自動監視用・推奨）
+                公開情報PDF（直接URL・自動監視用・推奨）
               </Label>
               <Input
                 id={`new-direct-url-${layer}`}
@@ -348,7 +348,7 @@ export function CityRulebookSourcesPanel({
               disabled={pending || !newTitle.trim()}
               onClick={onCreate}
             >
-              {layerLabel}の参照URLに追加する
+              {layerLabel}の公開情報に追加する
             </Button>
           </CardContent>
         </Card>
@@ -356,7 +356,7 @@ export function CityRulebookSourcesPanel({
 
       {sources.length === 0 && !showAdd ? (
         <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-4 text-base text-muted-foreground">
-          まだ参照URLがありません。「参照URLを追加する」から入れてください。
+          まだ公開情報がありません。「公開情報を追加する」から入れてください。
         </p>
       ) : (
         <ul className="space-y-2">
@@ -420,7 +420,7 @@ export function CityRulebookSourcesPanel({
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor={`edit-parent-${s.id}`}>
-                          公式ページURL（一覧ページ可）
+                          公開情報リンク（HTML・一覧ページ可）
                         </Label>
                         <Input
                           id={`edit-parent-${s.id}`}
@@ -438,7 +438,7 @@ export function CityRulebookSourcesPanel({
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor={`edit-direct-${s.id}`}>
-                          PDFなどの直接URL（自動監視用・推奨）
+                          公開情報PDF（直接URL・自動監視用・推奨）
                         </Label>
                         <Input
                           id={`edit-direct-${s.id}`}

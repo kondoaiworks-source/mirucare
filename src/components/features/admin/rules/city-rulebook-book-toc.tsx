@@ -33,8 +33,8 @@ function documentEditHref(opts: { citySlug: string; layer: string }) {
 }
 
 /**
- * 根拠（参照URL・行政ルール台帳）を国→県→市の折りたたみ一覧にまとめる。
- * 参照URLの追加・修正・削除は各レイヤ内で完結する。
+ * 根拠（公開情報・公開情報監視）を国→県→市の折りたたみ一覧にまとめる。
+ * 公開情報の追加・修正・削除は各レイヤ内で完結する。
  */
 export function CityRulebookBookToc({ data }: Props) {
   const { city, layerJurisdictions, sources, documents } = data
@@ -44,12 +44,12 @@ export function CityRulebookBookToc({ data }: Props) {
       headingId="book-toc-heading"
       icon={<BookMarked className="size-5" aria-hidden />}
       title="自治体ルール設定"
-      countLabel={`（参照URL ${sources.length}／行政ルール台帳 ${documents.length}）`}
+      countLabel={`（公開情報 ${sources.length}／公開情報監視 ${documents.length}）`}
       description="ルールブックの元になる国・県・市で公開している情報へのリンク先を設定してください。"
       action={
         <Button asChild variant="outline" className="min-h-11">
           <Link href={`/admin/rules/documents?city=${city.slug}`}>
-            行政ルール台帳を開く
+            公開情報監視を開く
           </Link>
         </Button>
       }
@@ -90,11 +90,11 @@ export function CityRulebookBookToc({ data }: Props) {
 
                 <div className="space-y-3 border-t border-border pt-4">
                   <p className="text-base font-semibold text-primary-dark">
-                    行政ルール台帳
+                    公開情報監視
                   </p>
                   {layerDocuments.length === 0 ? (
                     <p className="text-base text-muted-foreground">
-                      台帳上の資料はありません。参照URLにPDF直リンクを入れると自動で載ります。
+                      台帳上の資料はありません。公開情報PDF（直リンク）を入れると自動で載ります。
                     </p>
                   ) : (
                     <ul className="space-y-2">

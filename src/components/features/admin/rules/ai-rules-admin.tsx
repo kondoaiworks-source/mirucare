@@ -84,7 +84,7 @@ export function AiRulesAdmin({
           判定ルール一覧
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          登録済みルールの一覧です。新規追加・了承は市のルールブックと新ルール判定通知から行います。
+          登録済みルールの一覧です。新規追加・了承は市のルールブックとルール管理から行います。
         </p>
       </div>
 
@@ -98,19 +98,19 @@ export function AiRulesAdmin({
               href="/admin/rules/regulatory"
               className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
             >
-              ルールブック設定
+              ルールブック管理
             </Link>
             と
             <Link
               href="/admin/rules/pending"
               className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
             >
-              新ルール判定通知
+              ルール管理
             </Link>
             で行ってください。
           </p>
           <Button asChild variant="outline" size="sm" className="min-h-11">
-            <Link href="/admin/rules/regulatory">ルールブック設定を開く</Link>
+            <Link href="/admin/rules/regulatory">ルールブック管理を開く</Link>
           </Button>
         </AlertDescription>
       </Alert>
@@ -120,7 +120,7 @@ export function AiRulesAdmin({
           <AlertTriangle className="text-warning" />
           <AlertTitle>台帳反映あとの次ステップ</AlertTitle>
           <AlertDescription className="text-base leading-relaxed">
-            市ルールブックの「新ルール判定」または更新アラートから「判定ルール案を生成する」を実行し、新ルール判定通知で了承してください。
+            市ルールブックの「新ルール判定」または更新アラートから「判定ルール案を生成する」を実行し、ルール管理で了承してください。
           </AlertDescription>
         </Alert>
       ) : null}
@@ -191,7 +191,7 @@ export function AiRulesAdmin({
               {rules.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-muted-foreground">
-                    まだルールがありません。ルールブック設定の初回セットアップ、または市画面から追加してください。
+                    まだルールがありません。ルールブック管理の初回セットアップ、または市画面から追加してください。
                   </TableCell>
                 </TableRow>
               ) : null}

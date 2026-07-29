@@ -449,10 +449,10 @@ export function KnowledgeDocumentsAdmin(props?: {
       {hidePageHeader ? null : (
         <div>
           <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-            行政ルール台帳
+            公開情報監視
           </h1>
           <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-            参照URLと連携した行政マニュアルの監視結果を確認し、必要なら手動で台帳登録します。
+            公開情報と連携した行政マニュアルの監視結果を確認し、必要なら手動で台帳登録します。
           </p>
         </div>
       )}
@@ -955,7 +955,7 @@ export function KnowledgeDocumentsAdmin(props?: {
           <div>
             <h2 className="text-lg font-bold text-primary-dark">登録済み台帳</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              行政ルール台帳の対象マニュアルです。同期結果と監視URLを確認できます。
+              公開情報監視の対象マニュアルです。同期結果と監視URLを確認できます。
             </p>
           </div>
           <Button

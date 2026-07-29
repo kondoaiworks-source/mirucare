@@ -29,11 +29,11 @@ export default async function AdminDocumentChangesPage() {
             variant="destructive"
             className="h-8 rounded-lg px-3 text-sm tabular-nums"
           >
-            新ルール判定通知 {count}件
+            ルール管理 {count}件
           </Badge>
         ) : null}
         <Button asChild variant="outline">
-          <Link href="/admin/rules/documents">行政ルール台帳</Link>
+          <Link href="/admin/rules/documents">公開情報監視</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/admin">レビューコンソール</Link>

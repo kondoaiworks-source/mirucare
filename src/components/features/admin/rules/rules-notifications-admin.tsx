@@ -66,12 +66,12 @@ export function RulesNotificationsAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <AdminBreadcrumb items={[{ label: "自治体ルール変更通知" }]} />
+        <AdminBreadcrumb items={[{ label: "公開情報台帳管理" }]} />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark">
-          自治体ルール変更通知
+          公開情報台帳管理
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          自治体ルールの変更を感知して差分承認の依頼を通知します。詳細確認・承認は差分承認画面で行います。
+          公開情報の変更を感知して台帳反映の承認を依頼します。詳細確認・承認は差分承認画面で行います。
         </p>
       </div>
 
@@ -86,7 +86,7 @@ export function RulesNotificationsAdmin() {
       <Card className="rounded-xl shadow-subtle">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
           <div>
-            <CardTitle className="text-lg">自治体ルール変更の一覧</CardTitle>
+            <CardTitle className="text-lg">公開情報変更の一覧</CardTitle>
             <CardDescription className="text-base">
               詳細確認・承認は差分承認画面で行います。
             </CardDescription>

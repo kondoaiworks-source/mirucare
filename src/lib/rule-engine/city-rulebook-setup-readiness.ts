@@ -138,9 +138,9 @@ export function buildCityRulebookSetupReadiness(
     {
       id: "sources",
       order: 1,
-      label: "参照URLを登録する（国・県・市）",
+      label: "公開情報を登録する（国・県・市）",
       description:
-        "下の「自治体ルール設定」で、国・神奈川県・この市の参照URLを追加します。",
+        "下の「自治体ルール設定」で、国・神奈川県・この市の公開情報を追加します。",
       done:
         input.nationalSourceCount > 0 &&
         input.prefectureSourceCount > 0 &&
@@ -151,9 +151,9 @@ export function buildCityRulebookSetupReadiness(
     {
       id: "documents",
       order: 2,
-      label: "資料を行政ルール台帳へ載せる",
+      label: "資料を公開情報監視へ載せる",
       description:
-        "参照URLのPDFが行政ルール台帳に載っているか確認します。",
+        "公開情報のPDFが公開情報監視に載っているか確認します。",
       done:
         input.nationalDocumentCount > 0 &&
         input.prefectureDocumentCount > 0 &&
@@ -193,7 +193,7 @@ export function buildCityRulebookSetupReadiness(
       order: 5,
       label: "判定ルールを了承する",
       description:
-        "新ルール判定通知で根拠を確認し、了承します。",
+        "ルール管理で根拠を確認し、了承します。",
       done: phase1Approved === phase1Total,
       detail: `了承済み ${phase1Approved}/${phase1Total}`,
       anchorId: "check-rules-heading",

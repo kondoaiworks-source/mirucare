@@ -206,7 +206,7 @@ export function SetupReadinessPanel({ readiness }: SetupReadinessPanelProps) {
               </p>
               <p className="text-base leading-relaxed text-muted-foreground">
                 本サービスはWチェック支援です。最終判断・提出は貴施設の責任で行ってください。
-                法改正時は「ルールブック設定」の更新アラートをご確認ください。
+                法改正時は「ルールブック管理」の更新アラートをご確認ください。
               </p>
             </div>
           )}

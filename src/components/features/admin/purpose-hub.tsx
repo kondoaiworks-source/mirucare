@@ -12,7 +12,7 @@ import {
 
 type PurposeHubProps = {
   section: PurposeSection
-  /** 見出し・ガイドを出さずリンク一覧だけ（ルールブック設定ハブ向け） */
+  /** 見出し・ガイドを出さずリンク一覧だけ（ルールブック管理ハブ向け） */
   linksOnly?: boolean
 }
 

@@ -146,7 +146,7 @@ export function DocumentChangesAdmin() {
       }
       toast.success("台帳に反映しました", {
         description:
-          "続けて「判定ルール案を生成する」と、差分からチェック用ルール案が新ルール判定通知に載ります。",
+          "続けて「判定ルール案を生成する」と、差分からチェック用ルール案がルール管理に載ります。",
         duration: 10000,
       })
       setReasons((prev) => {
@@ -172,11 +172,11 @@ export function DocumentChangesAdmin() {
         return
       }
       toast.success(
-        `判定ルール案を ${result.data?.createdCount ?? 0}件、新ルール判定通知に載せました。`,
+        `判定ルール案を ${result.data?.createdCount ?? 0}件、ルール管理に載せました。`,
         {
           description: "了承するまで書類チェックには使われません。",
           action: {
-            label: "新ルール判定通知を開く",
+            label: "ルール管理を開く",
             onClick: () => {
               window.location.href = "/admin/rules/pending"
             },
@@ -216,10 +216,10 @@ export function DocumentChangesAdmin() {
             マニュアル変更の承認
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
-            監視で検知した変更を確認し、問題なければ<strong>行政ルール台帳</strong>
+            監視で検知した変更を確認し、問題なければ<strong>公開情報監視</strong>
             へ反映します。チェック用の判定ルールは、差分から
             <strong>判定ルール案を生成</strong>
-            し、新ルール判定通知で了承してから使います。
+            し、ルール管理で了承してから使います。
           </p>
           {cityFromQuery ? (
             <p className="text-base font-medium text-primary">
@@ -275,13 +275,13 @@ export function DocumentChangesAdmin() {
         <AlertTitle>辞書反映は2段階です</AlertTitle>
         <AlertDescription className="space-y-2 text-base leading-relaxed">
           <p>
-            ①この画面の承認＝行政ルール台帳の<strong>版履歴</strong>への反映。
+            ①この画面の承認＝公開情報監視の<strong>版履歴</strong>への反映。
             ②チェック用の判定ルールは「判定ルール案を生成する」→
-            <strong>新ルール判定通知</strong>
+            <strong>ルール管理</strong>
             で了承して初めて使われます（自動では載りません）。
           </p>
           <Button asChild variant="outline" className="min-h-11">
-            <Link href="/admin/rules/pending">新ルール判定通知を開く</Link>
+            <Link href="/admin/rules/pending">ルール管理を開く</Link>
           </Button>
         </AlertDescription>
       </Alert>
@@ -524,7 +524,7 @@ export function DocumentChangesAdmin() {
                       判定ルール案を生成する
                     </Button>
                     <Button asChild size="lg" variant="ghost" className="min-h-11">
-                      <Link href="/admin/rules/pending">新ルール判定通知を開く</Link>
+                      <Link href="/admin/rules/pending">ルール管理を開く</Link>
                     </Button>
                     <Button asChild size="lg" variant="ghost" className="min-h-11">
                       <Link

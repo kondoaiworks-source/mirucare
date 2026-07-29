@@ -16,7 +16,7 @@ type Props = {
 
 /**
  * 市ルールブック：①チェックルール → ②新ルール判定 → ③自治体ルール設定。
- * 件数カードや参照URL／資料の二重一覧は出さない。
+ * 件数カードや公開情報／資料の二重一覧は出さない。
  */
 export function CityRulebookView({ data }: Props) {
   const { city } = data
@@ -26,7 +26,7 @@ export function CityRulebookView({ data }: Props) {
       <div>
         <AdminBreadcrumb
           items={[
-            { label: "ルールブック設定", href: "/admin/rules/regulatory" },
+            { label: "ルールブック管理", href: "/admin/rules/regulatory" },
             { label: `${city.name}ルールブック` },
           ]}
         />

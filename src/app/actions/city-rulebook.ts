@@ -71,7 +71,7 @@ export type CityRulebookCheckRule = {
   auditItemTitle: string | null
   sourceDocumentId: string | null
   sourceDocumentTitle: string | null
-  /** 原本（行政ルール台帳の資料）の公開URL */
+  /** 原本（公開情報監視の資料）の公開URL */
   sourceDocumentUrl: string | null
   evidenceSummary: string | null
   evidenceQuotes: string[]
@@ -87,7 +87,7 @@ export type CityRulebookLayerJurisdiction = {
 export type CityRulebookData = {
   city: Phase1City
   jurisdiction: RuleJurisdiction
-  /** 国・県・市の管轄（参照URLの追加先） */
+  /** 国・県・市の管轄（公開情報の追加先） */
   layerJurisdictions: {
     national: CityRulebookLayerJurisdiction | null
     prefecture: CityRulebookLayerJurisdiction | null

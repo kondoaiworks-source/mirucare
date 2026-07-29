@@ -1,6 +1,6 @@
 import type { KnowledgeDocument, KnowledgeSyncAlert } from "@/types/database"
 
-/** 行政ルール台帳の一覧表示用結果 */
+/** 公開情報監視の一覧表示用結果 */
 export type LinkageMonitorResult = "ok" | "ng" | "diff"
 
 export type LinkageMonitorEvent = {

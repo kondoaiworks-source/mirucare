@@ -166,8 +166,8 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
           {isAdditions
-            ? "加算の算定条件と必要書類を確認・編集します（任意）。日常操作はルールブック設定側です。"
-            : "運営指導で確認されやすい項目を登録します。初回はルールブック設定のセットアップから登録できます。"}
+            ? "加算の算定条件と必要書類を確認・編集します（任意）。日常操作はルールブック管理側です。"
+            : "運営指導で確認されやすい項目を登録します。初回はルールブック管理のセットアップから登録できます。"}
         </p>
       </div>
 

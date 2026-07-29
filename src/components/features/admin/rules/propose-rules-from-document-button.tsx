@@ -12,7 +12,7 @@ type Props = {
 }
 
 /**
- * 行政ルール台帳の資料本文から判定ルール案を生成し、承認待ちへ載せる。
+ * 公開情報監視の資料本文から判定ルール案を生成し、承認待ちへ載せる。
  */
 export function ProposeRulesFromDocumentButton({
   knowledgeDocumentId,
@@ -36,11 +36,11 @@ export function ProposeRulesFromDocumentButton({
         return
       }
       toast.success(
-        `「${documentTitle}」から判定ルール案を ${result.data?.createdCount ?? 0}件、新ルール判定通知に載せました。`,
+        `「${documentTitle}」から判定ルール案を ${result.data?.createdCount ?? 0}件、ルール管理に載せました。`,
         {
           description: "了承するまで書類チェックには使われません。",
           action: {
-            label: "新ルール判定通知を開く",
+            label: "ルール管理を開く",
             onClick: () => {
               window.location.href = "/admin/rules/pending"
             },
