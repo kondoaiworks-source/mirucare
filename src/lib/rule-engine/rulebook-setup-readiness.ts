@@ -1,14 +1,4 @@
 import {
-  Bot,
-  CheckCircle2,
-  ClipboardList,
-  FileText,
-  Link2,
-  MapPin,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react"
-import {
   getPhase1ExpectedRules,
   getPhase1OperationCheckMeta,
 } from "@/lib/rule-engine/phase1-rule-groups"
@@ -38,7 +28,6 @@ export type RulebookSetupStep = {
   done: boolean
   required: boolean
   detail: string
-  icon: LucideIcon
 }
 
 export type Phase1RuleCoverageRow = {
@@ -242,7 +231,6 @@ export function buildRulebookSetupReadiness(
         input.supportedMunicipalityCount >= PHASE1_CITIES.length
           ? `対応中 ${input.supportedMunicipalityCount}市（Phase1 ${PHASE1_CITIES.length}市）`
           : `対応中 ${input.supportedMunicipalityCount}市 — Phase1は${PHASE1_CITIES.length}市必要`,
-      icon: MapPin,
     },
     {
       id: "referenceUrls",
@@ -263,7 +251,6 @@ export function buildRulebookSetupReadiness(
       detail: allSharedDone && allCitySources
         ? "国・県・5市すべてに参照URLがあります"
         : `国 ${input.nationalSourceUrlCount}件 / 県 ${input.prefectureSourceUrlCount}件 / 市未登録 ${cities.filter((c) => c.sourceUrlCount === 0).length}件`,
-      icon: Link2,
     },
     {
       id: "documents",
@@ -287,7 +274,6 @@ export function buildRulebookSetupReadiness(
         cities.every((c) => c.documentCount > 0)
           ? "国・県・5市すべてに資料があります"
           : `国 ${input.nationalDocumentCount}件 / 県 ${input.prefectureDocumentCount}件 / 資料0の市 ${cities.filter((c) => c.documentCount === 0).length}件`,
-      icon: FileText,
     },
     {
       id: "auditItems",
@@ -307,7 +293,6 @@ export function buildRulebookSetupReadiness(
       detail: allCitiesAuditReady
         ? `Phase1必要 ${PHASE1_AUDIT_CODES.length}件の監査項目コードが登録済み`
         : `監査項目 ${registeredAuditSet.size}件 — Phase1コード不足あり（下表を確認）`,
-      icon: ClipboardList,
     },
     {
       id: "generateRules",
@@ -330,7 +315,6 @@ export function buildRulebookSetupReadiness(
           : phase1RuleApproved > 0
             ? `了承済み ${phase1RuleApproved}件 — 不足ルールがあれば追加生成してください`
             : "まだ判定ルール案がありません",
-      icon: Sparkles,
     },
     {
       id: "approveRules",
@@ -351,7 +335,6 @@ export function buildRulebookSetupReadiness(
       detail: allPhase1Approved
         ? `Phase1向け ${phase1RuleTotal}件すべて了承済み`
         : `了承済み ${phase1RuleApproved}/${phase1RuleTotal} — 未了承 ${phase1RuleTotal - phase1RuleApproved}件`,
-      icon: Bot,
     },
     {
       id: "clearQueue",
@@ -375,7 +358,6 @@ export function buildRulebookSetupReadiness(
         queueCount === 0
           ? "確認待ちの案件はありません"
           : `確認待ち合計 ${queueCount}件（承認待ち ${input.pendingVersionCount} / 差分 ${input.pendingKnowledgeDraftCount} / 同期 ${input.openSyncAlertCount}）`,
-      icon: CheckCircle2,
     },
   ]
 

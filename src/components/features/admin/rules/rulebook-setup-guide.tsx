@@ -7,7 +7,10 @@ import { toast } from "sonner"
 import {
   seedPhase1RulebookBasicsAction,
 } from "@/app/actions/rule-engine"
-import type { RulebookSetupReadiness } from "@/lib/rule-engine/rulebook-setup-readiness"
+import type {
+  RulebookSetupReadiness,
+  RulebookSetupStepId,
+} from "@/lib/rule-engine/rulebook-setup-readiness"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,17 +22,34 @@ import {
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import {
+  Bot,
   Check,
   CheckCircle2,
   ChevronDown,
   Circle,
+  ClipboardList,
   ExternalLink,
+  FileText,
+  Link2,
   ListChecks,
   Loader2,
+  MapPin,
   Minus,
   RefreshCw,
+  Sparkles,
   X,
+  type LucideIcon,
 } from "lucide-react"
+
+const STEP_ICONS: Record<RulebookSetupStepId, LucideIcon> = {
+  jurisdictions: MapPin,
+  referenceUrls: Link2,
+  documents: FileText,
+  auditItems: ClipboardList,
+  generateRules: Sparkles,
+  approveRules: Bot,
+  clearQueue: CheckCircle2,
+}
 
 type RulebookSetupGuideProps = {
   readiness: RulebookSetupReadiness
@@ -184,7 +204,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
           </h3>
           <ol className="space-y-4">
             {steps.map((step) => {
-              const Icon = step.icon
+              const Icon = STEP_ICONS[step.id]
               return (
                 <li
                   key={step.id}
