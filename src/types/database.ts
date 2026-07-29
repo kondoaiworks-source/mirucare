@@ -441,6 +441,18 @@ export type RuleSource = {
 
 export type RuleSetStatus = "draft" | "active" | "retired"
 
+/** サービス×自治体のルールブック公開カタログ */
+export type RulebookOffering = {
+  id: string
+  service_type: ServiceType
+  jurisdiction_id: string
+  is_published: boolean
+  published_at: string | null
+  unpublished_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type RuleSet = {
   id: string
   jurisdiction_id: string

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
   Building2,
@@ -11,7 +11,9 @@ import {
   FileCheck2,
 } from "lucide-react"
 import { completeOnboardingAction } from "@/app/actions/auth"
-import { SERVICE_TYPE_OPTIONS, municipalitiesForOnboarding } from "@/lib/municipalities"
+import { getPublishedRulebookCatalogAction } from "@/app/actions/rulebook-offerings"
+import { SERVICE_TYPE_OPTIONS } from "@/lib/municipalities"
+import type { PublishedCatalog } from "@/lib/rule-engine/offerings"
 import type { ServiceType } from "@/types/database"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,17 +38,38 @@ export function OnboardingWizard() {
   const [serviceType, setServiceType] = useState<ServiceType | null>(null)
   const [municipality, setMunicipality] = useState("")
   const [municipalityQuery, setMunicipalityQuery] = useState("")
+  const [catalog, setCatalog] = useState<PublishedCatalog | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   const progress = (step / TOTAL_STEPS) * 100
 
+  useEffect(() => {
+    void (async () => {
+      const result = await getPublishedRulebookCatalogAction()
+      if (!result.ok || !result.data) {
+        setError(
+          result.error ??
+            "公開中のサービス・自治体を取得できませんでした。しばらくしてから再度お試しください。"
+        )
+        return
+      }
+      setCatalog(result.data)
+    })()
+  }, [])
+
+  const serviceOptions = useMemo(() => {
+    const published = new Set(catalog?.services ?? [])
+    return SERVICE_TYPE_OPTIONS.filter((o) => published.has(o.value))
+  }, [catalog])
+
   const filteredMunicipalities = useMemo(() => {
+    if (!serviceType || !catalog) return []
+    const list = catalog.municipalitiesByService[serviceType] ?? []
     const q = municipalityQuery.trim()
-    const list = municipalitiesForOnboarding()
-    if (!q) return list.slice(0, 12)
-    return list.filter((m) => m.label.includes(q)).slice(0, 20)
-  }, [municipalityQuery])
+    if (!q) return list
+    return list.filter((m) => m.label.includes(q) || m.name.includes(q))
+  }, [catalog, serviceType, municipalityQuery])
 
   function goNextFromStep1() {
     setError(null)
@@ -62,6 +85,8 @@ export function OnboardingWizard() {
       )
       return
     }
+    setMunicipality("")
+    setMunicipalityQuery("")
     setStep(2)
   }
 
@@ -112,7 +137,7 @@ export function OnboardingWizard() {
                 事業所を登録する
               </h1>
               <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-                事業所名と、主なサービス種別を選んでください。
+                事業所名と、公開中のサービス種別を選んでください。
               </p>
             </div>
 
@@ -130,45 +155,53 @@ export function OnboardingWizard() {
 
             <fieldset className="space-y-3">
               <legend className="text-sm font-medium">サービス種別</legend>
-              <div className="grid gap-3">
-                {SERVICE_TYPE_OPTIONS.map((option) => {
-                  const Icon = ICONS[option.icon as keyof typeof ICONS]
-                  const selected = serviceType === option.value
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setServiceType(option.value)}
-                      className={cn(
-                        "flex min-h-[72px] items-start gap-3 rounded-lg border bg-background p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                        selected
-                          ? "border-primary bg-primary/5 ring-1 ring-primary"
-                          : "border-border hover:bg-muted/60"
-                      )}
-                      aria-pressed={selected}
-                    >
-                      <span
+              {!catalog ? (
+                <p className="text-base text-muted-foreground">読み込み中…</p>
+              ) : serviceOptions.length === 0 ? (
+                <p className="text-base text-muted-foreground">
+                  現在選べるサービスがありません。運営による公開設定をお待ちください。
+                </p>
+              ) : (
+                <div className="grid gap-3">
+                  {serviceOptions.map((option) => {
+                    const Icon = ICONS[option.icon as keyof typeof ICONS]
+                    const selected = serviceType === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setServiceType(option.value)}
                         className={cn(
-                          "flex size-11 shrink-0 items-center justify-center rounded-lg",
+                          "flex min-h-[72px] items-start gap-3 rounded-lg border bg-background p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                           selected
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-surface text-primary"
+                            ? "border-primary bg-primary/5 ring-1 ring-primary"
+                            : "border-border hover:bg-muted/60"
                         )}
+                        aria-pressed={selected}
                       >
-                        <Icon className="size-5" aria-hidden />
-                      </span>
-                      <span>
-                        <span className="block text-base font-semibold text-foreground">
-                          {option.title}
+                        <span
+                          className={cn(
+                            "flex size-11 shrink-0 items-center justify-center rounded-lg",
+                            selected
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-surface text-primary"
+                          )}
+                        >
+                          <Icon className="size-5" aria-hidden />
                         </span>
-                        <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">
-                          {option.description}
+                        <span>
+                          <span className="block text-base font-semibold text-foreground">
+                            {option.title}
+                          </span>
+                          <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">
+                            {option.description}
+                          </span>
                         </span>
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </fieldset>
           </section>
         ) : null}
@@ -180,7 +213,7 @@ export function OnboardingWizard() {
                 所在地の自治体を選ぶ
               </h1>
               <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-                実地指導（運営指導）のローカル基準の参考に使います。
+                公開中の自治体から選びます。実地指導（運営指導）のローカル基準の参考に使います。
               </p>
             </div>
 
@@ -190,32 +223,38 @@ export function OnboardingWizard() {
                 id="municipality-search"
                 value={municipalityQuery}
                 onChange={(e) => setMunicipalityQuery(e.target.value)}
-                placeholder="例：横浜、世田谷"
+                placeholder="例：横浜"
                 className="h-12 rounded-lg text-base"
               />
             </div>
 
             <div className="grid max-h-72 gap-2 overflow-y-auto">
-              {filteredMunicipalities.map((m) => {
-                const selected = municipality === m.name
-                return (
-                  <button
-                    key={m.label}
-                    type="button"
-                    onClick={() => setMunicipality(m.name)}
-                    className={cn(
-                      "flex min-h-12 items-center gap-3 rounded-lg border px-4 py-3 text-left text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                      selected
-                        ? "border-primary bg-primary/5 font-semibold text-primary"
-                        : "border-border bg-background hover:bg-muted/60"
-                    )}
-                    aria-pressed={selected}
-                  >
-                    <MapPin className="size-4 shrink-0" aria-hidden />
-                    {m.label}
-                  </button>
-                )
-              })}
+              {filteredMunicipalities.length === 0 ? (
+                <p className="text-base text-muted-foreground">
+                  このサービスで選べる自治体がまだありません。
+                </p>
+              ) : (
+                filteredMunicipalities.map((m) => {
+                  const selected = municipality === m.name
+                  return (
+                    <button
+                      key={m.label}
+                      type="button"
+                      onClick={() => setMunicipality(m.name)}
+                      className={cn(
+                        "flex min-h-12 items-center gap-3 rounded-lg border px-4 py-3 text-left text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        selected
+                          ? "border-primary bg-primary/5 font-semibold text-primary"
+                          : "border-border bg-background hover:bg-muted/60"
+                      )}
+                      aria-pressed={selected}
+                    >
+                      <MapPin className="size-4 shrink-0" aria-hidden />
+                      {m.label}
+                    </button>
+                  )
+                })
+              )}
             </div>
 
             {municipality ? (
@@ -252,7 +291,6 @@ export function OnboardingWizard() {
         ) : null}
       </main>
 
-      {/* 片手操作：主要ボタンを画面下部に固定 */}
       <div
         className="fixed inset-x-0 bottom-0 border-t border-border bg-background px-4 py-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
@@ -263,6 +301,7 @@ export function OnboardingWizard() {
               type="button"
               size="lg"
               className="w-full"
+              disabled={!catalog || serviceOptions.length === 0}
               onClick={goNextFromStep1}
             >
               次へ進む

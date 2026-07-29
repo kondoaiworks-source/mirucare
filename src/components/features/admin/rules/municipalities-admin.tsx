@@ -85,7 +85,7 @@ export function MunicipalitiesAdmin() {
             自治体マスタ
           </h1>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            国・都道府県・市区町村の一覧です。対応地域を追加するときに使います。
+            国・都道府県・市区町村の一覧です。対応地域の追加や、旧来の「対応中」フラグの確認に使います。施設が選べる公開状態は上の「公開設定」で管理します。
           </p>
         </div>
         <Button

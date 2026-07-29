@@ -2,8 +2,12 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import { PHASE1_MUNICIPALITIES } from "@/lib/phase1-audit"
 import { toUserErrorMessage } from "@/lib/auth-errors"
+import { getPublishedRulebookCatalogAction } from "@/app/actions/rulebook-offerings"
+import {
+  isAllowedMunicipalitySelection,
+  isAllowedServiceSelection,
+} from "@/lib/rule-engine/offerings"
 import type { ServiceType } from "@/types/database"
 
 export type UpdateSetupResult = {
@@ -51,38 +55,22 @@ async function requireAdminOrg() {
   }
 }
 
-function resolveMunicipality(input: {
-  municipality: string | null
-  skipMunicipality: boolean
-  /** 既に登録済みの自治体（Phase1外でも据え置き可） */
-  existingMunicipality?: string | null
-}): { ok: true; municipality: string | null } | { ok: false; error: string } {
-  if (input.skipMunicipality) {
-    return { ok: true, municipality: null }
-  }
-  const name = input.municipality?.trim() ?? ""
-  if (!name) {
+async function loadCatalogOrError() {
+  const catalogResult = await getPublishedRulebookCatalogAction()
+  if (!catalogResult.ok || !catalogResult.data) {
     return {
-      ok: false,
-      error: "自治体を選ぶか、「まだ決まっていない」を選んでください。",
-    }
-  }
-  const isPhase1 = (PHASE1_MUNICIPALITIES as readonly string[]).includes(name)
-  const isUnchangedExisting =
-    Boolean(input.existingMunicipality) && name === input.existingMunicipality
-  if (!isPhase1 && !isUnchangedExisting) {
-    return {
-      ok: false,
+      ok: false as const,
       error:
-        "第1フェーズでは横浜・川崎・藤沢・鎌倉・茅ヶ崎のいずれかを選んでください。",
+        catalogResult.error ??
+        "公開中の自治体一覧を取得できませんでした。しばらくしてから再度お試しください。",
     }
   }
-  return { ok: true, municipality: name }
+  return { ok: true as const, catalog: catalogResult.data }
 }
 
 /**
- * 事業所の自治体を更新（Phase1 対象市、またはスキップ＝全国寄り）。
- * 管理者のみ。
+ * 事業所の自治体を更新。管理者のみ。
+ * 公開中の自治体、または既存値の据え置きのみ許可。
  */
 export async function updateFacilityMunicipalityAction(input: {
   municipality: string | null
@@ -91,21 +79,32 @@ export async function updateFacilityMunicipalityAction(input: {
   const auth = await requireAdminOrg()
   if (!auth.ok) return { ok: false, error: auth.error }
 
+  const catalogLoad = await loadCatalogOrError()
+  if (!catalogLoad.ok) return { ok: false, error: catalogLoad.error }
+
   const { data: org } = await auth.supabase
     .from("organizations")
-    .select("municipality")
+    .select("municipality, service_type")
     .eq("id", auth.organizationId)
     .maybeSingle()
 
-  const resolved = resolveMunicipality({
-    ...input,
+  const serviceType = (org?.service_type as ServiceType | null) ?? "訪問介護"
+  const resolved = isAllowedMunicipalitySelection({
+    catalog: catalogLoad.catalog,
+    serviceType,
+    municipality: input.municipality,
+    skipMunicipality: input.skipMunicipality,
     existingMunicipality: org?.municipality ?? null,
   })
   if (!resolved.ok) return { ok: false, error: resolved.error }
 
+  const municipality = input.skipMunicipality
+    ? null
+    : input.municipality?.trim() || null
+
   const { error } = await auth.supabase
     .from("organizations")
-    .update({ municipality: resolved.municipality })
+    .update({ municipality })
     .eq("id", auth.organizationId)
 
   if (error) {
@@ -113,14 +112,12 @@ export async function updateFacilityMunicipalityAction(input: {
   }
 
   revalidatePath("/settings")
-  revalidatePath("/settings")
   revalidatePath("/")
   return { ok: true }
 }
 
 /**
  * 事業所名／サービス種別／自治体をまとめて更新。管理者のみ。
- * 事業所名は施設共通。個人の表示名とは別です。
  */
 export async function updateFacilitySettingsAction(input: {
   name: string
@@ -152,24 +149,41 @@ export async function updateFacilitySettingsAction(input: {
     }
   }
 
+  const catalogLoad = await loadCatalogOrError()
+  if (!catalogLoad.ok) return { ok: false, error: catalogLoad.error }
+
   const { data: org } = await auth.supabase
     .from("organizations")
-    .select("municipality")
+    .select("municipality, service_type")
     .eq("id", auth.organizationId)
     .maybeSingle()
 
-  const resolved = resolveMunicipality({
-    ...input,
+  const serviceCheck = isAllowedServiceSelection({
+    catalog: catalogLoad.catalog,
+    serviceType: input.serviceType,
+    existingServiceType: (org?.service_type as ServiceType | null) ?? null,
+  })
+  if (!serviceCheck.ok) return { ok: false, error: serviceCheck.error }
+
+  const muniCheck = isAllowedMunicipalitySelection({
+    catalog: catalogLoad.catalog,
+    serviceType: input.serviceType,
+    municipality: input.municipality,
+    skipMunicipality: input.skipMunicipality,
     existingMunicipality: org?.municipality ?? null,
   })
-  if (!resolved.ok) return { ok: false, error: resolved.error }
+  if (!muniCheck.ok) return { ok: false, error: muniCheck.error }
+
+  const municipality = input.skipMunicipality
+    ? null
+    : input.municipality?.trim() || null
 
   const { error } = await auth.supabase
     .from("organizations")
     .update({
       name,
       service_type: input.serviceType,
-      municipality: resolved.municipality,
+      municipality,
     })
     .eq("id", auth.organizationId)
 
@@ -177,7 +191,6 @@ export async function updateFacilitySettingsAction(input: {
     return { ok: false, error: toUserErrorMessage(error) }
   }
 
-  revalidatePath("/settings")
   revalidatePath("/settings")
   revalidatePath("/")
   return { ok: true }
@@ -230,7 +243,6 @@ export async function updateDisplayNameAction(input: {
     return { ok: false, error: toUserErrorMessage(error) }
   }
 
-  revalidatePath("/settings")
   revalidatePath("/settings")
   return { ok: true }
 }

@@ -124,7 +124,7 @@ export function UnlockLoginPanel({ canManage }: UnlockLoginPanelProps) {
         )}
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="lg"
           onClick={() => void refresh()}
           disabled={loading || pending}

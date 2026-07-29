@@ -17,6 +17,11 @@ import {
   writeAuthAuditLog,
 } from "@/lib/login-lockout"
 import type { ServiceType, UserRole } from "@/types/database"
+import { getPublishedRulebookCatalogAction } from "@/app/actions/rulebook-offerings"
+import {
+  isAllowedMunicipalitySelection,
+  isAllowedServiceSelection,
+} from "@/lib/rule-engine/offerings"
 
 export type ActionResult = {
   ok: boolean
@@ -211,6 +216,30 @@ export async function completeOnboardingAction(input: {
   }
 
   try {
+    const catalogResult = await getPublishedRulebookCatalogAction()
+    if (!catalogResult.ok || !catalogResult.data) {
+      return {
+        ok: false,
+        error:
+          catalogResult.error ??
+          "公開中の自治体一覧を取得できませんでした。しばらくしてから再度お試しください。",
+      }
+    }
+
+    const serviceCheck = isAllowedServiceSelection({
+      catalog: catalogResult.data,
+      serviceType: input.serviceType,
+    })
+    if (!serviceCheck.ok) return { ok: false, error: serviceCheck.error }
+
+    const muniCheck = isAllowedMunicipalitySelection({
+      catalog: catalogResult.data,
+      serviceType: input.serviceType,
+      municipality: input.municipality,
+      skipMunicipality: input.skipMunicipality,
+    })
+    if (!muniCheck.ok) return { ok: false, error: muniCheck.error }
+
     const supabase = createClient()
     const { error } = await supabase.rpc("complete_onboarding", {
       p_name: name,
