@@ -1,14 +1,9 @@
 import type { Metadata } from "next"
-import { MunicipalitiesAdmin } from "@/components/features/admin/rules/municipalities-admin"
-import { OfferingsAdmin } from "@/components/features/admin/rules/offerings-admin"
+import { redirect } from "next/navigation"
 
 export const metadata: Metadata = { title: "自治体管理" }
 
+/** 旧自治体マスタ → 訪問介護の市区町村ルール設定 */
 export default function Page() {
-  return (
-    <div className="space-y-8">
-      <OfferingsAdmin />
-      <MunicipalitiesAdmin />
-    </div>
-  )
+  redirect("/admin/rules/services/homecare/municipalities")
 }

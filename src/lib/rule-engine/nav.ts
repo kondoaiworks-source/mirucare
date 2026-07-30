@@ -1,8 +1,8 @@
 import {
   Bell,
-  BookOpen,
+  ClipboardList,
   Hourglass,
-  MapPin,
+  Layers,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react"
@@ -24,29 +24,31 @@ export type RulesAdminNavGroup = {
 }
 
 /**
- * ルール設定サイドナビ（ホームなし）。
- * 入口はルールブック管理。詳細・運用監視は日常外。
+ * ルール設定サイドナビ。
+ * 入口は介護サービス選定。了承は横断キューも残す。
  * @see docs/ルールブック構想.md
  */
 export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
   {
-    id: "rulebook",
+    id: "setup",
     items: [
       {
-        href: "/admin/rules/regulatory",
-        label: "ルールブック管理",
-        description: "地域ごとのルール集（ルールブック）を整える",
-        icon: BookOpen,
+        href: "/admin/rules/services",
+        label: "介護サービス選定",
+        description:
+          "サービスを選び、国・県・市区町村・監査カテゴリを整える",
+        icon: Layers,
         matchPaths: [
+          "/admin/rules/services",
           "/admin/rules/regulatory",
-          "/admin/document-changes",
+          "/admin/rules/municipalities",
         ],
       },
       {
         href: "/admin/rules/pending",
         label: "ルール管理",
         description:
-          "チェック用ルールの了承・差し戻しと更新履歴",
+          "チェック用ルールの了承・差し戻しと更新履歴（横断キュー）",
         icon: Hourglass,
         matchPaths: ["/admin/rules/pending", "/admin/rules/history"],
       },
@@ -56,18 +58,6 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
         description:
           "公開情報の変更を感知し、台帳反映の承認を依頼する",
         icon: Bell,
-      },
-    ],
-  },
-  {
-    id: "municipality",
-    label: "自治体管理",
-    items: [
-      {
-        href: "/admin/rules/municipalities",
-        label: "自治体マスタ",
-        description: "国・県・市の対応設定",
-        icon: MapPin,
       },
     ],
   },
@@ -85,6 +75,13 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
           "/admin/rules/documents",
           "/admin/rules/jobs",
         ],
+      },
+      {
+        href: "/admin/rules/audit-items",
+        label: "監査項目（詳細）",
+        description: "テンプレ監査項目の一覧・編集（日常外）",
+        icon: ClipboardList,
+        matchPaths: ["/admin/rules/audit-items", "/admin/rules/additions"],
       },
     ],
   },

@@ -6,9 +6,8 @@ export const metadata: Metadata = {
 }
 
 /**
- * ルール設定の入口はルールブック管理（市一覧・確定版）。
- * 旧ホームは廃止。
+ * ルール設定の入口は介護サービス選定。
  */
 export default function RulesDashboardPage() {
-  redirect("/admin/rules/regulatory")
+  redirect("/admin/rules/services")
 }

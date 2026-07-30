@@ -27,6 +27,7 @@ function revalidateProposalPaths() {
   revalidatePath("/admin/rules/ai-rules")
   revalidatePath("/admin/rules/history")
   revalidatePath("/admin/rules/regulatory", "layout")
+  revalidatePath("/admin/rules/services", "layout")
   revalidatePath("/admin/document-changes")
 }
 

@@ -46,6 +46,7 @@ function revalidateRules(path?: string) {
   revalidatePath("/admin/rules")
   // 市ルールブック（国＋県＋市の合成ビュー）も公開情報・台帳変更で更新する
   revalidatePath("/admin/rules/regulatory", "layout")
+  revalidatePath("/admin/rules/services", "layout")
   if (path) revalidatePath(path)
 }
 

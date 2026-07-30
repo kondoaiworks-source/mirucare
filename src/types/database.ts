@@ -453,6 +453,44 @@ export type RulebookOffering = {
   updated_at: string
 }
 
+/** 公開情報 × 監査カテゴリの採用リンク */
+export type RuleSourceCategoryLink = {
+  source_id: string
+  audit_category_slug: string
+  created_at: string
+  created_by: string | null
+}
+
+export type RuleCategoryPdfCandidateStatus =
+  | "pending"
+  | "adopted"
+  | "rejected"
+
+export type RuleCategoryPdfDiscoveryMethod =
+  | "keyword_match"
+  | "manual"
+  | "crawl"
+
+/** 監査カテゴリ向け関連PDF候補 */
+export type RuleCategoryPdfCandidate = {
+  id: string
+  service_type: ServiceType
+  city_slug: string
+  audit_category_slug: string
+  jurisdiction_id: string | null
+  title: string
+  parent_page_url: string | null
+  direct_file_url: string | null
+  existing_source_id: string | null
+  discovery_method: RuleCategoryPdfDiscoveryMethod
+  status: RuleCategoryPdfCandidateStatus
+  adopted_source_id: string | null
+  reviewed_at: string | null
+  reviewed_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type RuleSet = {
   id: string
   jurisdiction_id: string

@@ -95,10 +95,10 @@ export function AiRulesAdmin({
           <p>
             判定ルール案の生成・手入力追加・了承は
             <Link
-              href="/admin/rules/regulatory"
+              href="/admin/rules/services"
               className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
             >
-              ルールブック管理
+              介護サービス選定
             </Link>
             と
             <Link
@@ -110,7 +110,7 @@ export function AiRulesAdmin({
             で行ってください。
           </p>
           <Button asChild variant="outline" size="sm" className="min-h-11">
-            <Link href="/admin/rules/regulatory">ルールブック管理を開く</Link>
+            <Link href="/admin/rules/services">介護サービス選定を開く</Link>
           </Button>
         </AlertDescription>
       </Alert>

@@ -26,7 +26,11 @@ export function CityRulebookView({ data }: Props) {
       <div>
         <AdminBreadcrumb
           items={[
-            { label: "ルールブック管理", href: "/admin/rules/regulatory" },
+            { label: "訪問介護", href: "/admin/rules/services/homecare" },
+            {
+              label: "市区町村ルール設定",
+              href: "/admin/rules/services/homecare/municipalities",
+            },
             { label: `${city.name}ルールブック` },
           ]}
         />
@@ -54,7 +58,11 @@ export function CityRulebookView({ data }: Props) {
                 variant={c.slug === city.slug ? "default" : "outline"}
                 className="min-h-11"
               >
-                <Link href={`/admin/rules/regulatory/${c.slug}`}>{c.name}</Link>
+                <Link
+                  href={`/admin/rules/services/homecare/municipalities/${c.slug}`}
+                >
+                  {c.name}
+                </Link>
               </Button>
             ))}
           </div>

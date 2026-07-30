@@ -89,7 +89,7 @@ export function CityRulebookSetupPanel({ readiness, citySlug }: Props) {
               {statusLabel}
             </Badge>
             <Button asChild variant="outline" size="sm" className="min-h-11">
-              <Link href="/admin/rules/regulatory">
+              <Link href="/admin/rules/services">
                 全体の進捗を見る
                 <ExternalLink className="size-4" aria-hidden />
               </Link>

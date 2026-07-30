@@ -44,10 +44,10 @@ export default function RulesMorePage() {
       <p className="text-base leading-relaxed text-muted-foreground">
         判定ルールの追加・了承は
         <Link
-          href="/admin/rules/regulatory"
+          href="/admin/rules/services"
           className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
         >
-          ルールブック管理
+          介護サービス選定
         </Link>
         から行ってください。例外で台帳へ直接載せる場合のみ
         <Link

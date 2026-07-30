@@ -54,8 +54,27 @@ const SERVICE_TABS: Array<{ value: ServiceType; label: string; hint: string }> =
     },
   ]
 
-export function OfferingsAdmin() {
-  const [serviceType, setServiceType] = useState<ServiceType>("訪問介護")
+type OfferingsAdminProps = {
+  /** 指定時はサービスタブを隠し、当該サービスのみ表示 */
+  fixedServiceType?: ServiceType
+  /** 市詳細へのリンク（省略時は旧ルールブックパス） */
+  cityHrefForSlug?: (slug: string) => string
+  /** 国・県設定への導線 */
+  nationalPrefectureHref?: string
+  title?: string
+  description?: string
+}
+
+export function OfferingsAdmin({
+  fixedServiceType,
+  cityHrefForSlug,
+  nationalPrefectureHref,
+  title = "公開設定（サービス × 自治体）",
+  description = "市ルールブックを整えたうえで公開します。非公開にしても、すでに選んでいる施設の設定は据え置きです。市を公開するには、共通層（国・県）と当該市の公開情報PDFが必要です。",
+}: OfferingsAdminProps = {}) {
+  const [serviceType, setServiceType] = useState<ServiceType>(
+    fixedServiceType ?? "訪問介護"
+  )
   const [rows, setRows] = useState<RulebookOfferingRow[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -75,6 +94,12 @@ export function OfferingsAdmin() {
   }, [])
 
   useEffect(() => {
+    if (fixedServiceType) {
+      setServiceType(fixedServiceType)
+    }
+  }, [fixedServiceType])
+
+  useEffect(() => {
     void refresh(serviceType)
   }, [refresh, serviceType])
 
@@ -92,8 +117,8 @@ export function OfferingsAdmin() {
       }
       toast.success(
         row.isPublished
-          ? "非公開にしました。既存施設の設定はそのまま残ります。"
-          : "公開しました。施設の登録・設定で選べるようになります。"
+          ? "停止しました。既存施設の設定はそのまま残ります。"
+          : "運用を開始しました。施設の登録・設定で選べるようになります。"
       )
       await refresh(serviceType)
     })
@@ -108,12 +133,9 @@ export function OfferingsAdmin() {
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-lg text-primary-dark">
-              公開設定（サービス × 自治体）
-            </CardTitle>
+            <CardTitle className="text-lg text-primary-dark">{title}</CardTitle>
             <CardDescription className="mt-1 text-base leading-relaxed">
-              市ルールブックを整えたうえで公開します。非公開にしても、すでに選んでいる施設の設定は据え置きです。
-              市を公開するには、共通層（国・県）と当該市の公開情報PDFが必要です。
+              {description}
             </CardDescription>
           </div>
           <Button
@@ -133,33 +155,37 @@ export function OfferingsAdmin() {
           </Button>
         </div>
 
-        <div
-          className="flex flex-wrap gap-2"
-          role="tablist"
-          aria-label="サービス種別"
-        >
-          {SERVICE_TABS.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              role="tab"
-              aria-selected={serviceType === t.value}
-              className={cn(
-                "min-h-11 rounded-lg border px-4 text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                serviceType === t.value
-                  ? "border-primary bg-primary/10 text-primary-dark"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted"
-              )}
-              onClick={() => setServiceType(t.value)}
+        {!fixedServiceType ? (
+          <>
+            <div
+              className="flex flex-wrap gap-2"
+              role="tablist"
+              aria-label="サービス種別"
             >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        {tab ? (
-          <p className="text-base leading-relaxed text-muted-foreground">
-            {tab.hint}
-          </p>
+              {SERVICE_TABS.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={serviceType === t.value}
+                  className={cn(
+                    "min-h-11 rounded-lg border px-4 text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    serviceType === t.value
+                      ? "border-primary bg-primary/10 text-primary-dark"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted"
+                  )}
+                  onClick={() => setServiceType(t.value)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {tab ? (
+              <p className="text-base leading-relaxed text-muted-foreground">
+                {tab.hint}
+              </p>
+            ) : null}
+          </>
         ) : null}
 
         <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-base leading-relaxed">
@@ -182,6 +208,16 @@ export function OfferingsAdmin() {
               <span className="ml-2 text-primary">（市公開の前提を満たしています）</span>
             )}
           </p>
+          {nationalPrefectureHref ? (
+            <p className="mt-2">
+              <Link
+                href={nationalPrefectureHref}
+                className="font-medium text-primary underline-offset-2 hover:underline"
+              >
+                国・県ルール設定を開く
+              </Link>
+            </p>
+          ) : null}
         </div>
       </CardHeader>
 
@@ -221,11 +257,11 @@ export function OfferingsAdmin() {
                   <TableCell>
                     {row.isPublished ? (
                       <Badge className="rounded-md bg-primary/15 text-primary-dark">
-                        公開中
+                        運用中
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="rounded-md">
-                        非公開
+                        停止
                       </Badge>
                     )}
                     {!row.isPublished && !row.canPublish ? (
@@ -238,9 +274,15 @@ export function OfferingsAdmin() {
                     <div className="flex flex-wrap justify-end gap-2">
                       {row.slug ? (
                         <Button asChild variant="outline" className="min-h-11">
-                          <Link href={`/admin/rules/regulatory/${row.slug}`}>
+                          <Link
+                            href={
+                              cityHrefForSlug
+                                ? cityHrefForSlug(row.slug)
+                                : `/admin/rules/regulatory/${row.slug}`
+                            }
+                          >
                             <BookOpen className="size-4" aria-hidden />
-                            ルールブック
+                            市の設定
                           </Link>
                         </Button>
                       ) : null}
@@ -258,7 +300,7 @@ export function OfferingsAdmin() {
                         {pending ? (
                           <Loader2 className="size-4 animate-spin" aria-hidden />
                         ) : null}
-                        {row.isPublished ? "非公開にする" : "公開する"}
+                        {row.isPublished ? "停止する" : "運用する"}
                       </Button>
                     </div>
                   </TableCell>

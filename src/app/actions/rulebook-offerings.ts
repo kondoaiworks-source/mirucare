@@ -27,6 +27,7 @@ export type ActionResult<T = undefined> = {
 function revalidateOfferingPaths() {
   revalidatePath("/admin/rules/municipalities")
   revalidatePath("/admin/rules/regulatory")
+  revalidatePath("/admin/rules/services", "layout")
   revalidatePath("/onboarding")
   revalidatePath("/settings")
 }

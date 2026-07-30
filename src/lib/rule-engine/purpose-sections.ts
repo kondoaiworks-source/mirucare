@@ -3,6 +3,7 @@ import {
   Bot,
   ClipboardCheck,
   Landmark,
+  Layers,
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react"
@@ -45,18 +46,24 @@ export type PurposeSection = {
 export const PURPOSE_SECTIONS: PurposeSection[] = [
   {
     id: "rulebook",
-    href: "/admin/rules/regulatory",
-    label: "ルールブック管理",
-    navDescription: "この自治体で従う確定版を整える",
-    icon: BookOpen,
+    href: "/admin/rules/services",
+    label: "介護サービス選定",
+    navDescription: "サービスから国・県・市区町村・監査カテゴリを整える",
+    icon: Layers,
     purpose:
-      "市のルールブック（自治体ルール設定）で国・県・市の公開情報PDF／公開情報リンクを整え、公開情報PDFは自動監視します。更新アラートが出たら人が確認し、ルール案を了承してルールブックを最新に保ちます。施設は「この自治体ならこのルールブック」に従えばよい、が目標です。",
+      "介護サービスを選び、国・県の公開情報→市区町村の運用／停止→監査カテゴリで判定ルールを了承します。施設は運用中のサービス×自治体だけを選べます。",
     steps: [
-      "サービスはいま訪問介護（Phase1）",
-      "市ルールブックの「自治体ルール設定」で国／県／市の公開情報を登録する（公開情報PDFがあると自動監視）",
-      "更新アラートが出たら人が確認してルール案を了承する（ルール管理）",
+      "介護サービス選定で訪問介護を開く",
+      "国・県ルール設定で公開情報PDFを登録する",
+      "市区町村を運用し、監査カテゴリでルールを了承する",
     ],
     links: [
+      {
+        href: "/admin/rules/services/homecare/national-prefecture",
+        label: "国・県ルール設定",
+        description: "訪問介護共通の国・県PDF／URL",
+        icon: Landmark,
+      },
       {
         href: "/admin/document-changes",
         label: "更新アラートの確認",
@@ -64,10 +71,11 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
         icon: ClipboardCheck,
       },
     ],
-    linksHeading: "更新アラート管理",
+    linksHeading: "よく使う導線",
     linksDescription:
-      "監視で見つかった差分を確認し、問題なければ台帳へ反映します。",
+      "サービス起点の設定と、監視で見つかった差分の確認です。",
     matchPaths: [
+      "/admin/rules/services",
       "/admin/rules/regulatory",
       "/admin/document-changes",
     ],
@@ -80,8 +88,12 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     navDescription: "ルールブック内の「何を見るか」",
     icon: ShieldCheck,
     purpose:
-      "運営指導で確認されやすい項目（見出し）を登録します。判定ルールの土台です。初回はルールブック管理のセットアップから登録できます。",
-    steps: ["初回セットアップでテンプレート登録", "必要なら個別に追加", "保存する"],
+      "運営指導で確認されやすい項目（見出し）を登録します。判定ルールの土台です。日常は監査カテゴリ設定から進めます。",
+    steps: [
+      "初回セットアップでテンプレート登録",
+      "必要なら個別に追加",
+      "保存する",
+    ],
     links: [],
     matchPaths: ["/admin/rules/audit-items"],
     showOnHome: false,
@@ -90,33 +102,30 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     id: "ai",
     href: "/admin/rules/ai-rules",
     label: "判定ルール一覧",
-    navDescription: "登録済みルールの一覧（操作は市ルールブック）",
+    navDescription: "登録済みルールの一覧（操作は監査カテゴリ／ルール管理）",
     icon: Bot,
     purpose:
-      "一覧の確認用です。新規追加・了承は市のルールブックとルール管理から行います。",
+      "一覧の確認用です。新規追加・了承は監査カテゴリとルール管理から行います。",
     steps: [
-      "市ルールブックで案を生成または手入力",
+      "監査カテゴリまたは市設定で案を生成",
       "ルール管理で了承する",
       "了承後にチェックで使われる",
     ],
     links: [
       {
-        href: "/admin/rules/regulatory",
-        label: "ルールブック管理",
-        description: "市を開いて判定ルールを追加・了承する",
+        href: "/admin/rules/services/homecare",
+        label: "訪問介護の設定",
+        description: "国・県・市区町村・監査カテゴリへ",
         icon: BookOpen,
       },
       {
         href: "/admin/rules/pending",
         label: "ルール管理",
-        description: "案の了承・差し戻し",
+        description: "案の了承・差し戻し（横断キュー）",
         icon: Landmark,
       },
     ],
-    matchPaths: [
-      "/admin/rules/ai-rules",
-      "/admin/rules/ai",
-    ],
+    matchPaths: ["/admin/rules/ai-rules", "/admin/rules/ai"],
     showOnHome: false,
   },
 ]
