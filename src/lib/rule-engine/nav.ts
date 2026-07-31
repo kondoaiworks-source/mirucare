@@ -48,7 +48,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
         href: "/admin/rules/pending",
         label: "ルール管理",
         description:
-          "チェック用ルールの了承・差し戻しと更新履歴（横断キュー）",
+          "チェック用ルールの生成・了承・差し戻しと更新履歴（横断キュー）",
         icon: Hourglass,
         matchPaths: ["/admin/rules/pending", "/admin/rules/history"],
       },

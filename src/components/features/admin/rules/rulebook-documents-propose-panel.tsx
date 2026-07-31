@@ -4,41 +4,69 @@ import Link from "next/link"
 import { useTransition } from "react"
 import { toast } from "sonner"
 import { ExternalLink, FileText, Sparkles } from "lucide-react"
-import type { CityRulebookDocument } from "@/app/actions/city-rulebook"
 import { proposeAiCheckRulesFromDocumentAction } from "@/app/actions/propose-check-rules"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
-const LAYER_LABEL = {
+const LAYER_LABEL: Record<string, string> = {
   national: "国",
   prefecture: "県",
   city: "市",
-} as const
+  other: "その他",
+}
+
+export type ProposePanelDocument = {
+  id: string
+  title: string
+  region_name?: string | null
+  jurisdiction_level?: string | null
+  content_hash?: string | null
+  source_url?: string | null
+  last_sync_status?: string | null
+  hasTextSnapshot: boolean
+  layer?: string
+}
 
 type Props = {
-  documents: CityRulebookDocument[]
-  citySlug: string
+  documents: ProposePanelDocument[]
+  /** 公開情報監視への絞り込み用（省略可） */
+  citySlug?: string
   heading?: string
   description?: string
+  /** 生成後コールバック（了承一覧の再読込など） */
+  onProposed?: () => void
+  /** 同一ページに了承一覧があるとき、了承への誘導リンクを隠す */
+  hidePendingLink?: boolean
 }
 
 /**
- * 判定ルール案の生成パネル（上部集約）。
+ * 判定ルール案の生成パネル。
  * URL登録だけでは案は出ない。人が明示的に生成する。
  */
 export function RulebookDocumentsProposePanel({
   documents,
   citySlug,
   heading = "判定ルール案の生成",
-  description = "台帳に本文がある資料から、AIが判定ルール案＋根拠を提案します。生成後は「ルール管理」で了承するまでチェックには使われません。",
+  description = "台帳に本文がある資料から、AIが判定ルール案＋根拠を提案します。生成後は下の了承待ちで確認するまでチェックには使われません。",
+  onProposed,
+  hidePendingLink = false,
 }: Props) {
   const [pending, startTransition] = useTransition()
   const generatable = documents.filter(
     (d) => d.hasTextSnapshot || Boolean(d.content_hash?.trim())
   )
 
-  function proposeOne(doc: CityRulebookDocument) {
+  function afterSuccess(message: string, descriptionText?: string) {
+    toast.success(message, {
+      description:
+        descriptionText ?? "了承するまで書類チェックには使われません。",
+      duration: 10000,
+    })
+    onProposed?.()
+  }
+
+  function proposeOne(doc: ProposePanelDocument) {
     startTransition(async () => {
       const result = await proposeAiCheckRulesFromDocumentAction({
         knowledgeDocumentId: doc.id,
@@ -53,18 +81,8 @@ export function RulebookDocumentsProposePanel({
         )
         return
       }
-      toast.success(
-        `「${doc.title}」から判定ルール案を ${result.data?.createdCount ?? 0}件、ルール管理に載せました。`,
-        {
-          description: "了承するまで書類チェックには使われません。",
-          action: {
-            label: "ルール管理を開く",
-            onClick: () => {
-              window.location.href = "/admin/rules/pending"
-            },
-          },
-          duration: 12000,
-        }
+      afterSuccess(
+        `「${doc.title}」から判定ルール案を ${result.data?.createdCount ?? 0}件載せました。`
       )
     })
   }
@@ -90,21 +108,11 @@ export function RulebookDocumentsProposePanel({
         total += result.data?.createdCount ?? 0
       }
       if (total > 0) {
-        toast.success(
-          `判定ルール案を合計 ${total}件、ルール管理に載せました。`,
-          {
-            description:
-              failures > 0
-                ? `${failures}件は生成できませんでした。`
-                : "了承するまで書類チェックには使われません。",
-            action: {
-              label: "ルール管理を開く",
-              onClick: () => {
-                window.location.href = "/admin/rules/pending"
-              },
-            },
-            duration: 12000,
-          }
+        afterSuccess(
+          `判定ルール案を合計 ${total}件載せました。`,
+          failures > 0
+            ? `${failures}件は生成できませんでした。下の了承待ちをご確認ください。`
+            : "下の了承待ちから確認してください。"
         )
       } else if (failures > 0) {
         toast.error(
@@ -145,15 +153,17 @@ export function RulebookDocumentsProposePanel({
               ? "生成中…"
               : `まとめて判定ルール案を生成する（${generatable.length}件）`}
           </Button>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href="/admin/rules/pending">ルール管理で了承する</Link>
-          </Button>
+          {!hidePendingLink ? (
+            <Button asChild variant="outline" className="min-h-11">
+              <Link href="/admin/rules/pending">ルール管理で了承する</Link>
+            </Button>
+          ) : null}
         </div>
       </div>
 
       {documents.length === 0 ? (
         <p className="text-base leading-relaxed text-muted-foreground">
-          台帳上の資料がありません。公開情報PDF（直リンク）を登録すると自動で載ります。
+          台帳上の資料がありません。国・県または市区町村ルール設定で公開情報PDF（直リンク）を登録してください。
         </p>
       ) : (
         <ul className="space-y-2">
@@ -161,8 +171,9 @@ export function RulebookDocumentsProposePanel({
             const url = d.source_url?.trim() || null
             const canGenerate =
               d.hasTextSnapshot || Boolean(d.content_hash?.trim())
+            const layerKey = d.layer ?? "other"
             const subtitle = [
-              LAYER_LABEL[d.layer],
+              LAYER_LABEL[layerKey] ?? d.jurisdiction_level,
               d.region_name,
               d.last_sync_status ? `同期:${d.last_sync_status}` : null,
             ]
@@ -184,7 +195,9 @@ export function RulebookDocumentsProposePanel({
                       </p>
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         <Badge variant="outline" className="rounded-md">
-                          {LAYER_LABEL[d.layer]}
+                          {LAYER_LABEL[layerKey] ??
+                            d.jurisdiction_level ??
+                            "資料"}
                         </Badge>
                         {d.hasTextSnapshot ? (
                           <Badge className="rounded-md bg-primary/15 text-primary-dark">

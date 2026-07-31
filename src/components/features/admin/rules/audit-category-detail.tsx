@@ -240,21 +240,23 @@ export function AuditCategoryDetail({ service, category, data }: Props) {
             </CardTitle>
           </div>
           <CardDescription className="text-base leading-relaxed">
-            AIが作成した判定ルール案を人が確認し、「採用」したものだけがルールブックへ登録されます。横断の「ルール管理」キューでも了承できます。
+            AIが作成した判定ルール案を人が確認し、「採用」したものだけがルールブックへ登録されます。新しい案の生成と了承はルール管理で行います。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="rounded-xl border border-border bg-muted/20 px-4 py-3 text-base leading-relaxed text-muted-foreground">
-            新しい案を出すときは、市の設定または国・県ルール設定の「判定ルール案を生成する」を使います。生成された案は下と横断のルール管理に現れます。
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button asChild variant="outline" className="min-h-11">
-                <Link href={cityHref}>市の設定で案を生成する</Link>
-              </Button>
-              <Button asChild variant="outline" className="min-h-11">
-                <Link
-                  href={servicePath(service.slug, "national-prefecture")}
-                >
-                  国・県で案を生成する
+          <div className="rounded-xl border border-primary/20 bg-primary/[0.03] px-4 py-3 text-base leading-relaxed text-muted-foreground">
+            URL登録だけでは案は出ません。台帳に本文がある資料から、
+            <Link
+              href="/admin/rules/pending"
+              className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
+            >
+              ルール管理
+            </Link>
+            で「判定ルール案を生成する」を押してください。
+            <div className="mt-3">
+              <Button asChild className="min-h-11">
+                <Link href="/admin/rules/pending">
+                  ルール管理で案を生成・了承する
                 </Link>
               </Button>
             </div>
@@ -277,13 +279,6 @@ export function AuditCategoryDetail({ service, category, data }: Props) {
               rules={approved}
               emptyLabel="このカテゴリの登録済みルールはまだありません。"
             />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild className="min-h-11">
-              <Link href="/admin/rules/pending">
-                横断のルール管理を開く
-              </Link>
-            </Button>
           </div>
         </CardContent>
       </Card>

@@ -1,9 +1,8 @@
 import Link from "next/link"
-import { ArrowRight, Building2, ShieldCheck } from "lucide-react"
+import { ArrowRight, Building2, ShieldCheck, Sparkles } from "lucide-react"
 import type { CityRulebookData } from "@/app/actions/city-rulebook"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
-import { RulebookDocumentsProposePanel } from "@/components/features/admin/rules/rulebook-documents-propose-panel"
 import { Button } from "@/components/ui/button"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { servicePath } from "@/lib/rule-engine/services"
@@ -14,10 +13,11 @@ type Props = {
 }
 
 /**
- * 市区町村ごとの市公開情報＋判定ルール案生成＋監査カテゴリへの導線。
+ * 市区町村ごとの市公開情報＋監査カテゴリへの導線。
+ * 判定ルール案の生成・了承はルール管理で行う。
  */
 export function MunicipalityCityHub({ service, data }: Props) {
-  const { city, layerJurisdictions, sources, documents } = data
+  const { city, layerJurisdictions, sources } = data
   const citySources = sources.filter((s) => s.layer === "city")
   const municipalitiesHref = servicePath(service.slug, "municipalities")
   const auditHref = servicePath(
@@ -47,26 +47,49 @@ export function MunicipalityCityHub({ service, data }: Props) {
                 {city.name}
               </h1>
               <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-                まず判定ルール案を生成し、ルール管理で了承します。公開情報の追加は下の欄から行えます。
+                市の公開情報を登録します。判定ルール案の生成と了承は「ルール管理」で行います。
               </p>
             </div>
           </div>
-          <Button asChild className="min-h-11">
-            <Link href={auditHref}>
-              <ShieldCheck className="size-4" aria-hidden />
-              監査カテゴリ設定を開く
-              <ArrowRight className="size-4" aria-hidden />
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild className="min-h-11">
+              <Link href="/admin/rules/pending">
+                <Sparkles className="size-4" aria-hidden />
+                ルール管理で案を生成・了承する
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="min-h-11">
+              <Link href={auditHref}>
+                <ShieldCheck className="size-4" aria-hidden />
+                監査カテゴリ設定を開く
+                <ArrowRight className="size-4" aria-hidden />
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 
-      <RulebookDocumentsProposePanel
-        documents={documents}
-        citySlug={city.slug}
-        heading="判定ルール案の生成（国・県・市）"
-        description={`${city.name}に関連する台帳資料から、AIが判定ルール案＋根拠を提案します。URL登録だけでは案は出ません。`}
-      />
+      <section
+        className="rounded-xl border border-primary/20 bg-primary/[0.03] px-4 py-4"
+        aria-labelledby="propose-hint-heading"
+      >
+        <h2
+          id="propose-hint-heading"
+          className="text-base font-semibold text-primary-dark"
+        >
+          判定ルール案について
+        </h2>
+        <p className="mt-1 text-base leading-relaxed text-muted-foreground">
+          URL登録だけでは案は出ません。公開情報PDF（直リンク）を登録したあと、
+          <Link
+            href="/admin/rules/pending"
+            className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
+          >
+            ルール管理
+          </Link>
+          で「判定ルール案を生成する」を押してください。
+        </p>
+      </section>
 
       <section
         className="rounded-xl border border-border bg-card p-4 shadow-subtle"
@@ -96,9 +119,6 @@ export function MunicipalityCityHub({ service, data }: Props) {
           <Link href={servicePath(service.slug, "national-prefecture")}>
             国・県ルール設定へ
           </Link>
-        </Button>
-        <Button asChild variant="outline" className="min-h-11">
-          <Link href="/admin/rules/pending">ルール管理を開く</Link>
         </Button>
       </div>
     </div>
