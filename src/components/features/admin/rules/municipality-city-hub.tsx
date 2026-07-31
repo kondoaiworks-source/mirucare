@@ -3,6 +3,7 @@ import { ArrowRight, Building2, ShieldCheck } from "lucide-react"
 import type { CityRulebookData } from "@/app/actions/city-rulebook"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
+import { RulebookDocumentsProposePanel } from "@/components/features/admin/rules/rulebook-documents-propose-panel"
 import { Button } from "@/components/ui/button"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { servicePath } from "@/lib/rule-engine/services"
@@ -13,10 +14,10 @@ type Props = {
 }
 
 /**
- * 市区町村ごとの市公開情報＋監査カテゴリへの導線。
+ * 市区町村ごとの市公開情報＋監査カテゴリへの導線＋判定ルール案生成。
  */
 export function MunicipalityCityHub({ service, data }: Props) {
-  const { city, layerJurisdictions, sources } = data
+  const { city, layerJurisdictions, sources, documents } = data
   const citySources = sources.filter((s) => s.layer === "city")
   const municipalitiesHref = servicePath(service.slug, "municipalities")
   const auditHref = servicePath(
@@ -46,7 +47,7 @@ export function MunicipalityCityHub({ service, data }: Props) {
                 {city.name}
               </h1>
               <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-                市の公開情報を登録し、監査カテゴリ（4チェック）へ進みます。運用／停止は市区町村一覧から切り替えできます。
+                市の公開情報を登録し、台帳資料から判定ルール案を生成したうえで、監査カテゴリへ進みます。運用／停止は市区町村一覧から切り替えできます。
               </p>
             </div>
           </div>
@@ -78,6 +79,13 @@ export function MunicipalityCityHub({ service, data }: Props) {
         />
       </section>
 
+      <RulebookDocumentsProposePanel
+        documents={documents}
+        citySlug={city.slug}
+        heading="判定ルール案の生成（国・県・市）"
+        description={`${city.name}に関連する台帳資料から、AIが判定ルール案＋根拠を提案します。URL登録だけでは案は出ません。生成後は「ルール管理」で了承してください。`}
+      />
+
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" className="min-h-11">
           <Link href={`/admin/rules/documents?city=${city.slug}`}>
@@ -85,11 +93,12 @@ export function MunicipalityCityHub({ service, data }: Props) {
           </Link>
         </Button>
         <Button asChild variant="outline" className="min-h-11">
-          <Link
-            href={servicePath(service.slug, "national-prefecture")}
-          >
+          <Link href={servicePath(service.slug, "national-prefecture")}>
             国・県ルール設定へ
           </Link>
+        </Button>
+        <Button asChild variant="outline" className="min-h-11">
+          <Link href="/admin/rules/pending">ルール管理を開く</Link>
         </Button>
       </div>
     </div>

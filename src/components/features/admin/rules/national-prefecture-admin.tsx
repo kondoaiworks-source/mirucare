@@ -3,6 +3,7 @@ import { Info, Landmark } from "lucide-react"
 import type { CityRulebookData } from "@/app/actions/city-rulebook"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
+import { RulebookDocumentsProposePanel } from "@/components/features/admin/rules/rulebook-documents-propose-panel"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
@@ -22,9 +23,12 @@ type Props = {
  * サービス共通の国・県公開情報設定。
  */
 export function NationalPrefectureAdmin({ service, data }: Props) {
-  const { city, layerJurisdictions, sources } = data
+  const { city, layerJurisdictions, sources, documents } = data
   const nationalSources = sources.filter((s) => s.layer === "national")
   const prefectureSources = sources.filter((s) => s.layer === "prefecture")
+  const sharedDocuments = documents.filter(
+    (d) => d.layer === "national" || d.layer === "prefecture"
+  )
 
   return (
     <div className="space-y-6">
@@ -67,6 +71,9 @@ export function NationalPrefectureAdmin({ service, data }: Props) {
         <Button asChild variant="outline" className="min-h-11">
           <Link href="/admin/rules/documents">公開情報監視を開く</Link>
         </Button>
+        <Button asChild variant="outline" className="min-h-11">
+          <Link href="/admin/rules/pending">ルール管理を開く</Link>
+        </Button>
       </div>
 
       <div className="space-y-6">
@@ -108,6 +115,13 @@ export function NationalPrefectureAdmin({ service, data }: Props) {
           />
         </section>
       </div>
+
+      <RulebookDocumentsProposePanel
+        documents={sharedDocuments}
+        citySlug={city.slug}
+        heading="判定ルール案の生成（国・県）"
+        description="国・県の台帳資料から、AIが判定ルール案＋根拠を提案します。URL登録だけでは案は出ません。生成後は「ルール管理」で了承してください。"
+      />
     </div>
   )
 }

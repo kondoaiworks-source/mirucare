@@ -104,7 +104,7 @@ export function PendingRulesAdmin() {
               現在、確認するルール案はありません
             </CardTitle>
             <CardDescription className="text-base">
-              差分や公開情報監視の資料から判定ルール案を生成すると、ここに表示されます。
+              差分や公開情報監視の資料から「判定ルール案を生成する」を押すと、ここに表示されます。市の設定または国・県ルール設定から生成できます。
             </CardDescription>
           </CardHeader>
         </Card>

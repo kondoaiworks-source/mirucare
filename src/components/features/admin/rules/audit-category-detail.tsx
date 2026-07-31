@@ -244,6 +244,21 @@ export function AuditCategoryDetail({ service, category, data }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="rounded-xl border border-border bg-muted/20 px-4 py-3 text-base leading-relaxed text-muted-foreground">
+            新しい案を出すときは、市の設定または国・県ルール設定の「判定ルール案を生成する」を使います。生成された案は下と横断のルール管理に現れます。
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="min-h-11">
+                <Link href={cityHref}>市の設定で案を生成する</Link>
+              </Button>
+              <Button asChild variant="outline" className="min-h-11">
+                <Link
+                  href={servicePath(service.slug, "national-prefecture")}
+                >
+                  国・県で案を生成する
+                </Link>
+              </Button>
+            </div>
+          </div>
           <div>
             <h3 className="mb-2 flex items-center gap-2 text-base font-semibold text-primary-dark">
               <Hourglass className="size-4" aria-hidden />
