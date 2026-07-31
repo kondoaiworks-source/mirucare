@@ -53,10 +53,8 @@ export default async function MunicipalitiesForServicePage({
 
       <OfferingsAdmin
         fixedServiceType={service.serviceType}
+        serviceSlug={service.slug}
         nationalPrefectureHref={servicePath(service.slug, "national-prefecture")}
-        cityHrefForSlug={(slug) =>
-          servicePath(service.slug, "municipalities", slug)
-        }
         title="市区町村一覧（運用／停止）"
         description="運用中の市だけが施設の登録・設定で選べます。停止しても、すでに選んでいる施設の設定は据え置きです。国・県と市の公開情報PDFが揃うと運用を開始できます。"
       />

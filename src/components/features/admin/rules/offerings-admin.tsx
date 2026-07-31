@@ -8,6 +8,7 @@ import {
   setRulebookOfferingPublishedAction,
 } from "@/app/actions/rulebook-offerings"
 import type { RulebookOfferingRow } from "@/lib/rule-engine/offerings"
+import { servicePath } from "@/lib/rule-engine/services"
 import type { ServiceType } from "@/types/database"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -57,8 +58,11 @@ const SERVICE_TABS: Array<{ value: ServiceType; label: string; hint: string }> =
 type OfferingsAdminProps = {
   /** 指定時はサービスタブを隠し、当該サービスのみ表示 */
   fixedServiceType?: ServiceType
-  /** 市詳細へのリンク（省略時は旧ルールブックパス） */
-  cityHrefForSlug?: (slug: string) => string
+  /**
+   * 市詳細リンク用のサービス slug（Server→Client に関数を渡せないため文字列で渡す）
+   * 省略時は旧ルールブックパス
+   */
+  serviceSlug?: string
   /** 国・県設定への導線 */
   nationalPrefectureHref?: string
   title?: string
@@ -67,7 +71,7 @@ type OfferingsAdminProps = {
 
 export function OfferingsAdmin({
   fixedServiceType,
-  cityHrefForSlug,
+  serviceSlug,
   nationalPrefectureHref,
   title = "公開設定（サービス × 自治体）",
   description = "市ルールブックを整えたうえで公開します。非公開にしても、すでに選んでいる施設の設定は据え置きです。市を公開するには、共通層（国・県）と当該市の公開情報PDFが必要です。",
@@ -276,8 +280,12 @@ export function OfferingsAdmin({
                         <Button asChild variant="outline" className="min-h-11">
                           <Link
                             href={
-                              cityHrefForSlug
-                                ? cityHrefForSlug(row.slug)
+                              serviceSlug
+                                ? servicePath(
+                                    serviceSlug,
+                                    "municipalities",
+                                    row.slug
+                                  )
                                 : `/admin/rules/regulatory/${row.slug}`
                             }
                           >
