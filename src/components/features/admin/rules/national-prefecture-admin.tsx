@@ -15,7 +15,6 @@ import {
 
 type Props = {
   service: RuleServiceDef
-  /** 国・県レイヤ取得用（どの市でも共有層は同じ） */
   data: CityRulebookData
 }
 
@@ -50,11 +49,18 @@ export function NationalPrefectureAdmin({ service, data }: Props) {
             <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
               {service.label}
               共通の国・{city.prefectureName}
-              の公開情報PDF／URLを登録します。ここに登録したPDF直リンクは自動監視の対象になります。
+              の公開情報PDF／URLを登録します。判定ルール案の生成は上部から行えます。
             </p>
           </div>
         </div>
       </div>
+
+      <RulebookDocumentsProposePanel
+        documents={sharedDocuments}
+        citySlug={city.slug}
+        heading="判定ルール案の生成（国・県）"
+        description="国・県の台帳資料から、AIが判定ルール案＋根拠を提案します。URL登録だけでは案は出ません。"
+      />
 
       <Alert className="rounded-xl">
         <Info />
@@ -115,13 +121,6 @@ export function NationalPrefectureAdmin({ service, data }: Props) {
           />
         </section>
       </div>
-
-      <RulebookDocumentsProposePanel
-        documents={sharedDocuments}
-        citySlug={city.slug}
-        heading="判定ルール案の生成（国・県）"
-        description="国・県の台帳資料から、AIが判定ルール案＋根拠を提案します。URL登録だけでは案は出ません。生成後は「ルール管理」で了承してください。"
-      />
     </div>
   )
 }

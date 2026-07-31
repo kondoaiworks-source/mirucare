@@ -272,6 +272,31 @@ async function syncFileDocument(
   }
 
   const difyId = `dify-sync-${hash.slice(0, 12)}`
+
+  // スナップショット保存に失敗したときは content_hash を進めない（提案時の欠落を防ぐ）
+  if (!saved) {
+    await service
+      .from("knowledge_documents")
+      .update({
+        content_bytes: byteLength,
+        last_checked_at: now,
+        last_sync_status: "failed",
+        last_error:
+          "PDFの本文スナップショット保存に失敗しました。Storage（knowledge-snapshots）とPDF直リンクをご確認ください。",
+        updated_at: now,
+        ...cacheFields,
+      })
+      .eq("id", doc.id)
+
+    return {
+      documentId: doc.id,
+      title: doc.title,
+      status: "failed",
+      message:
+        "内容は取得できましたが、本文スナップショットの保存に失敗しました。判定ルール案の生成にはスナップショットが必要です。",
+    }
+  }
+
   await service
     .from("knowledge_documents")
     .update({

@@ -39,6 +39,8 @@ export type CityRulebookSource = RuleSource & {
 
 export type CityRulebookDocument = KnowledgeDocument & {
   layer: "national" | "prefecture" | "city"
+  /** knowledge_document_snapshots に1件以上あるか */
+  hasTextSnapshot: boolean
 }
 
 export type CityRulebookDraft = KnowledgeDocumentChangeDraft & {
@@ -279,7 +281,24 @@ export async function getCityRulebookAction(
     const doc = raw as KnowledgeDocument
     const layer = docLayer(doc, city)
     if (!layer) continue
-    documents.push({ ...doc, layer })
+    documents.push({ ...doc, layer, hasTextSnapshot: false })
+  }
+
+  if (documents.length > 0) {
+    const { data: snapRows } = await op.service
+      .from("knowledge_document_snapshots")
+      .select("knowledge_document_id")
+      .in(
+        "knowledge_document_id",
+        documents.map((d) => d.id)
+      )
+      .limit(500)
+    const withSnap = new Set(
+      (snapRows ?? []).map((r) => r.knowledge_document_id as string)
+    )
+    for (const d of documents) {
+      d.hasTextSnapshot = withSnap.has(d.id)
+    }
   }
 
   const relevantDocIds = new Set(documents.map((d) => d.id))

@@ -1,7 +1,11 @@
+"use client"
+
 import Link from "next/link"
-import { ExternalLink, FileText, Pencil } from "lucide-react"
+import { useTransition } from "react"
+import { toast } from "sonner"
+import { ExternalLink, FileText, Sparkles } from "lucide-react"
 import type { CityRulebookDocument } from "@/app/actions/city-rulebook"
-import { ProposeRulesFromDocumentButton } from "@/components/features/admin/rules/propose-rules-from-document-button"
+import { proposeAiCheckRulesFromDocumentAction } from "@/app/actions/propose-check-rules"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -15,14 +19,13 @@ const LAYER_LABEL = {
 type Props = {
   documents: CityRulebookDocument[]
   citySlug: string
-  /** 見出し文言 */
   heading?: string
   description?: string
 }
 
 /**
- * 台帳上の公開情報から判定ルール案を生成する一覧。
- * URL登録だけでは案は出ないため、ここから人が明示的に生成する。
+ * 判定ルール案の生成パネル（上部集約）。
+ * URL登録だけでは案は出ない。人が明示的に生成する。
  */
 export function RulebookDocumentsProposePanel({
   documents,
@@ -30,62 +33,146 @@ export function RulebookDocumentsProposePanel({
   heading = "判定ルール案の生成",
   description = "台帳に本文がある資料から、AIが判定ルール案＋根拠を提案します。生成後は「ルール管理」で了承するまでチェックには使われません。",
 }: Props) {
+  const [pending, startTransition] = useTransition()
+  const generatable = documents.filter(
+    (d) => d.hasTextSnapshot || Boolean(d.content_hash?.trim())
+  )
+
+  function proposeOne(doc: CityRulebookDocument) {
+    startTransition(async () => {
+      const result = await proposeAiCheckRulesFromDocumentAction({
+        knowledgeDocumentId: doc.id,
+      })
+      if (!result.ok) {
+        toast.error(result.error ?? "判定ルール案の生成に失敗しました。")
+        return
+      }
+      if (result.data?.empty) {
+        toast.message(
+          `「${doc.title}」から判定ルール案は出ませんでした。本文をご確認ください。`
+        )
+        return
+      }
+      toast.success(
+        `「${doc.title}」から判定ルール案を ${result.data?.createdCount ?? 0}件、ルール管理に載せました。`,
+        {
+          description: "了承するまで書類チェックには使われません。",
+          action: {
+            label: "ルール管理を開く",
+            onClick: () => {
+              window.location.href = "/admin/rules/pending"
+            },
+          },
+          duration: 12000,
+        }
+      )
+    })
+  }
+
+  function proposeAll() {
+    if (generatable.length === 0) {
+      toast.message(
+        "生成できる資料がありません。PDF直リンクの登録と同期をご確認ください。"
+      )
+      return
+    }
+    startTransition(async () => {
+      let total = 0
+      let failures = 0
+      for (const doc of generatable) {
+        const result = await proposeAiCheckRulesFromDocumentAction({
+          knowledgeDocumentId: doc.id,
+        })
+        if (!result.ok) {
+          failures += 1
+          continue
+        }
+        total += result.data?.createdCount ?? 0
+      }
+      if (total > 0) {
+        toast.success(
+          `判定ルール案を合計 ${total}件、ルール管理に載せました。`,
+          {
+            description:
+              failures > 0
+                ? `${failures}件は生成できませんでした。`
+                : "了承するまで書類チェックには使われません。",
+            action: {
+              label: "ルール管理を開く",
+              onClick: () => {
+                window.location.href = "/admin/rules/pending"
+              },
+            },
+            duration: 12000,
+          }
+        )
+      } else if (failures > 0) {
+        toast.error(
+          "判定ルール案を生成できませんでした。PDF直リンクと公開情報監視の同期をご確認ください。"
+        )
+      } else {
+        toast.message("判定ルール案は出ませんでした。本文をご確認ください。")
+      }
+    })
+  }
+
   return (
     <section
-      className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle"
+      className="space-y-4 rounded-xl border border-primary/20 bg-primary/[0.03] p-4 shadow-subtle"
       aria-labelledby="propose-rules-heading"
     >
-      <div>
-        <h2
-          id="propose-rules-heading"
-          className="text-lg font-semibold text-primary-dark"
-        >
-          {heading}
-        </h2>
-        <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          {description}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h2
+            id="propose-rules-heading"
+            className="text-lg font-semibold text-primary-dark"
+          >
+            {heading}
+          </h2>
+          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            className="min-h-11"
+            disabled={pending || generatable.length === 0}
+            onClick={proposeAll}
+          >
+            <Sparkles className="size-4" aria-hidden />
+            {pending
+              ? "生成中…"
+              : `まとめて判定ルール案を生成する（${generatable.length}件）`}
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href="/admin/rules/pending">ルール管理で了承する</Link>
+          </Button>
+        </div>
       </div>
 
       {documents.length === 0 ? (
         <p className="text-base leading-relaxed text-muted-foreground">
-          台帳上の資料がありません。公開情報PDF（直リンク）を登録すると自動で載ります。載ったあと、下のボタンで案を生成できます。
+          台帳上の資料がありません。公開情報PDF（直リンク）を登録すると自動で載ります。
         </p>
       ) : (
         <ul className="space-y-2">
-          {documents.map((d, index) => {
-            const needsAttention =
-              d.last_sync_status === "failed" ||
-              d.last_sync_status === "suspicious" ||
-              d.last_sync_status === "selector_broken"
+          {documents.map((d) => {
             const url = d.source_url?.trim() || null
-            const hasSnapshot = Boolean(d.content_hash?.trim())
+            const canGenerate =
+              d.hasTextSnapshot || Boolean(d.content_hash?.trim())
             const subtitle = [
               LAYER_LABEL[d.layer],
               d.region_name,
-              `${d.applicable_year}年度`,
               d.last_sync_status ? `同期:${d.last_sync_status}` : null,
-              hasSnapshot ? "本文あり" : "本文なし",
             ]
               .filter(Boolean)
               .join("／")
 
             return (
               <li key={d.id}>
-                <Card
-                  className={
-                    needsAttention
-                      ? "rounded-xl border-warning/40 shadow-subtle"
-                      : "rounded-xl shadow-subtle"
-                  }
-                >
-                  <CardContent className="flex flex-wrap items-center gap-3 py-3.5">
-                    <span
-                      className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-semibold tabular-nums text-muted-foreground"
-                      aria-hidden
-                    >
-                      {index + 1}
-                    </span>
+                <Card className="rounded-xl shadow-subtle">
+                  <CardContent className="flex flex-wrap items-center gap-3 py-3">
                     <FileText
                       className="size-4 shrink-0 text-muted-foreground"
                       aria-hidden
@@ -99,13 +186,17 @@ export function RulebookDocumentsProposePanel({
                         <Badge variant="outline" className="rounded-md">
                           {LAYER_LABEL[d.layer]}
                         </Badge>
-                        {hasSnapshot ? (
+                        {d.hasTextSnapshot ? (
                           <Badge className="rounded-md bg-primary/15 text-primary-dark">
-                            生成可能
+                            本文あり
+                          </Badge>
+                        ) : d.content_hash ? (
+                          <Badge variant="outline" className="rounded-md">
+                            再同期で補完します
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="rounded-md">
-                            先に同期が必要
+                            同期が必要
                           </Badge>
                         )}
                       </div>
@@ -123,24 +214,16 @@ export function RulebookDocumentsProposePanel({
                           </a>
                         </Button>
                       ) : null}
-                      <Button asChild variant="outline" className="min-h-11">
-                        <Link
-                          href={
-                            d.layer === "city"
-                              ? `/admin/rules/documents?city=${citySlug}`
-                              : "/admin/rules/documents"
-                          }
-                        >
-                          <Pencil className="size-4" aria-hidden />
-                          資料を確認する
-                        </Link>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="min-h-11"
+                        disabled={pending || !canGenerate}
+                        onClick={() => proposeOne(d)}
+                      >
+                        <Sparkles className="size-4" aria-hidden />
+                        {pending ? "生成中…" : "判定ルール案を生成する"}
                       </Button>
-                      {hasSnapshot ? (
-                        <ProposeRulesFromDocumentButton
-                          knowledgeDocumentId={d.id}
-                          documentTitle={d.title}
-                        />
-                      ) : null}
                     </div>
                   </CardContent>
                 </Card>
@@ -150,11 +233,20 @@ export function RulebookDocumentsProposePanel({
         </ul>
       )}
 
-      <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-        <Button asChild className="min-h-11">
-          <Link href="/admin/rules/pending">ルール管理で了承する</Link>
-        </Button>
-      </div>
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        うまくいかないときは
+        <Link
+          href={
+            citySlug
+              ? `/admin/rules/documents?city=${citySlug}`
+              : "/admin/rules/documents"
+          }
+          className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
+        >
+          公開情報監視
+        </Link>
+        で同期結果をご確認ください。
+      </p>
     </section>
   )
 }

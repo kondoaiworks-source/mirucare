@@ -14,7 +14,7 @@ type Props = {
 }
 
 /**
- * 市区町村ごとの市公開情報＋監査カテゴリへの導線＋判定ルール案生成。
+ * 市区町村ごとの市公開情報＋判定ルール案生成＋監査カテゴリへの導線。
  */
 export function MunicipalityCityHub({ service, data }: Props) {
   const { city, layerJurisdictions, sources, documents } = data
@@ -47,7 +47,7 @@ export function MunicipalityCityHub({ service, data }: Props) {
                 {city.name}
               </h1>
               <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-                市の公開情報を登録し、台帳資料から判定ルール案を生成したうえで、監査カテゴリへ進みます。運用／停止は市区町村一覧から切り替えできます。
+                まず判定ルール案を生成し、ルール管理で了承します。公開情報の追加は下の欄から行えます。
               </p>
             </div>
           </div>
@@ -60,6 +60,13 @@ export function MunicipalityCityHub({ service, data }: Props) {
           </Button>
         </div>
       </div>
+
+      <RulebookDocumentsProposePanel
+        documents={documents}
+        citySlug={city.slug}
+        heading="判定ルール案の生成（国・県・市）"
+        description={`${city.name}に関連する台帳資料から、AIが判定ルール案＋根拠を提案します。URL登録だけでは案は出ません。`}
+      />
 
       <section
         className="rounded-xl border border-border bg-card p-4 shadow-subtle"
@@ -78,13 +85,6 @@ export function MunicipalityCityHub({ service, data }: Props) {
           sources={citySources}
         />
       </section>
-
-      <RulebookDocumentsProposePanel
-        documents={documents}
-        citySlug={city.slug}
-        heading="判定ルール案の生成（国・県・市）"
-        description={`${city.name}に関連する台帳資料から、AIが判定ルール案＋根拠を提案します。URL登録だけでは案は出ません。生成後は「ルール管理」で了承してください。`}
-      />
 
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" className="min-h-11">

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { requireOperator } from "@/lib/operator"
 import { toUserErrorMessage } from "@/lib/auth-errors"
-import { readSnapshotText } from "@/lib/knowledge/snapshots"
+import { readSnapshotText, getLatestSnapshot } from "@/lib/knowledge/snapshots"
+import { syncKnowledgeDocument } from "@/lib/knowledge/sync"
 import type { KnowledgeChangeItem } from "@/lib/knowledge/diff-draft"
 import {
   defaultEffectiveFrom,
@@ -272,6 +273,7 @@ export async function proposeAiCheckRulesFromDraftAction(input: {
 /**
  * 公開情報監視の最新スナップショット本文から判定ルール案を生成し、承認待ちへ載せる。
  * 初回登録後（差分がなくても）ルールブックの中身を提案する用途。
+ * スナップショット欠落時は最新スナップショットへフォールバックし、無ければ再同期を試みる。
  */
 export async function proposeAiCheckRulesFromDocumentAction(input: {
   knowledgeDocumentId: string
@@ -280,63 +282,137 @@ export async function proposeAiCheckRulesFromDocumentAction(input: {
 > {
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
+  const service = op.service
 
   const documentId = input.knowledgeDocumentId?.trim()
   if (!documentId) {
     return { ok: false, error: "対象の資料が指定されていません。" }
   }
 
-  const { data: doc, error: docError } = await op.service
+  const { data: docRow, error: docError } = await service
     .from("knowledge_documents")
-    .select(
-      "id, title, region_name, jurisdiction_level, content_hash, status"
-    )
+    .select("*")
     .eq("id", documentId)
     .maybeSingle()
 
   if (docError) {
     return { ok: false, error: toUserErrorMessage(docError) }
   }
-  if (!doc) {
+  if (!docRow) {
     return { ok: false, error: "資料が見つかりません。" }
   }
 
-  const hash = (doc.content_hash as string | null)?.trim()
-  if (!hash) {
+  type DocRow = {
+    id: string
+    title: string
+    region_name: string | null
+    jurisdiction_level: string | null
+    content_hash: string | null
+    status: string
+    source_url: string | null
+  }
+
+  let doc = docRow as DocRow
+
+  async function resolveSnapshot() {
+    const hash = doc.content_hash?.trim() || null
+    if (hash) {
+      const { data, error } = await service
+        .from("knowledge_document_snapshots")
+        .select("*")
+        .eq("knowledge_document_id", documentId)
+        .eq("content_hash", hash)
+        .order("captured_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (error) throw new Error(toUserErrorMessage(error))
+      if (data) return data
+    }
+    return getLatestSnapshot(service, documentId)
+  }
+
+  let snapshot: Awaited<ReturnType<typeof resolveSnapshot>> = null
+  try {
+    snapshot = await resolveSnapshot()
+  } catch (err) {
     return {
       ok: false,
       error:
-        "本文スナップショットがありません。先に監視同期またはPDF登録を行ってください。",
+        err instanceof Error
+          ? err.message
+          : "スナップショットの確認に失敗しました。",
     }
   }
 
-  const { data: snapshot, error: snapError } = await op.service
-    .from("knowledge_document_snapshots")
-    .select("*")
-    .eq("knowledge_document_id", documentId)
-    .eq("content_hash", hash)
-    .order("captured_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  // ハッシュはあるがスナップショット欠落 → 再同期して補完を試す
+  if (!snapshot && doc.source_url?.trim()) {
+    const syncResult = await syncKnowledgeDocument(
+      docRow as Parameters<typeof syncKnowledgeDocument>[0],
+      service
+    )
+    if (
+      syncResult.status === "failed" ||
+      syncResult.status === "suspicious" ||
+      syncResult.status === "selector_broken"
+    ) {
+      return {
+        ok: false,
+        error:
+          syncResult.message ??
+          "本文の再同期に失敗しました。公開情報監視で同期結果をご確認ください。",
+      }
+    }
 
-  if (snapError) {
-    return { ok: false, error: toUserErrorMessage(snapError) }
+    const { data: refreshed } = await service
+      .from("knowledge_documents")
+      .select("*")
+      .eq("id", documentId)
+      .maybeSingle()
+    if (refreshed) {
+      doc = refreshed as DocRow
+    }
+
+    try {
+      snapshot = await resolveSnapshot()
+    } catch (err) {
+      return {
+        ok: false,
+        error:
+          err instanceof Error
+            ? err.message
+            : "再同期後のスナップショット確認に失敗しました。",
+      }
+    }
   }
+
   if (!snapshot) {
     return {
       ok: false,
-      error: "本文スナップショットを取得できませんでした。",
+      error:
+        "本文スナップショットがありません。PDF直リンクで公開情報を登録し、公開情報監視で同期が成功しているかご確認ください。",
     }
   }
 
   let sourceText = ""
   try {
-    sourceText = await readSnapshotText(op.service, snapshot)
+    sourceText = await readSnapshotText(service, snapshot)
   } catch {
-    return { ok: false, error: "本文の読み取りに失敗しました。" }
+    return {
+      ok: false,
+      error:
+        "本文の読み取りに失敗しました。Storage（knowledge-snapshots）の設定をご確認ください。",
+    }
   }
 
-  const auditRes = await loadAuditItemOptions(op.service)
+  if (!sourceText.trim()) {
+    return {
+      ok: false,
+      error:
+        "本文が空です。PDFから文字を抽出できていない可能性があります。別のPDF直リンクをご確認ください。",
+    }
+  }
+
+  const auditRes = await loadAuditItemOptions(service)
   if (!auditRes.ok || !auditRes.data) {
     return { ok: false, error: auditRes.error }
   }
@@ -344,8 +420,8 @@ export async function proposeAiCheckRulesFromDocumentAction(input: {
   const sourceTitle = String(doc.title)
   const proposed = await proposeRulesFromSourceText({
     documentTitle: sourceTitle,
-    regionName: (doc.region_name as string | null) ?? null,
-    jurisdictionLevel: (doc.jurisdiction_level as string | null) ?? null,
+    regionName: doc.region_name ?? null,
+    jurisdictionLevel: doc.jurisdiction_level ?? null,
     sourceText,
     auditItems: auditRes.data,
   })
@@ -361,12 +437,12 @@ export async function proposeAiCheckRulesFromDocumentAction(input: {
     }
   }
 
-  const inserted = await insertPendingProposals(op.service, {
+  const inserted = await insertPendingProposals(service, {
     proposals: proposed.proposals,
     sourceTitle,
     knowledgeChangeDraftId: null,
-    regionName: (doc.region_name as string | null) ?? null,
-    jurisdictionLevel: (doc.jurisdiction_level as string | null) ?? null,
+    regionName: doc.region_name ?? null,
+    jurisdictionLevel: doc.jurisdiction_level ?? null,
   })
 
   if (!inserted.ok || !inserted.data) {
