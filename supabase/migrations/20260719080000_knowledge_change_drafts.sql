@@ -222,7 +222,11 @@ VALUES (
   'knowledge-snapshots',
   false,
   4194304, -- 4MB（アプリ側ソフト上限2MB切り詰め後の余裕）
-  ARRAY['text/plain', 'application/octet-stream']
+  ARRAY[
+    'text/plain',
+    'text/plain; charset=utf-8',
+    'application/octet-stream'
+  ]
 )
 ON CONFLICT (id) DO UPDATE SET
   public = EXCLUDED.public,

@@ -4,7 +4,10 @@ import { sendResendEmail } from "@/lib/email/deadline-reminder"
 import { buildKnowledgeSyncAlertEmail } from "@/lib/email/knowledge-sync-alert"
 import { conditionalFetch } from "@/lib/knowledge/http"
 import { extractWatchRows } from "@/lib/knowledge/index-extract"
-import { trySaveKnowledgePdfSnapshot } from "@/lib/knowledge/snapshots"
+import {
+  getSnapshotByHash,
+  trySaveKnowledgePdfSnapshot,
+} from "@/lib/knowledge/snapshots"
 import { tryCreateChangeDraftOnHashChange } from "@/lib/knowledge/diff-draft"
 import { notifyChangeDraftCreated } from "@/lib/email/knowledge-change-draft"
 import type {
@@ -105,19 +108,37 @@ export async function syncKnowledgeDocument(
   return syncFileDocument(doc, sourceUrl, service)
 }
 
+async function needsPdfSnapshotBackfill(
+  service: ServiceClient,
+  doc: KnowledgeDocument
+): Promise<boolean> {
+  const hash = doc.content_hash?.trim() || null
+  // ハッシュ未確定＝本文スナップショットも未整備
+  if (!hash) return true
+  try {
+    const snap = await getSnapshotByHash(service, doc.id, hash)
+    return !snap
+  } catch {
+    return true
+  }
+}
+
 async function syncFileDocument(
   doc: KnowledgeDocument,
   sourceUrl: string,
   service: ServiceClient
 ): Promise<SyncOneResult> {
   const now = new Date().toISOString()
+  // スナップショット欠落時は 304 を避け、本体PDFを取り直して補完する
+  const forceBody = await needsPdfSnapshotBackfill(service, doc)
   const fetched = await conditionalFetch(sourceUrl, {
-    etag: doc.etag,
-    lastModified: doc.last_modified,
+    etag: forceBody ? null : doc.etag,
+    lastModified: forceBody ? null : doc.last_modified,
     accept: "application/pdf,*/*",
   })
 
   if (fetched.kind === "not_modified") {
+    // 条件付きGETを使ったときだけ到達。スナップショットがある前提で「変更なし」
     await service
       .from("knowledge_documents")
       .update({
@@ -191,13 +212,38 @@ async function syncFileDocument(
 
   if (doc.content_hash && doc.content_hash === hash) {
     // ハッシュ一致でもスナップショット欠落時は補完（既存台帳の初回取得など）
-    await trySaveKnowledgePdfSnapshot({
+    const backfilled = await trySaveKnowledgePdfSnapshot({
       service,
       knowledgeDocumentId: doc.id,
       contentHash: hash,
       pdfBuffer,
       sourceUrlAtCapture: sourceUrl,
     })
+
+    if (!backfilled) {
+      await service
+        .from("knowledge_documents")
+        .update({
+          content_bytes: byteLength,
+          last_checked_at: now,
+          last_sync_status: "failed",
+          last_error:
+            "PDFの本文スナップショット保存に失敗しました。Storage（knowledge-snapshots）とPDF直リンクをご確認ください。",
+          updated_at: now,
+          // etag を進めない（次回も本体を再取得して補完を再試行）
+          etag: null,
+          last_modified: null,
+        })
+        .eq("id", doc.id)
+
+      return {
+        documentId: doc.id,
+        title: doc.title,
+        status: "failed",
+        message:
+          "内容は取得できましたが、本文スナップショットの保存に失敗しました。判定ルール案の生成にはスナップショットが必要です。",
+      }
+    }
 
     await service
       .from("knowledge_documents")
@@ -216,6 +262,9 @@ async function syncFileDocument(
       title: doc.title,
       status: "unchanged",
       changed: false,
+      message: forceBody
+        ? "本文スナップショットを補完しました。"
+        : "変更なし（内容ハッシュ一致）。",
     }
   }
 
@@ -273,7 +322,7 @@ async function syncFileDocument(
 
   const difyId = `dify-sync-${hash.slice(0, 12)}`
 
-  // スナップショット保存に失敗したときは content_hash を進めない（提案時の欠落を防ぐ）
+  // スナップショット保存に失敗したときは content_hash / etag を進めない（提案時の欠落を防ぐ）
   if (!saved) {
     await service
       .from("knowledge_documents")
@@ -284,7 +333,8 @@ async function syncFileDocument(
         last_error:
           "PDFの本文スナップショット保存に失敗しました。Storage（knowledge-snapshots）とPDF直リンクをご確認ください。",
         updated_at: now,
-        ...cacheFields,
+        etag: null,
+        last_modified: null,
       })
       .eq("id", doc.id)
 

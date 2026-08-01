@@ -1,13 +1,16 @@
 "use client"
 
 import Link from "next/link"
-import { useTransition } from "react"
+import { useState, useTransition } from "react"
 import { toast } from "sonner"
 import { ExternalLink, FileText, Sparkles } from "lucide-react"
 import { proposeAiCheckRulesFromDocumentAction } from "@/app/actions/propose-check-rules"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+
+/** null=idle / "all"=一括 / 資料ID=その1件のみ */
+type RunningTarget = null | "all" | string
 
 const LAYER_LABEL: Record<string, string> = {
   national: "国",
@@ -52,10 +55,13 @@ export function RulebookDocumentsProposePanel({
   onProposed,
   hidePendingLink = false,
 }: Props) {
-  const [pending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
+  const [runningTarget, setRunningTarget] = useState<RunningTarget>(null)
   const generatable = documents.filter(
     (d) => d.hasTextSnapshot || Boolean(d.content_hash?.trim())
   )
+  const isRunningAll = runningTarget === "all"
+  const isAnyRunning = runningTarget !== null
 
   function afterSuccess(message: string, descriptionText?: string) {
     toast.success(message, {
@@ -67,23 +73,36 @@ export function RulebookDocumentsProposePanel({
   }
 
   function proposeOne(doc: ProposePanelDocument) {
-    startTransition(async () => {
-      const result = await proposeAiCheckRulesFromDocumentAction({
-        knowledgeDocumentId: doc.id,
-      })
-      if (!result.ok) {
-        toast.error(result.error ?? "判定ルール案の生成に失敗しました。")
-        return
-      }
-      if (result.data?.empty) {
-        toast.message(
-          `「${doc.title}」から判定ルール案は出ませんでした。本文をご確認ください。`
-        )
-        return
-      }
-      afterSuccess(
-        `「${doc.title}」から判定ルール案を ${result.data?.createdCount ?? 0}件載せました。`
+    if (runningTarget) {
+      toast.message(
+        isRunningAll
+          ? "まとめて生成中です。完了してからお試しください。"
+          : "別の資料を生成中です。完了してからお試しください。"
       )
+      return
+    }
+    setRunningTarget(doc.id)
+    startTransition(async () => {
+      try {
+        const result = await proposeAiCheckRulesFromDocumentAction({
+          knowledgeDocumentId: doc.id,
+        })
+        if (!result.ok) {
+          toast.error(result.error ?? "判定ルール案の生成に失敗しました。")
+          return
+        }
+        if (result.data?.empty) {
+          toast.message(
+            `「${doc.title}」から判定ルール案は出ませんでした。本文をご確認ください。`
+          )
+          return
+        }
+        afterSuccess(
+          `「${doc.title}」から判定ルール案を ${result.data?.createdCount ?? 0}件載せました。`
+        )
+      } finally {
+        setRunningTarget(null)
+      }
     })
   }
 
@@ -94,32 +113,41 @@ export function RulebookDocumentsProposePanel({
       )
       return
     }
+    if (runningTarget) {
+      toast.message("生成中です。完了してからお試しください。")
+      return
+    }
+    setRunningTarget("all")
     startTransition(async () => {
-      let total = 0
-      let failures = 0
-      for (const doc of generatable) {
-        const result = await proposeAiCheckRulesFromDocumentAction({
-          knowledgeDocumentId: doc.id,
-        })
-        if (!result.ok) {
-          failures += 1
-          continue
+      try {
+        let total = 0
+        let failures = 0
+        for (const doc of generatable) {
+          const result = await proposeAiCheckRulesFromDocumentAction({
+            knowledgeDocumentId: doc.id,
+          })
+          if (!result.ok) {
+            failures += 1
+            continue
+          }
+          total += result.data?.createdCount ?? 0
         }
-        total += result.data?.createdCount ?? 0
-      }
-      if (total > 0) {
-        afterSuccess(
-          `判定ルール案を合計 ${total}件載せました。`,
-          failures > 0
-            ? `${failures}件は生成できませんでした。下の了承待ちをご確認ください。`
-            : "下の了承待ちから確認してください。"
-        )
-      } else if (failures > 0) {
-        toast.error(
-          "判定ルール案を生成できませんでした。PDF直リンクと公開情報監視の同期をご確認ください。"
-        )
-      } else {
-        toast.message("判定ルール案は出ませんでした。本文をご確認ください。")
+        if (total > 0) {
+          afterSuccess(
+            `判定ルール案を合計 ${total}件載せました。`,
+            failures > 0
+              ? `${failures}件は生成できませんでした。下の了承待ちをご確認ください。`
+              : "下の了承待ちから確認してください。"
+          )
+        } else if (failures > 0) {
+          toast.error(
+            "判定ルール案を生成できませんでした。PDF直リンクと公開情報監視の同期をご確認ください。"
+          )
+        } else {
+          toast.message("判定ルール案は出ませんでした。本文をご確認ください。")
+        }
+      } finally {
+        setRunningTarget(null)
       }
     })
   }
@@ -145,13 +173,15 @@ export function RulebookDocumentsProposePanel({
           <Button
             type="button"
             className="min-h-11"
-            disabled={pending || generatable.length === 0}
+            disabled={isAnyRunning || generatable.length === 0}
             onClick={proposeAll}
           >
             <Sparkles className="size-4" aria-hidden />
-            {pending
-              ? "生成中…"
-              : `まとめて判定ルール案を生成する（${generatable.length}件）`}
+            {isRunningAll
+              ? "まとめて生成中…"
+              : isAnyRunning
+                ? "1件を生成中…"
+                : `まとめて判定ルール案を生成する（${generatable.length}件）`}
           </Button>
           {!hidePendingLink ? (
             <Button asChild variant="outline" className="min-h-11">
@@ -171,6 +201,7 @@ export function RulebookDocumentsProposePanel({
             const url = d.source_url?.trim() || null
             const canGenerate =
               d.hasTextSnapshot || Boolean(d.content_hash?.trim())
+            const isRunningThis = runningTarget === d.id
             const layerKey = d.layer ?? "other"
             const subtitle = [
               LAYER_LABEL[layerKey] ?? d.jurisdiction_level,
@@ -231,11 +262,15 @@ export function RulebookDocumentsProposePanel({
                         type="button"
                         variant="secondary"
                         className="min-h-11"
-                        disabled={pending || !canGenerate}
+                        disabled={!canGenerate || isRunningThis || isRunningAll}
                         onClick={() => proposeOne(d)}
                       >
                         <Sparkles className="size-4" aria-hidden />
-                        {pending ? "生成中…" : "判定ルール案を生成する"}
+                        {isRunningThis
+                          ? "この資料を生成中…"
+                          : isRunningAll
+                            ? "まとめて生成中…"
+                            : "判定ルール案を生成する"}
                       </Button>
                     </div>
                   </CardContent>

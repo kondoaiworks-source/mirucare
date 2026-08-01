@@ -159,10 +159,11 @@ export async function saveKnowledgePdfSnapshot(opts: {
     opts.contentHash
   )
 
+  // allowed_mime_types は完全一致のため charset 付きは拒否される
   const { error: uploadError } = await opts.service.storage
     .from(KNOWLEDGE_SNAPSHOTS_BUCKET)
     .upload(storagePath, prepared.text, {
-      contentType: "text/plain; charset=utf-8",
+      contentType: "text/plain",
       upsert: true,
     })
 

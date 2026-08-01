@@ -383,13 +383,24 @@ export async function proposeAiCheckRulesFromDocumentAction(input: {
             : "再同期後のスナップショット確認に失敗しました。",
       }
     }
+
+    if (!snapshot) {
+      return {
+        ok: false,
+        error:
+          syncResult.message?.trim()
+            ? `${syncResult.message} 本文スナップショットを確認できませんでした。公開情報監視で「今すぐ同期」を実行し、Storage（knowledge-snapshots）をご確認ください。`
+            : "再同期後も本文スナップショットがありません。公開情報監視で「今すぐ同期」を実行し、Storage（knowledge-snapshots）とPDF直リンクをご確認ください。",
+      }
+    }
   }
 
   if (!snapshot) {
     return {
       ok: false,
-      error:
-        "本文スナップショットがありません。PDF直リンクで公開情報を登録し、公開情報監視で同期が成功しているかご確認ください。",
+      error: doc.source_url?.trim()
+        ? "本文スナップショットがありません。PDF直リンクで公開情報を登録し、公開情報監視で同期が成功しているかご確認ください。"
+        : "本文スナップショットがありません。監視用のPDF直リンク（source_url）を登録してから、公開情報監視で同期してください。",
     }
   }
 

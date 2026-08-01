@@ -222,7 +222,8 @@ curl -X POST "https://あなたの本番ドメイン/api/cron/knowledge-sync" \
 | Cron が 401 | `CRON_SECRET` 未設定・不一致・未 Redeploy |
 | 承認待ちは出るが要約が「AI整理なし」 | `GEMINI_API_KEY` 未設定、または Gemini 側エラー（1分後1回リトライ後も失敗） |
 | メールが来ない | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` / 送信先 / ドメイン検証 |
-| Storage エラー | `knowledge-snapshots` が無い、または public になっている |
+| Storage エラー | `knowledge-snapshots` が無い、public、または MIME 不一致（`text/plain` を許可。`text/plain; charset=utf-8` だけ許可だと失敗する） |
+| backfill が mime type … is not supported | マイグレーション `20260802070000_knowledge_snapshots_mime.sql` を適用するか、Edit bucket の Allowed MIME に `text/plain` を入れる |
 | 一覧が取れない | マイグレーション未適用 |
 
 ---
