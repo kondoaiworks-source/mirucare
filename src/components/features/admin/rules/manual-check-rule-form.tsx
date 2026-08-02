@@ -34,8 +34,8 @@ type Props = {
 }
 
 /**
- * 手入力で判定ルール＋初版を作り、必ずルール管理へ載せる。
- * 市ルールブックのチェックルールから使う。
+ * 手入力で判定ルール＋初版を作り、必ずルール管理（了承待ち）へ載せる。
+ * API（Gemini）なしでテスト・緊急追加できる。
  */
 export function ManualCheckRuleForm({ onCreated }: Props) {
   const router = useRouter()
@@ -92,12 +92,19 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         return
       }
       toast.success("判定ルールをルール管理に載せました。", {
-        action: {
-          label: "ルール管理を開く",
-          onClick: () => {
-            window.location.href = "/admin/rules/pending"
-          },
-        },
+        description: onCreated
+          ? "下の了承待ちから確認してください。"
+          : "了承するまでチェックには使われません。",
+        ...(onCreated
+          ? {}
+          : {
+              action: {
+                label: "ルール管理を開く",
+                onClick: () => {
+                  window.location.href = "/admin/rules/pending"
+                },
+              },
+            }),
       })
       setCode("")
       setTitle("")

@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/rule-engine"
 import type { AiCheckRule, AiCheckRuleVersion } from "@/types/database"
 import { RulesManagementProposeBoard } from "@/components/features/admin/rules/rules-management-propose-board"
+import { ManualCheckRuleForm } from "@/components/features/admin/rules/manual-check-rule-form"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -88,7 +89,7 @@ export function PendingRulesAdmin() {
           ルール管理
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          台帳資料から判定ルール案を生成し、了承・差し戻しします。了承したものだけがチェックに使われ、ルールブックの中身になります。URL登録だけでは案は出ません。
+          台帳資料から判定ルール案を生成するか、手入力で1件追加し、了承・差し戻しします。了承したものだけがチェックに使われ、ルールブックの中身になります。URL登録だけでは案は出ません。
         </p>
         <p className="mt-2 text-base tabular-nums text-muted-foreground">
           了承待ち{" "}
@@ -100,6 +101,18 @@ export function PendingRulesAdmin() {
       </div>
 
       <RulesManagementProposeBoard onProposed={() => void refresh()} />
+
+      <details className="rounded-xl border border-border bg-card px-4 py-3 shadow-subtle">
+        <summary className="cursor-pointer text-base font-semibold text-primary-dark outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          手入力で判定ルールを1件追加する（API不要）
+        </summary>
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
+          <p className="text-base leading-relaxed text-muted-foreground">
+            Gemini APIが使えないときや、チャットで作った案を転記するときに使います。登録すると下の了承待ちに載り、了承するまでチェックには使いません。
+          </p>
+          <ManualCheckRuleForm onCreated={() => void refresh()} />
+        </div>
+      </details>
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">
@@ -124,7 +137,7 @@ export function PendingRulesAdmin() {
                 現在、確認するルール案はありません
               </CardTitle>
               <CardDescription className="text-base">
-                上の「判定ルール案を生成する」を押すと、ここに表示されます。公開情報が未登録のときは
+                上の「判定ルール案を生成する」か「手入力で判定ルールを1件追加する」で載せると、ここに表示されます。公開情報が未登録のときは
                 <Link
                   href="/admin/rules/services"
                   className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
