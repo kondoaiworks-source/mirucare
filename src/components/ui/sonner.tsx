@@ -1,6 +1,12 @@
 "use client"
 
-import { Toaster as Sonner, type ToasterProps } from "sonner"
+import type { ReactNode } from "react"
+import {
+  Toaster as Sonner,
+  toast as sonnerToast,
+  type ExternalToast,
+  type ToasterProps,
+} from "sonner"
 import {
   CircleCheckIcon,
   InfoIcon,
@@ -8,6 +14,37 @@ import {
   OctagonXIcon,
   Loader2Icon,
 } from "lucide-react"
+
+/**
+ * エラーは閉じるまで残す（長い Gemini メッセージなどを読み切れるように）。
+ * 成功・情報は通常どおり自動で閉じる。
+ */
+function persistentError(
+  message: string | ReactNode,
+  data?: ExternalToast
+) {
+  return sonnerToast.error(message, {
+    duration: Infinity,
+    closeButton: true,
+    ...data,
+  })
+}
+
+export const toast = Object.assign(
+  (message: string | ReactNode, data?: ExternalToast) =>
+    sonnerToast(message, data),
+  {
+    success: sonnerToast.success,
+    info: sonnerToast.info,
+    warning: sonnerToast.warning,
+    message: sonnerToast.message,
+    loading: sonnerToast.loading,
+    promise: sonnerToast.promise,
+    custom: sonnerToast.custom,
+    dismiss: sonnerToast.dismiss,
+    error: persistentError,
+  }
+)
 
 const Toaster = ({ ...props }: ToasterProps) => {
   return (

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState, useTransition } from "react"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import { ExternalLink, FileText, Sparkles } from "lucide-react"
 import { proposeAiCheckRulesFromDocumentAction } from "@/app/actions/propose-check-rules"
 import { Badge } from "@/components/ui/badge"

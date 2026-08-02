@@ -1,6 +1,6 @@
 "use client"
 
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import { Button } from "@/components/ui/button"
 
 export function ToastDemo() {
@@ -33,7 +33,8 @@ export function ToastDemo() {
         variant="destructive"
         onClick={() =>
           toast.error("アップロードに失敗しました", {
-            description: "通信状況をご確認のうえ、再度お試しください。",
+            description:
+              "通信状況をご確認のうえ、再度お試しください。（エラーは閉じるまで表示されます）",
           })
         }
       >

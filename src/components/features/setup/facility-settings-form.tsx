@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, useTransition } from "react"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import { updateFacilitySettingsAction } from "@/app/actions/facility-setup"
 import { getPublishedRulebookCatalogAction } from "@/app/actions/rulebook-offerings"
 import { SERVICE_TYPE_OPTIONS } from "@/lib/municipalities"

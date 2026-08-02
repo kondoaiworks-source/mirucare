@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import {
   listAiRulesAction,
   proposeAiCheckRuleTextRevisionAction,

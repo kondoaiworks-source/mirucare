@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import {
   createAiCheckRuleWithVersionAction,
   listAiRulesAction,

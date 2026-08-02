@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import {
   createMunicipalitySourceUrlAction,
   listMunicipalitySourceUrlsAction,

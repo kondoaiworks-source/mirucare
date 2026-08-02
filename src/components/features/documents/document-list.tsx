@@ -11,7 +11,7 @@ import {
   Check,
   Clock,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,

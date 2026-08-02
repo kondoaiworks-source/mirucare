@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react"
 import { Lock, Loader2, Unlock } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import {
   listLockedUsersAction,
   unlockUserLoginAction,

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { Loader2 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import { Label } from "@/components/ui/label"
 import { updateSkipFindingReviewAction } from "@/app/actions/findings"
 

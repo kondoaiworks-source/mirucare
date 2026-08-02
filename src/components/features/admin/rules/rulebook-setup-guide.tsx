@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
 import Link from "next/link"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import {
   seedPhase1RulebookBasicsAction,
 } from "@/app/actions/rule-engine"

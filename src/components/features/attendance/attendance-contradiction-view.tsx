@@ -10,7 +10,7 @@ import {
   RefreshCw,
   Upload,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import { detectAttendanceContradictionsAction } from "@/app/actions/attendance-billing"
 import type { AttendanceContradiction } from "@/types/database"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"

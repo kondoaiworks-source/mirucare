@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition, type FormEvent } from "react"
 import Link from "next/link"
-import { toast } from "sonner"
+import { toast } from "@/components/ui/sonner"
 import {
   createRuleSourceAction,
   listRuleSourcesAction,
