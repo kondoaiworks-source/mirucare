@@ -66,7 +66,12 @@ export function RulesNotificationsAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <AdminBreadcrumb items={[{ label: "公開情報台帳管理" }]} />
+        <AdminBreadcrumb
+          items={[
+            { label: "監視状況", href: "/admin/rules/monitoring" },
+            { label: "公開情報台帳管理" },
+          ]}
+        />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark">
           公開情報台帳管理
         </h1>

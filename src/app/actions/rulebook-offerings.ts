@@ -28,6 +28,7 @@ function revalidateOfferingPaths() {
   revalidatePath("/admin/rules/municipalities")
   revalidatePath("/admin/rules/regulatory")
   revalidatePath("/admin/rules/services", "layout")
+  revalidatePath("/admin/rules/setup")
   revalidatePath("/onboarding")
   revalidatePath("/settings")
 }

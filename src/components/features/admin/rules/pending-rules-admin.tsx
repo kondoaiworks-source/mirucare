@@ -84,12 +84,12 @@ export function PendingRulesAdmin() {
   return (
     <div className="space-y-8">
       <div>
-        <AdminBreadcrumb items={[{ label: "ルール管理" }]} />
+        <AdminBreadcrumb items={[{ label: "利用設定", href: "/admin/rules/setup" }, { label: "ルール管理" }]} />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark">
           ルール管理
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          台帳資料から判定ルール案を生成するか、手入力で1件追加し、了承・差し戻しします。了承したものだけがチェックに使われ、ルールブックの中身になります。URL登録だけでは案は出ません。
+          判定ルールの生成・手入力・了承を行います。了承までチェックには使いません。
         </p>
         <p className="mt-2 text-base tabular-nums text-muted-foreground">
           了承待ち{" "}
@@ -102,17 +102,23 @@ export function PendingRulesAdmin() {
 
       <RulesManagementProposeBoard onProposed={() => void refresh()} />
 
-      <details className="rounded-xl border border-border bg-card px-4 py-3 shadow-subtle">
-        <summary className="cursor-pointer text-base font-semibold text-primary-dark outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          手入力で判定ルールを1件追加する（API不要）
-        </summary>
-        <div className="mt-4 space-y-3 border-t border-border pt-4">
-          <p className="text-base leading-relaxed text-muted-foreground">
+      <section
+        className="space-y-4 rounded-xl border border-primary/20 bg-primary/[0.03] p-4 shadow-subtle"
+        aria-labelledby="manual-rule-heading"
+      >
+        <div>
+          <h2
+            id="manual-rule-heading"
+            className="text-lg font-semibold text-primary-dark"
+          >
+            手入力で判定ルールを1件追加する（API不要）
+          </h2>
+          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
             Gemini APIが使えないときや、チャットで作った案を転記するときに使います。登録すると下の了承待ちに載り、了承するまでチェックには使いません。
           </p>
-          <ManualCheckRuleForm onCreated={() => void refresh()} />
         </div>
-      </details>
+        <ManualCheckRuleForm onCreated={() => void refresh()} />
+      </section>
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">

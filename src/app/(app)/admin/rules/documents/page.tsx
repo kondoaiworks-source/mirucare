@@ -25,8 +25,8 @@ export default async function RulesDocumentsPage() {
           <AdminBreadcrumb
             items={[
               {
-                label: "介護サービス選定",
-                href: "/admin/rules/services",
+                label: "監視状況",
+                href: "/admin/rules/monitoring",
               },
               { label: "公開情報監視" },
             ]}
@@ -35,7 +35,7 @@ export default async function RulesDocumentsPage() {
             公開情報監視
           </h1>
           <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            監視状況の確認と、例外時の台帳手動登録です。公開情報の登録は国・県／市区町村ルール設定で行ってください。
+            監視の詳細確認と、例外時の台帳登録です。
           </p>
         </div>
         <Button asChild variant="outline" className="relative min-h-11">

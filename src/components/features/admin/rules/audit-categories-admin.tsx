@@ -66,7 +66,7 @@ export function AuditCategoriesAdmin({ service, city }: Props) {
               href={`${base}/${cat.slug}`}
               className="group block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Card className="h-full rounded-xl shadow-subtle transition-colors group-hover:border-primary/30 group-hover:bg-primary/[0.02]">
+              <Card className="h-full min-h-[9.5rem] rounded-xl shadow-subtle transition-colors group-hover:border-primary/30 group-hover:bg-primary/[0.02]">
                 <CardHeader className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-semibold tabular-nums text-muted-foreground">
@@ -79,10 +79,10 @@ export function AuditCategoriesAdmin({ service, city }: Props) {
                       aria-hidden
                     />
                   </div>
-                  <CardTitle className="text-lg text-primary-dark">
+                  <CardTitle className="line-clamp-1 text-lg text-primary-dark">
                     {cat.title}
                   </CardTitle>
-                  <CardDescription className="text-base leading-relaxed">
+                  <CardDescription className="line-clamp-2 min-h-[3rem] text-base leading-relaxed">
                     {cat.description}
                   </CardDescription>
                 </CardHeader>

@@ -1388,6 +1388,129 @@ export async function listRuleVersionHistoryAction(): Promise<
   return { ok: true, data: { rows } }
 }
 
+/**
+ * 更新履歴の版を編集する（案内文・重大度・適用開始日・変更概要）。
+ * 了承状態は変えず、誤記の修正用。
+ */
+export async function updateAiCheckRuleVersionAction(input: {
+  versionId: string
+  guidanceText: string
+  severity: FindingSeverity
+  effectiveFrom: string
+  changeSummary?: string
+}): Promise<ActionResult> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  const versionId = input.versionId?.trim()
+  const guidanceText = input.guidanceText?.trim() ?? ""
+  const effectiveFrom = input.effectiveFrom?.trim()
+  if (!versionId) {
+    return { ok: false, error: "対象の版が指定されていません。" }
+  }
+  if (!effectiveFrom) {
+    return { ok: false, error: "適用開始日を入力してください。" }
+  }
+
+  const { data: existing, error: fetchError } = await op.service
+    .from("ai_check_rule_versions")
+    .select("id, check_logic")
+    .eq("id", versionId)
+    .maybeSingle()
+
+  if (fetchError) return { ok: false, error: toUserErrorMessage(fetchError) }
+  if (!existing) {
+    return { ok: false, error: "対象の版が見つかりません。" }
+  }
+
+  const prevLogic =
+    existing.check_logic && typeof existing.check_logic === "object"
+      ? (existing.check_logic as Record<string, unknown>)
+      : {}
+
+  const { error } = await op.service
+    .from("ai_check_rule_versions")
+    .update({
+      guidance_text: guidanceText,
+      severity: input.severity,
+      effective_from: effectiveFrom,
+      change_summary: input.changeSummary?.trim() || null,
+      check_logic: {
+        ...prevLogic,
+        notes: guidanceText,
+      },
+    })
+    .eq("id", versionId)
+
+  if (error) return { ok: false, error: toUserErrorMessage(error) }
+
+  revalidateRules("/admin/rules/pending")
+  revalidateRules("/admin/rules/history")
+  revalidateRules("/admin/rules/ai-rules")
+  revalidateRules("/admin/rules/regulatory")
+  return { ok: true }
+}
+
+/**
+ * 更新履歴の版を削除する。当該ルールの最終版ならルール本体も削除する。
+ */
+export async function deleteAiCheckRuleVersionAction(input: {
+  versionId: string
+}): Promise<ActionResult<{ deletedRule: boolean }>> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  const versionId = input.versionId?.trim()
+  if (!versionId) {
+    return { ok: false, error: "対象の版が指定されていません。" }
+  }
+
+  const { data: existing, error: fetchError } = await op.service
+    .from("ai_check_rule_versions")
+    .select("id, rule_id")
+    .eq("id", versionId)
+    .maybeSingle()
+
+  if (fetchError) return { ok: false, error: toUserErrorMessage(fetchError) }
+  if (!existing) {
+    return { ok: false, error: "対象の版が見つかりません。" }
+  }
+
+  const ruleId = existing.rule_id as string
+
+  const { error: deleteError } = await op.service
+    .from("ai_check_rule_versions")
+    .delete()
+    .eq("id", versionId)
+
+  if (deleteError) return { ok: false, error: toUserErrorMessage(deleteError) }
+
+  const { count, error: countError } = await op.service
+    .from("ai_check_rule_versions")
+    .select("id", { count: "exact", head: true })
+    .eq("rule_id", ruleId)
+
+  if (countError) return { ok: false, error: toUserErrorMessage(countError) }
+
+  let deletedRule = false
+  if ((count ?? 0) === 0) {
+    const { error: ruleDeleteError } = await op.service
+      .from("ai_check_rules")
+      .delete()
+      .eq("id", ruleId)
+    if (ruleDeleteError) {
+      return { ok: false, error: toUserErrorMessage(ruleDeleteError) }
+    }
+    deletedRule = true
+  }
+
+  revalidateRules("/admin/rules/pending")
+  revalidateRules("/admin/rules/history")
+  revalidateRules("/admin/rules/ai-rules")
+  revalidateRules("/admin/rules/regulatory")
+  return { ok: true, data: { deletedRule } }
+}
+
 export async function listRuleNotificationsAction(): Promise<
   ActionResult<{
     drafts: Array<
@@ -1440,6 +1563,8 @@ export async function listRuleJobsAction(): Promise<
         | "last_ok_at"
         | "last_error"
         | "status"
+        | "jurisdiction_level"
+        | "region_name"
       >
     >
     alerts: KnowledgeSyncAlert[]
@@ -1452,11 +1577,11 @@ export async function listRuleJobsAction(): Promise<
     op.service
       .from("knowledge_documents")
       .select(
-        "id, title, watch_kind, last_sync_status, last_checked_at, last_ok_at, last_error, status"
+        "id, title, watch_kind, last_sync_status, last_checked_at, last_ok_at, last_error, status, jurisdiction_level, region_name"
       )
       .eq("status", "active")
       .order("last_checked_at", { ascending: false })
-      .limit(50),
+      .limit(100),
     op.service
       .from("knowledge_sync_alerts")
       .select("*")
@@ -1482,6 +1607,8 @@ export async function listRuleJobsAction(): Promise<
           | "last_ok_at"
           | "last_error"
           | "status"
+          | "jurisdiction_level"
+          | "region_name"
         >
       >,
       alerts: (alerts.data ?? []) as KnowledgeSyncAlert[],

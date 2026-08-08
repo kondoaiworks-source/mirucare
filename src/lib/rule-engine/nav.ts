@@ -1,9 +1,6 @@
 import {
-  Bell,
-  ClipboardList,
-  Hourglass,
-  Layers,
-  MoreHorizontal,
+  Activity,
+  Settings2,
   type LucideIcon,
 } from "lucide-react"
 
@@ -24,64 +21,46 @@ export type RulesAdminNavGroup = {
 }
 
 /**
- * ルール設定サイドナビ。
- * 入口は介護サービス選定。了承は横断キューも残す。
+ * ルール設定サイドナビ（利用設定／監視状況の2本）。
  * @see docs/ルールブック構想.md
  */
 export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
   {
-    id: "setup",
+    id: "main",
     items: [
       {
-        href: "/admin/rules/services",
-        label: "介護サービス選定",
-        description:
-          "サービスを選び、国・県・市区町村・監査カテゴリを整える",
-        icon: Layers,
+        href: "/admin/rules/setup",
+        label: "利用設定",
+        description: "サービス・根拠URL・判定ルールを整える",
+        icon: Settings2,
         matchPaths: [
+          "/admin/rules/setup",
           "/admin/rules/services",
+          "/admin/rules/pending",
+          "/admin/rules/history",
           "/admin/rules/regulatory",
           "/admin/rules/municipalities",
+          "/admin/rules/audit-items",
+          "/admin/rules/additions",
+          "/admin/rules/ai-rules",
+          "/admin/rules/ai",
+          "/admin/rules/source-urls",
+          "/admin/rules/laws",
         ],
       },
       {
-        href: "/admin/rules/pending",
-        label: "ルール管理",
-        description:
-          "チェック用ルールの生成・了承・差し戻しと更新履歴（横断キュー）",
-        icon: Hourglass,
-        matchPaths: ["/admin/rules/pending", "/admin/rules/history"],
-      },
-      {
-        href: "/admin/rules/notifications",
-        label: "公開情報台帳管理",
-        description:
-          "公開情報の変更を感知し、台帳反映の承認を依頼する",
-        icon: Bell,
-      },
-    ],
-  },
-  {
-    id: "more",
-    label: "監視トラブル",
-    items: [
-      {
-        href: "/admin/rules/more",
-        label: "監視トラブル",
-        description: "同期結果の確認・公開情報監視（通常は触らない）",
-        icon: MoreHorizontal,
+        href: "/admin/rules/monitoring",
+        label: "監視状況",
+        description: "国・自治体の監視結果とエラーを確認する",
+        icon: Activity,
         matchPaths: [
+          "/admin/rules/monitoring",
           "/admin/rules/more",
           "/admin/rules/documents",
           "/admin/rules/jobs",
+          "/admin/rules/notifications",
+          "/admin/document-changes",
         ],
-      },
-      {
-        href: "/admin/rules/audit-items",
-        label: "監査項目（詳細）",
-        description: "テンプレ監査項目の一覧・編集（日常外）",
-        icon: ClipboardList,
-        matchPaths: ["/admin/rules/audit-items", "/admin/rules/additions"],
       },
     ],
   },

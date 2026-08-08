@@ -24,17 +24,15 @@ type Props = {
 const STEPS = [
   {
     id: "national-prefecture",
-    title: "国・県ルール設定",
-    description:
-      "このサービス共通の国・県の公開情報PDF／URLを追加・変更・削除します。",
+    title: "国・県の根拠URL",
+    description: "サービス共通の国・県PDF／URLを登録します。",
     icon: Landmark,
     path: "national-prefecture" as const,
   },
   {
     id: "municipalities",
-    title: "市区町村ルール設定",
-    description:
-      "対象の市区町村を整え、運用（公開）／停止を切り替えます。市ごとに監査カテゴリへ進めます。",
+    title: "市区町村の設定",
+    description: "市の公開・停止と根拠URLを整えます。",
     icon: Building2,
     path: "municipalities" as const,
   },
@@ -47,7 +45,12 @@ export function ServiceHub({ service }: Props) {
   return (
     <div className="space-y-8">
       <div>
-        <AdminBreadcrumb items={[{ label: service.label }]} />
+        <AdminBreadcrumb
+          items={[
+            { label: "利用設定", href: "/admin/rules/setup" },
+            { label: service.label },
+          ]}
+        />
         <div className="mt-2 flex flex-wrap items-start gap-3">
           <span className="mt-1 flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <BookOpen className="size-5" aria-hidden />
@@ -76,10 +79,10 @@ export function ServiceHub({ service }: Props) {
           id="service-steps-heading"
           className="text-xl font-bold text-primary-dark"
         >
-          設定の進め方
+          設定メニュー
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          国・県を整えてから市区町村を公開し、各市の監査カテゴリで関連資料と判定ルールを整えます。
+          国・県のあと市区町村を整えます。
         </p>
         <ul className="grid gap-3 sm:grid-cols-2">
           {STEPS.map((step) => {
@@ -90,7 +93,7 @@ export function ServiceHub({ service }: Props) {
                   href={servicePath(service.slug, step.path)}
                   className="group block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <Card className="h-full rounded-xl shadow-subtle transition-colors group-hover:border-primary/30 group-hover:bg-primary/[0.02]">
+                  <Card className="h-full min-h-[9.5rem] rounded-xl shadow-subtle transition-colors group-hover:border-primary/30 group-hover:bg-primary/[0.02]">
                     <CardHeader className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -101,10 +104,10 @@ export function ServiceHub({ service }: Props) {
                           aria-hidden
                         />
                       </div>
-                      <CardTitle className="text-lg text-primary-dark">
+                      <CardTitle className="line-clamp-1 text-lg text-primary-dark">
                         {step.title}
                       </CardTitle>
-                      <CardDescription className="text-base leading-relaxed">
+                      <CardDescription className="line-clamp-2 min-h-[3rem] text-base leading-relaxed">
                         {step.description}
                       </CardDescription>
                     </CardHeader>
@@ -127,10 +130,10 @@ export function ServiceHub({ service }: Props) {
               id="audit-hint-heading"
               className="text-base font-semibold text-primary-dark"
             >
-              監査カテゴリ設定について
+              監査カテゴリについて
             </h2>
             <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-              監査カテゴリ（ケアプラン ⇔ 計画書 など）は、各市区町村の画面から開きます。了承待ちはカテゴリ内に加え、横断の「ルール管理」キューでも確認できます。
+              各市画面から開きます。了承はルール管理でも確認できます。
             </p>
           </div>
         </div>

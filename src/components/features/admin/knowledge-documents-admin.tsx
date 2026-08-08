@@ -160,6 +160,7 @@ export function KnowledgeDocumentsAdmin(props?: {
     searchParams.get("region")?.trim() || cityFromQuery?.name || ""
   const wantRegister = searchParams.get("register") === "1"
   const wantAllMonitor = searchParams.get("view") === "all"
+  const focusDocId = searchParams.get("doc")?.trim() || ""
 
   const [rows, setRows] = useState<KnowledgeDocument[]>([])
   const [alerts, setAlerts] = useState<KnowledgeSyncAlert[]>([])
@@ -255,6 +256,15 @@ export function KnowledgeDocumentsAdmin(props?: {
       }),
     [rows, alerts, drafts]
   )
+
+  useEffect(() => {
+    if (!focusDocId || monitorEvents.length === 0) return
+    const hit = monitorEvents.find((e) => e.documentId === focusDocId)
+    if (hit) {
+      setSelectedEventId(hit.id)
+      setShowAllMonitor(true)
+    }
+  }, [focusDocId, monitorEvents])
 
   const visibleMonitorEvents = showAllMonitor
     ? monitorEvents

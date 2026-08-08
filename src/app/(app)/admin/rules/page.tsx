@@ -6,8 +6,8 @@ export const metadata: Metadata = {
 }
 
 /**
- * ルール設定の入口は介護サービス選定。
+ * ルール設定の入口は利用設定。
  */
 export default function RulesDashboardPage() {
-  redirect("/admin/rules/services")
+  redirect("/admin/rules/setup")
 }
