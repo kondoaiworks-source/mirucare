@@ -37,6 +37,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
           "/admin/rules/setup",
           "/admin/rules/services",
           "/admin/rules/pending",
+          "/admin/rules/manual",
           "/admin/rules/history",
           "/admin/rules/regulatory",
           "/admin/rules/municipalities",

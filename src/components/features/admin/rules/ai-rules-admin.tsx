@@ -93,12 +93,12 @@ export function AiRulesAdmin({
         <AlertTitle>操作はルールブック側です</AlertTitle>
         <AlertDescription className="space-y-2 text-base leading-relaxed">
           <p>
-            判定ルール案の生成・手入力追加・了承は
+            判定ルール案の生成・了承は
             <Link
-              href="/admin/rules/services"
+              href="/admin/rules/setup"
               className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
             >
-              介護サービス選定
+              利用設定
             </Link>
             と
             <Link

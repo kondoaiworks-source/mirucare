@@ -92,9 +92,7 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         return
       }
       toast.success("判定ルールをルール管理に載せました。", {
-        description: onCreated
-          ? "下の了承待ちから確認してください。"
-          : "了承するまでチェックには使われません。",
+        description: "了承待ちから確認してください。チェックには使いません。",
         ...(onCreated
           ? {}
           : {

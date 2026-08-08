@@ -88,7 +88,8 @@ SQL Editor で次を **順番に** 実行します。
 6. 訪問介護 → 市区町村で横浜・川崎・藤沢・鎌倉・茅ヶ崎が一覧され、運用／停止できること
 7. 市の設定 → 監査カテゴリ設定で4チェックがあること
 8. `/admin/rules/pending`（ルール管理）で判定ルール案の生成・手入力・了承ができること
-   - 「手入力で判定ルールを1件追加する（API不要）」が生成枠と同じ囲みであること
+   - 各資料に「原文を開く／AIで判定ルール生成／手動で判定ルール生成」が等配置であること
+   - 「手動で判定ルール生成」は `/admin/rules/manual`（手入力・API不要）へ遷移すること
    - 更新履歴で編集・削除ができること
 9. `/admin/rules/monitoring`（監視状況）で国・県・市の監視リストが出ること
    - エラー／差分／正常のサマリカードがあること
@@ -612,6 +613,7 @@ npm install -D @types/papaparse
 | `/admin/rules/monitoring` | 監視状況（サマリ・リスト・詳細） |
 | `/admin/rules/services/[slug]` | サービス詳細（利用設定から） |
 | `/admin/rules/pending` | ルール管理（了承待ち＋更新履歴） |
+| `/admin/rules/manual` | 手動で判定ルール生成（API不要・手入力） |
 | `/admin/rules/history` | ルール管理の更新履歴へリダイレクト |
 | `/admin/rules/notifications` | 公開情報台帳管理（監視状況から） |
 | `/admin/rules/more` | 監視状況へリダイレクト |

@@ -9,7 +9,6 @@ import {
 } from "@/app/actions/rule-engine"
 import type { AiCheckRule, AiCheckRuleVersion } from "@/types/database"
 import { RulesManagementProposeBoard } from "@/components/features/admin/rules/rules-management-propose-board"
-import { ManualCheckRuleForm } from "@/components/features/admin/rules/manual-check-rule-form"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -89,7 +88,7 @@ export function PendingRulesAdmin() {
           ルール管理
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          判定ルールの生成・手入力・了承を行います。了承までチェックには使いません。
+          判定ルールの生成と了承を行います。了承までチェックには使いません。
         </p>
         <p className="mt-2 text-base tabular-nums text-muted-foreground">
           了承待ち{" "}
@@ -101,24 +100,6 @@ export function PendingRulesAdmin() {
       </div>
 
       <RulesManagementProposeBoard onProposed={() => void refresh()} />
-
-      <section
-        className="space-y-4 rounded-xl border border-primary/20 bg-primary/[0.03] p-4 shadow-subtle"
-        aria-labelledby="manual-rule-heading"
-      >
-        <div>
-          <h2
-            id="manual-rule-heading"
-            className="text-lg font-semibold text-primary-dark"
-          >
-            手入力で判定ルールを1件追加する（API不要）
-          </h2>
-          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            Gemini APIが使えないときや、チャットで作った案を転記するときに使います。登録すると下の了承待ちに載り、了承するまでチェックには使いません。
-          </p>
-        </div>
-        <ManualCheckRuleForm onCreated={() => void refresh()} />
-      </section>
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">
@@ -143,14 +124,21 @@ export function PendingRulesAdmin() {
                 現在、確認するルール案はありません
               </CardTitle>
               <CardDescription className="text-base">
-                上の「判定ルール案を生成する」か「手入力で判定ルールを1件追加する」で載せると、ここに表示されます。公開情報が未登録のときは
+                上の「AIで判定ルール生成」または
                 <Link
-                  href="/admin/rules/services"
+                  href="/admin/rules/manual"
                   className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
                 >
-                  介護サービス選定
+                  手動で判定ルール生成
                 </Link>
-                から国・県・市区町村のPDFを登録してください。
+                で載せると、ここに表示されます。根拠URLが未登録のときは
+                <Link
+                  href="/admin/rules/setup"
+                  className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  利用設定
+                </Link>
+                から登録してください。
               </CardDescription>
             </CardHeader>
           </Card>

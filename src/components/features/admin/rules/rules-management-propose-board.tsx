@@ -64,7 +64,7 @@ export function RulesManagementProposeBoard({ onProposed }: Props) {
     <RulebookDocumentsProposePanel
       documents={documents}
       heading="判定ルール案の生成"
-      description="国・県・市で登録した台帳資料から、AIが判定ルール案＋根拠を提案します。URL登録だけでは案は出ません。生成後は下の了承待ちで確認してください。"
+      description="資料ごとに原文確認・AI生成・手動生成ができます。了承までチェックには使いません。"
       hidePendingLink
       onProposed={() => {
         void refresh()

@@ -267,14 +267,14 @@ export function UsageSettingsHub() {
           判定ルール
         </h2>
         <p className="text-base text-muted-foreground">
-          生成・手入力・了承・履歴はこちらです。
+          生成・了承・履歴はこちらです。
         </p>
         <ul className="grid gap-3 sm:grid-cols-2">
           <li>
             <AdminEqualCard
               href="/admin/rules/pending"
               title="ルールを管理する"
-              description="案の生成・手入力・了承と履歴"
+              description="案の生成・了承と更新履歴"
               icon={ClipboardCheck}
               badge={
                 (dash?.pendingVersionCount ?? 0) > 0 ? (

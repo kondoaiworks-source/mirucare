@@ -3,11 +3,12 @@
 import Link from "next/link"
 import { useState, useTransition } from "react"
 import { toast } from "@/components/ui/sonner"
-import { ExternalLink, FileText, Sparkles } from "lucide-react"
+import { ExternalLink, FileText, PencilLine, Sparkles } from "lucide-react"
 import { proposeAiCheckRulesFromDocumentAction } from "@/app/actions/propose-check-rules"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 
 /** null=idle / "all"=一括 / 資料ID=その1件のみ */
 type RunningTarget = null | "all" | string
@@ -43,15 +44,18 @@ type Props = {
   hidePendingLink?: boolean
 }
 
+const ACTION_BTN =
+  "min-h-11 min-w-[10.5rem] justify-center sm:flex-1 sm:min-w-0"
+
 /**
  * 判定ルール案の生成パネル。
- * URL登録だけでは案は出ない。人が明示的に生成する。
+ * 各資料に「原文を開く／AIで判定ルール生成／手動で判定ルール生成」を等配置。
  */
 export function RulebookDocumentsProposePanel({
   documents,
   citySlug,
   heading = "判定ルール案の生成",
-  description = "台帳に本文がある資料から、AIが判定ルール案＋根拠を提案します。生成後は下の了承待ちで確認するまでチェックには使われません。",
+  description = "資料ごとに原文確認・AI生成・手動生成ができます。了承までチェックには使いません。",
   onProposed,
   hidePendingLink = false,
 }: Props) {
@@ -181,7 +185,7 @@ export function RulebookDocumentsProposePanel({
               ? "まとめて生成中…"
               : isAnyRunning
                 ? "1件を生成中…"
-                : `まとめて判定ルール案を生成する（${generatable.length}件）`}
+                : `まとめてAI生成（${generatable.length}件）`}
           </Button>
           {!hidePendingLink ? (
             <Button asChild variant="outline" className="min-h-11">
@@ -193,10 +197,10 @@ export function RulebookDocumentsProposePanel({
 
       {documents.length === 0 ? (
         <p className="text-base leading-relaxed text-muted-foreground">
-          台帳上の資料がありません。国・県または市区町村ルール設定で公開情報PDF（直リンク）を登録してください。
+          台帳上の資料がありません。利用設定で根拠URL（PDF直リンク）を登録してください。
         </p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {documents.map((d) => {
             const url = d.source_url?.trim() || null
             const canGenerate =
@@ -210,44 +214,58 @@ export function RulebookDocumentsProposePanel({
             ]
               .filter(Boolean)
               .join("／")
+            const manualHref = `/admin/rules/manual?from=${encodeURIComponent(d.id)}`
 
             return (
               <li key={d.id}>
                 <Card className="rounded-xl shadow-subtle">
-                  <CardContent className="flex flex-wrap items-center gap-3 py-3">
-                    <FileText
-                      className="size-4 shrink-0 text-muted-foreground"
-                      aria-hidden
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-primary-dark">{d.title}</p>
-                      <p className="mt-0.5 text-sm text-muted-foreground">
-                        {subtitle}
-                      </p>
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        <Badge variant="outline" className="rounded-md">
-                          {LAYER_LABEL[layerKey] ??
-                            d.jurisdiction_level ??
-                            "資料"}
-                        </Badge>
-                        {d.hasTextSnapshot ? (
-                          <Badge className="rounded-md bg-primary/15 text-primary-dark">
-                            本文あり
-                          </Badge>
-                        ) : d.content_hash ? (
+                  <CardContent className="space-y-3 py-4">
+                    <div className="flex flex-wrap items-start gap-3">
+                      <FileText
+                        className="mt-1 size-4 shrink-0 text-muted-foreground"
+                        aria-hidden
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-1 font-medium text-primary-dark">
+                          {d.title}
+                        </p>
+                        <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
+                          {subtitle}
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-1.5">
                           <Badge variant="outline" className="rounded-md">
-                            再同期で補完します
+                            {LAYER_LABEL[layerKey] ??
+                              d.jurisdiction_level ??
+                              "資料"}
                           </Badge>
-                        ) : (
-                          <Badge variant="outline" className="rounded-md">
-                            同期が必要
-                          </Badge>
-                        )}
+                          {d.hasTextSnapshot ? (
+                            <Badge className="rounded-md bg-primary/15 text-primary-dark">
+                              本文あり
+                            </Badge>
+                          ) : d.content_hash ? (
+                            <Badge variant="outline" className="rounded-md">
+                              再同期で補完します
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="rounded-md">
+                              同期が必要
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+
+                    <div
+                      className="flex flex-col gap-2 sm:flex-row"
+                      role="group"
+                      aria-label={`${d.title}の操作`}
+                    >
                       {url ? (
-                        <Button asChild variant="outline" className="min-h-11">
+                        <Button
+                          asChild
+                          variant="outline"
+                          className={cn(ACTION_BTN)}
+                        >
                           <a
                             href={url}
                             target="_blank"
@@ -257,20 +275,41 @@ export function RulebookDocumentsProposePanel({
                             <ExternalLink className="size-4" aria-hidden />
                           </a>
                         </Button>
-                      ) : null}
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={cn(ACTION_BTN)}
+                          disabled
+                        >
+                          原文を開く
+                          <ExternalLink className="size-4" aria-hidden />
+                        </Button>
+                      )}
                       <Button
                         type="button"
-                        variant="secondary"
-                        className="min-h-11"
-                        disabled={!canGenerate || isRunningThis || isRunningAll}
+                        className={cn(ACTION_BTN)}
+                        disabled={
+                          !canGenerate || isRunningThis || isRunningAll
+                        }
                         onClick={() => proposeOne(d)}
                       >
                         <Sparkles className="size-4" aria-hidden />
                         {isRunningThis
-                          ? "この資料を生成中…"
+                          ? "AI生成中…"
                           : isRunningAll
                             ? "まとめて生成中…"
-                            : "判定ルール案を生成する"}
+                            : "AIで判定ルール生成"}
+                      </Button>
+                      <Button
+                        asChild
+                        variant="secondary"
+                        className={cn(ACTION_BTN)}
+                      >
+                        <Link href={manualHref}>
+                          <PencilLine className="size-4" aria-hidden />
+                          手動で判定ルール生成
+                        </Link>
                       </Button>
                     </div>
                   </CardContent>
