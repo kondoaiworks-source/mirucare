@@ -82,7 +82,7 @@ export function AppliedRulesPanel({
         {showOperatorHistoryLink ? (
           <p className="text-sm">
             <Link
-              href="/admin/rules/pending#history"
+              href="/admin/rules/pending#rules-list"
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
               運営：ルール版の履歴を開く

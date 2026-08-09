@@ -54,7 +54,7 @@ const ACTION_BTN =
 export function RulebookDocumentsProposePanel({
   documents,
   citySlug,
-  heading = "判定ルール案の生成",
+  heading = "ルール案を生成",
   description = "資料ごとに原文確認・AI生成・手動生成ができます。了承までチェックには使いません。",
   onProposed,
   hidePendingLink = false,
@@ -189,7 +189,7 @@ export function RulebookDocumentsProposePanel({
           </Button>
           {!hidePendingLink ? (
             <Button asChild variant="outline" className="min-h-11">
-              <Link href="/admin/rules/pending">ルール管理で了承する</Link>
+              <Link href="/admin/rules/pending">判定ルールで了承する</Link>
             </Button>
           ) : null}
         </div>

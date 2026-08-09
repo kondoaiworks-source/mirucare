@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   FileText,
   Layers,
+  ListChecks,
   PauseCircle,
   PlayCircle,
 } from "lucide-react"
@@ -26,16 +27,18 @@ import {
 } from "@/components/ui/card"
 import type { RulebookOfferingRow } from "@/lib/rule-engine/offerings"
 import { RULE_SERVICES, servicePath } from "@/lib/rule-engine/services"
+import { RULES_UI, SETUP_STEPS } from "@/lib/rule-engine/ui-glossary"
 
 type Dashboard = {
   supportedMunicipalityCount: number
   sourceUrlCount: number
   pendingVersionCount: number
   approvedAiRuleCount: number
+  auditItemCount: number
 }
 
 /**
- * 利用設定ハブ：サマリ → サービス → 自治体 → 判定ルール。
+ * 利用設定ハブ：①サービス → ②自治体 → ③根拠URL → ④見出し → ⑤判定ルール。
  */
 export function UsageSettingsHub() {
   const [dash, setDash] = useState<Dashboard | null>(null)
@@ -57,6 +60,7 @@ export function UsageSettingsHub() {
         sourceUrlCount: d.data?.sourceUrlCount ?? 0,
         pendingVersionCount: d.data?.pendingVersionCount ?? 0,
         approvedAiRuleCount: d.data?.approvedAiRuleCount ?? 0,
+        auditItemCount: d.data?.auditItemCount ?? 0,
       })
     }
     if (!o.ok) {
@@ -71,14 +75,16 @@ export function UsageSettingsHub() {
     void refresh()
   }, [refresh])
 
+  const headingsReady = (dash?.auditItemCount ?? 0) > 0
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-          利用設定
+          {RULES_UI.setup}
         </h1>
         <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          サービスと根拠URL、判定ルールを整えます。
+          サービス → 対象自治体 → 根拠URL → チェック見出し → 判定ルールの順で整えます。
         </p>
       </div>
 
@@ -89,6 +95,35 @@ export function UsageSettingsHub() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
+
+      <section className="space-y-3" aria-labelledby="setup-flow-heading">
+        <h2
+          id="setup-flow-heading"
+          className="text-xl font-bold text-primary-dark"
+        >
+          進め方
+        </h2>
+        <p className="text-base text-muted-foreground">上から順に進めます。</p>
+        <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {SETUP_STEPS.map((step) => (
+            <li key={step.no}>
+              <Card className="h-full min-h-[9.5rem] rounded-xl shadow-subtle">
+                <CardHeader className="space-y-2">
+                  <p className="text-sm font-semibold tabular-nums text-muted-foreground">
+                    {step.no}
+                  </p>
+                  <CardTitle className="line-clamp-2 text-base text-primary-dark">
+                    {step.title}
+                  </CardTitle>
+                  <CardDescription className="line-clamp-2 min-h-[3rem] text-base leading-relaxed">
+                    {step.description}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       <section className="space-y-3" aria-labelledby="setup-summary-heading">
         <h2
@@ -101,16 +136,16 @@ export function UsageSettingsHub() {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <li>
             <AdminEqualCard
-              title="対応自治体"
-              description="利用可能な市区町村の数"
+              title={RULES_UI.municipality}
+              description="公開準備中の市区町村数"
               value={dash?.supportedMunicipalityCount ?? "—"}
               icon={Layers}
             />
           </li>
           <li>
             <AdminEqualCard
-              title="根拠URL"
-              description="登録済みの公開情報件数"
+              title={RULES_UI.evidenceUrl}
+              description="登録済みの参照PDF件数"
               value={dash?.sourceUrlCount ?? "—"}
               icon={FileText}
             />
@@ -130,26 +165,19 @@ export function UsageSettingsHub() {
               description="チェックに使う判定ルール"
               value={dash?.approvedAiRuleCount ?? "—"}
               icon={BookOpen}
-              href="/admin/rules/pending#history"
+              href="/admin/rules/pending#rules-list"
             />
           </li>
         </ul>
       </section>
 
-      <section className="space-y-3" aria-labelledby="setup-services-heading">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2
-              id="setup-services-heading"
-              className="text-xl font-bold text-primary-dark"
-            >
-              提供サービス
-            </h2>
-            <p className="mt-1 text-base text-muted-foreground">
-              追加・詳細は各サービスを開きます。
-            </p>
-          </div>
-        </div>
+      <section className="space-y-3" aria-labelledby="step1-heading">
+        <h2 id="step1-heading" className="text-xl font-bold text-primary-dark">
+          ① {SETUP_STEPS[0].title}
+        </h2>
+        <p className="text-base text-muted-foreground">
+          {SETUP_STEPS[0].description}
+        </p>
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {RULE_SERVICES.map((svc) => {
             const active = svc.status === "active"
@@ -180,22 +208,25 @@ export function UsageSettingsHub() {
         </ul>
       </section>
 
-      <section className="space-y-3" aria-labelledby="setup-cities-heading">
-        <div>
-          <h2
-            id="setup-cities-heading"
-            className="text-xl font-bold text-primary-dark"
-          >
-            サービス×自治体
-          </h2>
-          <p className="mt-1 text-base text-muted-foreground">
-            根拠URLと判定ルールを市ごとに整えます。
-          </p>
-        </div>
-        <div className="mb-2">
-          <Button asChild variant="outline" className="min-h-11">
+      <section className="space-y-3" aria-labelledby="step2-3-heading">
+        <h2
+          id="step2-3-heading"
+          className="text-xl font-bold text-primary-dark"
+        >
+          ②③ {RULES_UI.municipality}と{RULES_UI.evidenceUrl}
+        </h2>
+        <p className="text-base text-muted-foreground">
+          市ごとに根拠URLを登録し、公開を切り替えます。
+        </p>
+        <div className="mb-2 flex flex-wrap gap-2">
+          <Button asChild className="min-h-11">
             <Link href={servicePath("homecare", "national-prefecture")}>
-              国・県の根拠URLを開く
+              国・県の{RULES_UI.evidenceUrl}を開く
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={servicePath("homecare", "municipalities")}>
+              {RULES_UI.municipality}一覧を開く
             </Link>
           </Button>
         </div>
@@ -204,7 +235,6 @@ export function UsageSettingsHub() {
             const cityHref = row.slug
               ? servicePath("homecare", "municipalities", row.slug)
               : servicePath("homecare", "municipalities")
-            const rulesHref = "/admin/rules/pending"
             return (
               <li key={row.id}>
                 <Card className="flex h-full min-h-[9.5rem] flex-col rounded-xl shadow-subtle">
@@ -221,16 +251,18 @@ export function UsageSettingsHub() {
                       </Badge>
                     </div>
                     <CardDescription className="line-clamp-2 min-h-[3rem] text-base leading-relaxed">
-                      根拠PDF {row.cityPdfCount}件／国
-                      {row.nationalPdfCount}・県{row.prefecturePdfCount}
+                      市の根拠PDF {row.cityPdfCount}件（国
+                      {row.nationalPdfCount}・県{row.prefecturePdfCount}）
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="mt-auto flex flex-wrap gap-2 pt-0">
                     <Button asChild className="min-h-11">
-                      <Link href={cityHref}>根拠URLを整える</Link>
+                      <Link href={cityHref}>{RULES_UI.evidenceUrl}を開く</Link>
                     </Button>
                     <Button asChild variant="outline" className="min-h-11">
-                      <Link href={rulesHref}>判定ルールを開く</Link>
+                      <Link href="/admin/rules/pending">
+                        {RULES_UI.judgmentRule}を開く
+                      </Link>
                     </Button>
                   </CardContent>
                 </Card>
@@ -241,15 +273,17 @@ export function UsageSettingsHub() {
             <li className="sm:col-span-2">
               <Card className="rounded-xl shadow-subtle">
                 <CardHeader>
-                  <CardTitle className="text-lg">自治体がありません</CardTitle>
+                  <CardTitle className="text-lg">
+                    {RULES_UI.municipality}がありません
+                  </CardTitle>
                   <CardDescription className="text-base">
-                    訪問介護の市区町村設定から公開準備を始めてください。
+                    訪問介護の対象自治体一覧から準備を始めてください。
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button asChild className="min-h-11">
                     <Link href={servicePath("homecare", "municipalities")}>
-                      市区町村を開く
+                      {RULES_UI.municipality}を開く
                     </Link>
                   </Button>
                 </CardContent>
@@ -259,22 +293,53 @@ export function UsageSettingsHub() {
         </ul>
       </section>
 
-      <section className="space-y-3" aria-labelledby="setup-rules-heading">
-        <h2
-          id="setup-rules-heading"
-          className="text-xl font-bold text-primary-dark"
-        >
-          判定ルール
+      <section className="space-y-3" aria-labelledby="step4-heading">
+        <h2 id="step4-heading" className="text-xl font-bold text-primary-dark">
+          ④ {SETUP_STEPS[3].title}
         </h2>
         <p className="text-base text-muted-foreground">
-          生成・了承・履歴はこちらです。
+          {headingsReady
+            ? "登録済みです。不足分だけ追加できます。"
+            : SETUP_STEPS[3].description}
+        </p>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          <li>
+            <AdminEqualCard
+              href="/admin/rules/audit-items"
+              title={RULES_UI.checkHeading}
+              description={
+                headingsReady
+                  ? `登録済み ${dash?.auditItemCount ?? 0}件（初回は完了）`
+                  : "標準見出しセットを登録します"
+              }
+              icon={ListChecks}
+              badge={
+                headingsReady ? (
+                  <Badge className="rounded-md">登録済</Badge>
+                ) : (
+                  <Badge variant="secondary" className="rounded-md">
+                    初回
+                  </Badge>
+                )
+              }
+            />
+          </li>
+        </ul>
+      </section>
+
+      <section className="space-y-3" aria-labelledby="step5-heading">
+        <h2 id="step5-heading" className="text-xl font-bold text-primary-dark">
+          ⑤ {SETUP_STEPS[4].title}
+        </h2>
+        <p className="text-base text-muted-foreground">
+          {SETUP_STEPS[4].description}
         </p>
         <ul className="grid gap-3 sm:grid-cols-2">
           <li>
             <AdminEqualCard
               href="/admin/rules/pending"
-              title="ルールを管理する"
-              description="案の生成・了承と更新履歴"
+              title={RULES_UI.pendingPage}
+              description="了承・一覧・案の生成"
               icon={ClipboardCheck}
               badge={
                 (dash?.pendingVersionCount ?? 0) > 0 ? (
@@ -287,9 +352,9 @@ export function UsageSettingsHub() {
           </li>
           <li>
             <AdminEqualCard
-              href="/admin/rules/audit-items"
-              title="監査項目（詳細）"
-              description="見出しの初回登録・個別追加"
+              href="/admin/rules/manual"
+              title="手動で追加する"
+              description="API不要で判定ルールを1件追加"
               icon={BookOpen}
             />
           </li>

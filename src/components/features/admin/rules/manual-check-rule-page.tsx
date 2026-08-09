@@ -18,12 +18,12 @@ export function ManualCheckRulePage() {
         <AdminBreadcrumb
           items={[
             { label: "利用設定", href: "/admin/rules/setup" },
-            { label: "ルール管理", href: "/admin/rules/pending" },
-            { label: "手動で判定ルール生成" },
+            { label: "判定ルール", href: "/admin/rules/pending" },
+            { label: "手動で追加" },
           ]}
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          手動で判定ルール生成
+          手動で判定ルールを追加
         </h1>
         <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
           API不要で1件追加します。了承までチェックには使いません。
@@ -39,7 +39,7 @@ export function ManualCheckRulePage() {
             id="manual-rule-heading"
             className="text-lg font-semibold text-primary-dark"
           >
-            手入力で判定ルールを1件追加する（API不要）
+            手入力（API不要）
           </h2>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
             Geminiが使えないときや、案を転記するときに使います。
@@ -53,7 +53,7 @@ export function ManualCheckRulePage() {
       </section>
 
       <Button asChild variant="outline" className="min-h-11">
-        <Link href="/admin/rules/pending">ルール管理に戻る</Link>
+        <Link href="/admin/rules/pending">判定ルールに戻る</Link>
       </Button>
     </div>
   )

@@ -21,7 +21,7 @@ export const RULE_SERVICES: readonly RuleServiceDef[] = [
     slug: "homecare",
     serviceType: "訪問介護",
     label: "訪問介護",
-    description: "根拠URLと判定ルールを整え、公開中の市を施設へ出します。",
+    description: "対象自治体・根拠URL・判定ルールを整えます。",
     status: "active",
     statusLabel: "運用中",
   },

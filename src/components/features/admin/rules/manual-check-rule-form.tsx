@@ -57,7 +57,7 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
     setLoadError(null)
     const result = await listAiRulesAction()
     if (!result.ok) {
-      setLoadError(result.error ?? "監査項目を取得できませんでした。")
+      setLoadError(result.error ?? "チェック見出しを取得できませんでした。")
       return
     }
     const items = result.data?.auditItems ?? []
@@ -91,13 +91,13 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         toast.error(result.error ?? "登録に失敗しました。")
         return
       }
-      toast.success("判定ルールをルール管理に載せました。", {
+      toast.success("判定ルールを了承待ちに載せました。", {
         description: "了承待ちから確認してください。チェックには使いません。",
         ...(onCreated
           ? {}
           : {
               action: {
-                label: "ルール管理を開く",
+                label: "判定ルールを開く",
                 onClick: () => {
                   window.location.href = "/admin/rules/pending"
                 },
@@ -118,10 +118,10 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         <p className="sm:col-span-2 text-base text-danger">{loadError}</p>
       ) : null}
       <div className="space-y-2 sm:col-span-2">
-        <Label>監査項目</Label>
+        <Label>チェック見出し</Label>
         <Select value={auditItemId} onValueChange={setAuditItemId}>
           <SelectTrigger className="h-11 min-h-11">
-            <SelectValue placeholder="監査項目を選んでください" />
+            <SelectValue placeholder="チェック見出しを選んでください" />
           </SelectTrigger>
           <SelectContent>
             {auditItems.map((item) => (
@@ -133,7 +133,7 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         </Select>
         {auditItems.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            監査項目がありません。ルールブック管理の「初回セットアップ」でテンプレートを登録してください。
+            チェック見出しがありません。利用設定の「チェック見出し」で標準見出しセットを登録してください。
           </p>
         ) : null}
       </div>
@@ -226,7 +226,7 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
           {pending ? (
             <Loader2 className="size-4 animate-spin" aria-hidden />
           ) : null}
-          ルール管理に載せる
+          了承待ちに載せる
         </Button>
       </div>
     </form>

@@ -25,13 +25,13 @@ const STEPS = [
   {
     id: "national-prefecture",
     title: "国・県の根拠URL",
-    description: "サービス共通の国・県PDF／URLを登録します。",
+    description: "サービス共通の国・県PDFを登録します。",
     icon: Landmark,
     path: "national-prefecture" as const,
   },
   {
     id: "municipalities",
-    title: "市区町村の設定",
+    title: "対象自治体",
     description: "市の公開・停止と根拠URLを整えます。",
     icon: Building2,
     path: "municipalities" as const,
@@ -82,7 +82,7 @@ export function ServiceHub({ service }: Props) {
           設定メニュー
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          国・県のあと市区町村を整えます。
+          国・県の根拠URLのあと、対象自治体を整えます。
         </p>
         <ul className="grid gap-3 sm:grid-cols-2">
           {STEPS.map((step) => {
@@ -130,10 +130,10 @@ export function ServiceHub({ service }: Props) {
               id="audit-hint-heading"
               className="text-base font-semibold text-primary-dark"
             >
-              監査カテゴリについて
+              次のステップ
             </h2>
             <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-              各市画面から開きます。了承はルール管理でも確認できます。
+              根拠URLのあと、チェック見出しと判定ルールを整えます。
             </p>
           </div>
         </div>

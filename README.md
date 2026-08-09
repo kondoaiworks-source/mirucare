@@ -83,21 +83,16 @@ SQL Editor で次を **順番に** 実行します。
 1. 運営アカウントで [http://localhost:3000/admin/rules](http://localhost:3000/admin/rules) を開く
 2. `/admin/rules/setup`（利用設定）へリダイレクトすること
 3. 左メニューが「利用設定／監視状況」の2本であること
-4. 利用設定に登録サマリ・提供サービス・サービス×自治体・判定ルールがあること（カード枠・説明文の長さが揃っていること）
-5. 訪問介護 → 国・県の根拠URLで国・県の公開情報を追加できること
-6. 訪問介護 → 市区町村で横浜・川崎・藤沢・鎌倉・茅ヶ崎が一覧され、運用／停止できること
-7. 市の設定 → 監査カテゴリ設定で4チェックがあること
-8. `/admin/rules/pending`（ルール管理）で判定ルール案の生成・手入力・了承ができること
+4. 利用設定が①サービス→②③対象自治体・根拠URL→④チェック見出し→⑤判定ルールの順であること
+5. 文言が「根拠URL／チェック見出し／判定ルール／標準見出しセット」に揃い、ルールセット・テンプレートを表に出さないこと
+6. 訪問介護 → 国・県の根拠URL／対象自治体 → 市の根拠URLへ進めること
+7. `/admin/rules/audit-items`（チェック見出し）で対象（市×サービス）を選び「標準見出しを登録する」ができること
+8. `/admin/rules/pending`（判定ルール）が「了承待ち → ルール一覧 → ルール案を生成」の順であること
    - 各資料に「原文を開く／AIで判定ルール生成／手動で判定ルール生成」が等配置であること
-   - 「手動で判定ルール生成」は `/admin/rules/manual`（手入力・API不要）へ遷移すること
-   - 更新履歴で編集・削除ができること
-9. `/admin/rules/monitoring`（監視状況）で国・県・市の監視リストが出ること
-   - エラー／差分／正常のサマリカードがあること
-   - エラー印を押すと右側に詳細が出ること
-10. 旧URL `/admin/rules/services`・`/admin/rules/more`・`/admin/rules/jobs` が新ハブへリダイレクトすること
-11. `20260731060000_rule_category_pdf_candidates.sql` を適用したうえで、カテゴリ詳細の「関連PDFを検索する」が動くこと
-12. 候補の採用／不採用ができること
-13. 旧URL `/admin/rules/regulatory`・`/admin/rules/municipalities` が新階層へリダイレクトすること
+   - 手動追加は `/admin/rules/manual` へ遷移すること
+9. 市画面は根拠URL中心で、判定ルールへ誘導すること
+10. `/admin/rules/monitoring`（監視状況）でエラー印→詳細が出ること
+11. 旧URL `/admin/rules/services`・`/admin/rules/more`・`/admin/rules/jobs` が新ハブへリダイレクトすること
 
 ## 動作確認手順（STEP 3：日次チェックのアップロード）
 
@@ -612,9 +607,10 @@ npm install -D @types/papaparse
 | `/admin/rules/setup` | 利用設定（サマリ・サービス・自治体・ルール） |
 | `/admin/rules/monitoring` | 監視状況（サマリ・リスト・詳細） |
 | `/admin/rules/services/[slug]` | サービス詳細（利用設定から） |
-| `/admin/rules/pending` | ルール管理（了承待ち＋更新履歴） |
-| `/admin/rules/manual` | 手動で判定ルール生成（API不要・手入力） |
-| `/admin/rules/history` | ルール管理の更新履歴へリダイレクト |
+| `/admin/rules/pending` | 判定ルール（了承待ち → 一覧 → ルール案を生成） |
+| `/admin/rules/manual` | 手動で判定ルールを追加（API不要） |
+| `/admin/rules/audit-items` | チェック見出し（初回の標準見出しセット） |
+| `/admin/rules/history` | ルール管理のルール一覧へリダイレクト |
 | `/admin/rules/notifications` | 公開情報台帳管理（監視状況から） |
 | `/admin/rules/more` | 監視状況へリダイレクト |
 | `/admin/rules/jobs` | 監視状況へリダイレクト |

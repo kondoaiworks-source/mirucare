@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/rule-engine"
 import type { AiCheckRule, AiCheckRuleVersion } from "@/types/database"
 import { RulesManagementProposeBoard } from "@/components/features/admin/rules/rules-management-propose-board"
+import { RulesHistoryAdmin } from "@/components/features/admin/rules/rules-history-admin"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -33,7 +34,7 @@ type Row = AiCheckRuleVersion & {
 }
 
 /**
- * ルール管理：判定ルール案の生成（上部）＋了承キュー。
+ * ルール管理：了承待ち → ルール一覧 → 判定ルール案の生成。
  */
 export function PendingRulesAdmin() {
   const [rows, setRows] = useState<Row[]>([])
@@ -83,12 +84,17 @@ export function PendingRulesAdmin() {
   return (
     <div className="space-y-8">
       <div>
-        <AdminBreadcrumb items={[{ label: "利用設定", href: "/admin/rules/setup" }, { label: "ルール管理" }]} />
+        <AdminBreadcrumb
+          items={[
+            { label: "利用設定", href: "/admin/rules/setup" },
+            { label: "判定ルール" },
+          ]}
+        />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark">
-          ルール管理
+          判定ルール
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          判定ルールの生成と了承を行います。了承までチェックには使いません。
+          了承 → 一覧 → ルール案の生成の順です。了承までチェックには使いません。
         </p>
         <p className="mt-2 text-base tabular-nums text-muted-foreground">
           了承待ち{" "}
@@ -98,8 +104,6 @@ export function PendingRulesAdmin() {
           件
         </p>
       </div>
-
-      <RulesManagementProposeBoard onProposed={() => void refresh()} />
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">
@@ -124,7 +128,7 @@ export function PendingRulesAdmin() {
                 現在、確認するルール案はありません
               </CardTitle>
               <CardDescription className="text-base">
-                上の「AIで判定ルール生成」または
+                下の「AIで判定ルール生成」または
                 <Link
                   href="/admin/rules/manual"
                   className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
@@ -245,6 +249,10 @@ export function PendingRulesAdmin() {
           ))}
         </ul>
       </section>
+
+      <RulesHistoryAdmin embedded />
+
+      <RulesManagementProposeBoard onProposed={() => void refresh()} />
     </div>
   )
 }

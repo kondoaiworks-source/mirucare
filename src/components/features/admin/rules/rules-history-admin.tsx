@@ -128,7 +128,7 @@ export function RulesHistoryAdmin({ embedded = false }: Props) {
         toast.error(result.error ?? "更新に失敗しました。")
         return
       }
-      toast.success("履歴を更新しました。")
+      toast.success("ルールを更新しました。")
       setEditing(null)
       await refresh()
     })
@@ -160,12 +160,15 @@ export function RulesHistoryAdmin({ embedded = false }: Props) {
   }
 
   return (
-    <div className="space-y-6" id={embedded ? "history" : undefined}>
+    <div
+      className="space-y-6"
+      id={embedded ? "rules-list" : undefined}
+    >
       {embedded ? (
         <div>
-          <h2 className="text-xl font-bold text-primary-dark">更新履歴</h2>
+          <h2 className="text-xl font-bold text-primary-dark">ルール一覧</h2>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            ルールの作成・承認の履歴です（新しい順）。誤記の修正や不要な版の削除ができます。
+            登録済み判定ルールです（新しい順）。編集・削除ができます。
           </p>
         </div>
       ) : (
@@ -173,15 +176,15 @@ export function RulesHistoryAdmin({ embedded = false }: Props) {
           <AdminBreadcrumb
             items={[
               { label: "利用設定", href: "/admin/rules/setup" },
-              { label: "ルール管理", href: "/admin/rules/pending" },
-              { label: "更新履歴" },
+              { label: "判定ルール", href: "/admin/rules/pending" },
+              { label: "ルール一覧" },
             ]}
           />
           <h1 className="mt-2 text-2xl font-bold text-primary-dark">
-            更新履歴
+            ルール一覧
           </h1>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            ルールの作成・承認の履歴です（新しい順）。ルール管理からも確認できます。
+            登録済み判定ルールです（新しい順）。判定ルール画面からも確認できます。
           </p>
         </div>
       )}
@@ -197,7 +200,7 @@ export function RulesHistoryAdmin({ embedded = false }: Props) {
       {editing ? (
         <Card className="rounded-xl border-primary/20 bg-primary/[0.03] shadow-subtle">
           <CardHeader>
-            <CardTitle className="text-lg">履歴を編集する</CardTitle>
+            <CardTitle className="text-lg">ルールを編集する</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={onSaveEdit} className="grid gap-4 sm:grid-cols-2">
@@ -305,7 +308,7 @@ export function RulesHistoryAdmin({ embedded = false }: Props) {
 
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
-          <CardTitle className="text-lg">履歴</CardTitle>
+          <CardTitle className="text-lg">一覧</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
@@ -373,7 +376,7 @@ export function RulesHistoryAdmin({ embedded = false }: Props) {
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-muted-foreground">
-                    履歴はまだありません。
+                    ルールはまだありません。
                   </TableCell>
                 </TableRow>
               ) : null}

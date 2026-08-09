@@ -20,9 +20,7 @@ export async function generateMetadata({
   const { serviceSlug } = await Promise.resolve(params)
   const service = getRuleServiceBySlug(serviceSlug)
   return {
-    title: service
-      ? `${service.label}｜市区町村ルール設定`
-      : "市区町村ルール設定",
+    title: service ? `${service.label}｜対象自治体` : "対象自治体",
   }
 }
 
@@ -38,16 +36,17 @@ export default async function MunicipalitiesForServicePage({
       <div>
         <AdminBreadcrumb
           items={[
+            { label: "利用設定", href: "/admin/rules/setup" },
             { label: service.label, href: servicePath(service.slug) },
-            { label: "市区町村ルール設定" },
+            { label: "対象自治体" },
           ]}
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          市区町村ルール設定
+          対象自治体
         </h1>
         <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
           {service.label}
-          の対象市区町村を整え、運用／停止を切り替えます。当面の対象は横浜・川崎・藤沢・鎌倉・茅ヶ崎です。市の設定から監査カテゴリへ進めます。
+          の市を公開／停止します。当面は横浜・川崎・藤沢・鎌倉・茅ヶ崎です。
         </p>
       </div>
 
@@ -55,8 +54,8 @@ export default async function MunicipalitiesForServicePage({
         fixedServiceType={service.serviceType}
         serviceSlug={service.slug}
         nationalPrefectureHref={servicePath(service.slug, "national-prefecture")}
-        title="市区町村一覧（運用／停止）"
-        description="運用中の市だけが施設の登録・設定で選べます。停止しても、すでに選んでいる施設の設定は据え置きです。国・県と市の公開情報PDFが揃うと運用を開始できます。"
+        title="対象自治体一覧（公開／停止）"
+        description="公開中の市だけが施設で選べます。国・県・市の根拠PDFが揃うと公開できます。"
       />
 
       <MunicipalitiesAdmin />

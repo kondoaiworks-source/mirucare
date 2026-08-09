@@ -45,7 +45,6 @@ import { AlertTriangle, Loader2 } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { PurposeGuide } from "@/components/features/admin/purpose-guide"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
-import { getPurposeSection } from "@/lib/rule-engine/purpose-sections"
 
 const CATEGORIES: AuditItemCategory[] = [
   "契約",
@@ -110,10 +109,10 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
       const inserted = result.data?.insertedCount ?? 0
       const skipped = result.data?.skippedCount ?? 0
       if (inserted === 0) {
-        toast.success("訪問介護テンプレートは登録済みです。")
+        toast.success("標準見出しセットは登録済みです。")
       } else {
         toast.success(
-          `訪問介護テンプレートを${inserted}件登録しました。既存${skipped}件はスキップしました。`
+          `標準見出しを${inserted}件登録しました。既存${skipped}件はスキップしました。`
         )
       }
       await refresh()
@@ -135,7 +134,7 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
         toast.error(result.error ?? "登録に失敗しました。")
         return
       }
-      toast.success("監査項目を登録しました。")
+      toast.success("チェック見出しを登録しました。")
       setCode("")
       setTitle("")
       setDescription("")
@@ -149,7 +148,15 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
           "加算の算定条件と必要書類を管理します。なくても最低限のチェックは始められます。",
         steps: ["加算を選ぶ／登録する", "算定条件を確認する", "保存する"],
       }
-    : getPurposeSection("audit")
+    : {
+        purpose:
+          "判定ルールの土台となるチェック見出しを登録します。初回は標準セットを使います。",
+        steps: [
+          "対象（市×サービス）を選ぶ",
+          "標準見出しセットを登録する",
+          "必要なら個別に追加する",
+        ],
+      }
 
   return (
     <div className="space-y-6">
@@ -157,25 +164,29 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
         <AdminBreadcrumb
           items={
             isAdditions
-              ? [{ label: "加算設定" }]
-              : [{ label: "監査項目" }]
+              ? [
+                  { label: "利用設定", href: "/admin/rules/setup" },
+                  { label: "加算設定" },
+                ]
+              : [
+                  { label: "利用設定", href: "/admin/rules/setup" },
+                  { label: "チェック見出し" },
+                ]
           }
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          {isAdditions ? "加算設定" : "監査項目"}
+          {isAdditions ? "加算設定" : "チェック見出し"}
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
           {isAdditions
-            ? "加算の算定条件と必要書類を確認・編集します（任意）。日常操作はルールブック管理側です。"
-            : "運営指導で確認されやすい項目を登録します。初回はルールブック管理のセットアップから登録できます。"}
+            ? "加算の算定条件と必要書類を確認・編集します（任意）。"
+            : "「何を見るか」の見出しです。初回だけ標準セットを登録すれば足ります。"}
         </p>
       </div>
 
       {purpose ? (
         <PurposeGuide purpose={purpose.purpose} steps={purpose.steps} />
       ) : null}
-
-      <h2 className="text-xl font-bold text-primary-dark">管理一覧</h2>
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">
@@ -187,27 +198,30 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
 
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
-          <CardTitle className="text-lg">ルールセットを選ぶ</CardTitle>
+          <CardTitle className="text-lg">対象を選ぶ</CardTitle>
           <CardDescription className="text-base">
-            監査項目を登録する自治体×サービスのセットを選択します。
+            見出しを登録する市×サービスを選びます。
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="max-w-2xl space-y-2">
-            <Label>ルールセット</Label>
+            <Label>対象（市×サービス）</Label>
             <Select value={ruleSetId} onValueChange={setRuleSetId}>
               <SelectTrigger className="h-11 min-h-11">
                 <SelectValue placeholder="選択してください" />
               </SelectTrigger>
               <SelectContent>
-                {ruleSets.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.rule_jurisdictions?.name
-                      ? `${s.rule_jurisdictions.name} / `
-                      : ""}
-                    {s.title}
-                  </SelectItem>
-                ))}
+                {ruleSets.map((s) => {
+                  const city = s.rule_jurisdictions?.name
+                  const label = city
+                    ? `${city}（${s.service_type}）`
+                    : s.title
+                  return (
+                    <SelectItem key={s.id} value={s.id}>
+                      {label}
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -218,10 +232,10 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
         <Card className="rounded-xl shadow-subtle">
           <CardHeader>
             <CardTitle className="text-lg">
-              訪問介護テンプレートを一括登録する
+              標準見出しセットを登録する
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              訪問介護監査項目（最大公約数）をまとめて登録します。コードはシステムが自動で設定し、すでに登録済みの項目はスキップします。
+              訪問介護の標準見出しをまとめて登録します。識別コードは自動設定し、登録済みはスキップします。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -230,7 +244,7 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
                 登録予定：{HOME_VISIT_AUDIT_TEMPLATE_ITEMS.length}件
               </p>
               <p className="mt-1 text-muted-foreground">
-                指定・運営体制、利用者契約、アセスメント、訪問介護計画、サービス提供記録、加算要件、BCP、報酬請求などを含みます。
+                指定・契約・計画・記録・加算・BCP・請求などの見出しです。
               </p>
             </div>
             <Button
@@ -244,11 +258,11 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
               {pending ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />
               ) : null}
-              訪問介護テンプレートを登録する
+              標準見出しを登録する
             </Button>
             {!ruleSetId ? (
               <p className="text-sm text-muted-foreground">
-                先に登録先のルールセットを選択してください。
+                先に対象（市×サービス）を選んでください。
               </p>
             ) : null}
           </CardContent>
@@ -257,9 +271,9 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
 
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
-          <CardTitle className="text-lg">項目を個別に登録する</CardTitle>
+          <CardTitle className="text-lg">見出しを個別に登録する</CardTitle>
           <CardDescription className="text-base">
-            上で選択したルールセットに紐づけます。コードは未入力でも登録できます。
+            上で選んだ対象に紐づけます。コードは未入力でも登録できます。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -355,17 +369,17 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
 
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
-          <CardTitle className="text-lg">登録済み項目</CardTitle>
+          <CardTitle className="text-lg">登録済みのチェック見出し</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>コード</TableHead>
-                <TableHead>項目名</TableHead>
+                <TableHead>見出し</TableHead>
                 <TableHead>カテゴリ</TableHead>
                 <TableHead>リスク</TableHead>
-                <TableHead>セット</TableHead>
+                <TableHead>対象</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -386,14 +400,16 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
                         : "中"}
                   </TableCell>
                   <TableCell className="max-w-[12rem] truncate text-sm">
-                    {row.rule_sets?.title ?? "—"}
+                    {row.rule_sets?.service_type
+                      ? row.rule_sets.service_type
+                      : (row.rule_sets?.title ?? "—")}
                   </TableCell>
                 </TableRow>
               ))}
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-muted-foreground">
-                    まだ項目がありません。
+                    まだ見出しがありません。
                   </TableCell>
                 </TableRow>
               ) : null}

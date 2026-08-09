@@ -1,11 +1,12 @@
 import Link from "next/link"
-import { ArrowRight, Building2, ShieldCheck, Sparkles } from "lucide-react"
+import { ArrowRight, Building2, ClipboardCheck } from "lucide-react"
 import type { CityRulebookData } from "@/app/actions/city-rulebook"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
 import { Button } from "@/components/ui/button"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { servicePath } from "@/lib/rule-engine/services"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 type Props = {
   service: RuleServiceDef
@@ -13,8 +14,7 @@ type Props = {
 }
 
 /**
- * 市区町村ごとの市公開情報＋監査カテゴリへの導線。
- * 判定ルール案の生成・了承はルール管理で行う。
+ * 対象自治体ごとの根拠URL登録。判定ルールの生成・了承は判定ルールページへ。
  */
 export function MunicipalityCityHub({ service, data }: Props) {
   const { city, layerJurisdictions, sources } = data
@@ -32,8 +32,9 @@ export function MunicipalityCityHub({ service, data }: Props) {
       <div>
         <AdminBreadcrumb
           items={[
+            { label: "利用設定", href: "/admin/rules/setup" },
             { label: service.label, href: servicePath(service.slug) },
-            { label: "市区町村ルール設定", href: municipalitiesHref },
+            { label: RULES_UI.municipality, href: municipalitiesHref },
             { label: city.name },
           ]}
         />
@@ -47,21 +48,20 @@ export function MunicipalityCityHub({ service, data }: Props) {
                 {city.name}
               </h1>
               <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-                市の公開情報を登録します。判定ルール案の生成と了承は「ルール管理」で行います。
+                市の{RULES_UI.evidenceUrl}を登録します。判定ルールは別画面で整えます。
               </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild className="min-h-11">
               <Link href="/admin/rules/pending">
-                <Sparkles className="size-4" aria-hidden />
-                ルール管理で案を生成・了承する
+                <ClipboardCheck className="size-4" aria-hidden />
+                {RULES_UI.judgmentRule}を開く
               </Link>
             </Button>
             <Button asChild variant="outline" className="min-h-11">
               <Link href={auditHref}>
-                <ShieldCheck className="size-4" aria-hidden />
-                監査カテゴリ設定を開く
+                カテゴリの進み具合
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>
@@ -77,17 +77,18 @@ export function MunicipalityCityHub({ service, data }: Props) {
           id="propose-hint-heading"
           className="text-base font-semibold text-primary-dark"
         >
-          判定ルール案について
+          次のステップ
         </h2>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          URL登録だけでは案は出ません。公開情報PDF（直リンク）を登録したあと、
+          {RULES_UI.evidenceUrl}
+          （PDF直リンク）を登録したあと、
           <Link
             href="/admin/rules/pending"
             className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
           >
-            ルール管理
+            {RULES_UI.pendingPage}
           </Link>
-          で「判定ルール案を生成する」を押してください。
+          でルール案を生成し了承してください。
         </p>
       </section>
 
@@ -99,7 +100,7 @@ export function MunicipalityCityHub({ service, data }: Props) {
           id="city-sources-heading"
           className="mb-4 text-lg font-semibold text-primary-dark"
         >
-          市の公開情報
+          市の{RULES_UI.evidenceUrl}
         </h2>
         <CityRulebookSourcesPanel
           layer="city"
@@ -111,13 +112,13 @@ export function MunicipalityCityHub({ service, data }: Props) {
 
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" className="min-h-11">
-          <Link href={`/admin/rules/documents?city=${city.slug}`}>
-            公開情報監視を開く
+          <Link href="/admin/rules/monitoring">
+            {RULES_UI.monitoring}を開く
           </Link>
         </Button>
         <Button asChild variant="outline" className="min-h-11">
           <Link href={servicePath(service.slug, "national-prefecture")}>
-            国・県ルール設定へ
+            国・県の{RULES_UI.evidenceUrl}へ
           </Link>
         </Button>
       </div>

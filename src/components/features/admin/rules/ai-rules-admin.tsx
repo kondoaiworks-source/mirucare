@@ -93,7 +93,7 @@ export function AiRulesAdmin({
         <AlertTitle>操作はルールブック側です</AlertTitle>
         <AlertDescription className="space-y-2 text-base leading-relaxed">
           <p>
-            判定ルール案の生成・了承は
+            判定ルールの生成・了承は
             <Link
               href="/admin/rules/setup"
               className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
@@ -105,7 +105,7 @@ export function AiRulesAdmin({
               href="/admin/rules/pending"
               className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
             >
-              ルール管理
+              判定ルール
             </Link>
             で行ってください。
           </p>

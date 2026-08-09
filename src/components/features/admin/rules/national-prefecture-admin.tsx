@@ -31,8 +31,9 @@ export function NationalPrefectureAdmin({ service, data }: Props) {
       <div>
         <AdminBreadcrumb
           items={[
+            { label: "利用設定", href: "/admin/rules/setup" },
             { label: service.label, href: servicePath(service.slug) },
-            { label: "国・県ルール設定" },
+            { label: "国・県の根拠URL" },
           ]}
         />
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
@@ -42,19 +43,19 @@ export function NationalPrefectureAdmin({ service, data }: Props) {
             </span>
             <div>
               <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-                国・県ルール設定
+                国・県の根拠URL
               </h1>
               <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
                 {service.label}
                 共通の国・{city.prefectureName}
-                の公開情報PDF／URLを登録します。判定ルール案の生成と了承はルール管理で行います。
+                の参照PDFを登録します。判定ルールは別画面で整えます。
               </p>
             </div>
           </div>
           <Button asChild className="min-h-11">
             <Link href="/admin/rules/pending">
               <Sparkles className="size-4" aria-hidden />
-              ルール管理で案を生成・了承する
+              判定ルールを開く
             </Link>
           </Button>
         </div>
@@ -74,28 +75,28 @@ export function NationalPrefectureAdmin({ service, data }: Props) {
           id="propose-hint-heading"
           className="text-base font-semibold text-primary-dark"
         >
-          判定ルール案について
+          次のステップ
         </h2>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          URL登録だけでは案は出ません。公開情報PDF（直リンク）を登録したあと、
+          根拠URL（PDF直リンク）を登録したあと、
           <Link
             href="/admin/rules/pending"
             className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
           >
-            ルール管理
+            判定ルール
           </Link>
-          で「判定ルール案を生成する」を押してください。
+          でルール案を生成し了承してください。
         </p>
       </section>
 
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" className="min-h-11">
           <Link href={servicePath(service.slug, "municipalities")}>
-            市区町村ルール設定へ進む
+            対象自治体へ進む
           </Link>
         </Button>
         <Button asChild variant="outline" className="min-h-11">
-          <Link href="/admin/rules/documents">公開情報監視を開く</Link>
+          <Link href="/admin/rules/monitoring">監視状況を開く</Link>
         </Button>
       </div>
 

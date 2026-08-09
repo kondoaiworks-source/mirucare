@@ -60,16 +60,16 @@ export function CityRulebookCheckRulesPanel({
         pending.length > 0 ? (
           <Button asChild className="min-h-11">
             <Link href="/admin/rules/pending">
-              ルール管理で了承する（{pending.length}件）
+              判定ルールで了承する（{pending.length}件）
             </Link>
           </Button>
         ) : (
           <p className="text-sm text-muted-foreground">
             <Link
-              href="/admin/rules/pending#history"
+              href="/admin/rules/pending#rules-list"
               className="text-primary underline-offset-4 hover:underline"
             >
-              更新履歴
+              ルール一覧
             </Link>
           </p>
         )
@@ -83,7 +83,7 @@ export function CityRulebookCheckRulesPanel({
               了承前の案（まだチェックには使いません）
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              ルール管理で了承すると、下の了承済みに入ります。
+              判定ルールで了承すると、下の了承済みに入ります。
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -99,7 +99,7 @@ export function CityRulebookCheckRulesPanel({
             </ul>
             {pending.length > 5 ? (
               <p className="mt-2 text-sm text-muted-foreground">
-                ほか {pending.length - 5}件はルール管理で確認できます。
+                ほか {pending.length - 5}件は判定ルールで確認できます。
               </p>
             ) : null}
           </CardContent>
@@ -113,7 +113,7 @@ export function CityRulebookCheckRulesPanel({
         <div className="mt-4 space-y-2 border-t border-border pt-4">
           {approved.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6 text-base text-muted-foreground">
-              まだ了承済みがありません。ルール管理でAI生成または手動生成し、了承してください。
+              まだ了承済みがありません。判定ルールでAI生成または手動生成し、了承してください。
             </p>
           ) : (
             CATEGORY_ORDER.map((category) => {
@@ -234,7 +234,7 @@ function RuleRow({
           <p className="font-semibold text-primary-dark">{rule.title}</p>
           {rule.auditItemTitle ? (
             <p className="text-sm text-muted-foreground">
-              監査項目: {rule.auditItemTitle}
+              チェック見出し: {rule.auditItemTitle}
             </p>
           ) : null}
           <p className="text-base leading-relaxed text-muted-foreground line-clamp-3">
@@ -271,7 +271,7 @@ function RuleRow({
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm" className="min-h-11">
-                <Link href="/admin/rules/pending">ルール管理で確認する</Link>
+                <Link href="/admin/rules/pending">判定ルールで確認する</Link>
               </Button>
             )}
           </div>

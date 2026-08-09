@@ -48,12 +48,12 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     id: "rulebook",
     href: "/admin/rules/setup",
     label: "利用設定",
-    navDescription: "サービス・根拠URL・判定ルールを整える",
+    navDescription: "サービス→根拠URL→判定ルール",
     icon: Layers,
     purpose:
-      "サービスと根拠URLを登録し、判定ルールを了承します。施設は公開中の組合せだけ選べます。",
+      "サービス・対象自治体・根拠URLを登録し、判定ルールを了承します。",
     steps: [
-      "利用設定でサービスを開く",
+      "サービスと対象自治体を選ぶ",
       "国・県・市の根拠URLを登録する",
       "判定ルールを生成し了承する",
     ],
@@ -61,7 +61,7 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
       {
         href: "/admin/rules/services/homecare/national-prefecture",
         label: "国・県の根拠URL",
-        description: "訪問介護共通の国・県PDF／URL",
+        description: "訪問介護共通の国・県PDF",
         icon: Landmark,
       },
       {
@@ -84,14 +84,14 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
   {
     id: "audit",
     href: "/admin/rules/audit-items",
-    label: "監査項目",
-    navDescription: "見出しの初回登録・個別追加",
+    label: "チェック見出し",
+    navDescription: "初回の標準見出し登録",
     icon: ShieldCheck,
-    purpose: "運営指導で確認されやすい見出しを登録します。",
+    purpose: "判定ルールの土台となるチェック見出しを登録します。",
     steps: [
-      "初回はテンプレート登録",
-      "必要なら個別追加",
-      "保存する",
+      "対象（市×サービス）を選ぶ",
+      "標準見出しセットを登録する",
+      "必要なら個別追加する",
     ],
     links: [],
     matchPaths: ["/admin/rules/audit-items"],
@@ -106,7 +106,7 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     purpose: "一覧確認用です。追加・了承は利用設定から行います。",
     steps: [
       "利用設定で案を生成",
-      "ルール管理で了承する",
+      "判定ルールで了承する",
       "了承後にチェックで使う",
     ],
     links: [
@@ -118,8 +118,8 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
       },
       {
         href: "/admin/rules/pending",
-        label: "ルール管理",
-        description: "案の了承・差し戻し",
+        label: "判定ルール",
+        description: "了承・一覧・案の生成",
         icon: Landmark,
       },
     ],

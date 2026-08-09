@@ -36,11 +36,11 @@ export function AuditCategoriesAdmin({ service, city }: Props) {
           items={[
             { label: service.label, href: servicePath(service.slug) },
             {
-              label: "市区町村ルール設定",
+              label: "対象自治体",
               href: servicePath(service.slug, "municipalities"),
             },
             { label: city.name, href: cityHref },
-            { label: "監査カテゴリ設定" },
+            { label: "カテゴリの進み具合" },
           ]}
         />
         <div className="mt-2 flex items-start gap-3">
@@ -49,11 +49,11 @@ export function AuditCategoriesAdmin({ service, city }: Props) {
           </span>
           <div>
             <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-              監査カテゴリ設定
+              カテゴリの進み具合
             </h1>
             <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
               {city.name}・{service.label}
-              のチェック単位です。各カテゴリで関連PDFの確認、更新情報の管理、判定ルールの了承を行います（カテゴリは将来増やせます）。
+              のチェック単位です。関連PDFの確認や判定ルールへの導線です。
             </p>
           </div>
         </div>
