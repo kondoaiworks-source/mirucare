@@ -123,7 +123,7 @@ export function AuditCategoryDetail({ service, category, data }: Props) {
               href: servicePath(service.slug, "municipalities"),
             },
             { label: city.name, href: cityHref },
-            { label: "監査カテゴリ設定", href: categoriesHref },
+            { label: "カテゴリの進み具合", href: categoriesHref },
             { label: category.title },
           ]}
         />

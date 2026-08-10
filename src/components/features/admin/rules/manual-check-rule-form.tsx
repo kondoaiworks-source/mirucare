@@ -57,7 +57,7 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
     setLoadError(null)
     const result = await listAiRulesAction()
     if (!result.ok) {
-      setLoadError(result.error ?? "チェック見出しを取得できませんでした。")
+      setLoadError(result.error ?? "カテゴリを取得できませんでした。")
       return
     }
     const items = result.data?.auditItems ?? []
@@ -118,10 +118,10 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         <p className="sm:col-span-2 text-base text-danger">{loadError}</p>
       ) : null}
       <div className="space-y-2 sm:col-span-2">
-        <Label>チェック見出し</Label>
+        <Label>カテゴリ</Label>
         <Select value={auditItemId} onValueChange={setAuditItemId}>
           <SelectTrigger className="h-11 min-h-11">
-            <SelectValue placeholder="チェック見出しを選んでください" />
+            <SelectValue placeholder="カテゴリを選んでください" />
           </SelectTrigger>
           <SelectContent>
             {auditItems.map((item) => (
@@ -133,7 +133,7 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         </Select>
         {auditItems.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            チェック見出しがありません。利用設定の「チェック見出し」で標準見出しセットを登録してください。
+            カテゴリがありません。利用設定の「カテゴリ」で標準カテゴリセットを登録してください。
           </p>
         ) : null}
       </div>

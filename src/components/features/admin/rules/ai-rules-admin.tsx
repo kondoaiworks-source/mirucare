@@ -145,7 +145,7 @@ export function AiRulesAdmin({
             <TableHeader>
               <TableRow>
                 <TableHead>ルール</TableHead>
-                <TableHead>監査項目</TableHead>
+                <TableHead>カテゴリ</TableHead>
                 <TableHead>最新版</TableHead>
                 <TableHead>状態</TableHead>
               </TableRow>

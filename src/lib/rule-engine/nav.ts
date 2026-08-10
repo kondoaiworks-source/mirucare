@@ -31,7 +31,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
       {
         href: "/admin/rules/setup",
         label: "利用設定",
-        description: "サービス→自治体→根拠URL→見出し→判定ルール",
+        description: "サービス→自治体→根拠URL→カテゴリ→判定ルール",
         icon: Settings2,
         matchPaths: [
           "/admin/rules/setup",

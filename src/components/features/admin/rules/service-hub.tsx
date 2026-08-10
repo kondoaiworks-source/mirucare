@@ -133,7 +133,7 @@ export function ServiceHub({ service }: Props) {
               次のステップ
             </h2>
             <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-              根拠URLのあと、チェック見出しと判定ルールを整えます。
+              根拠URLのあと、カテゴリと判定ルールを整えます。
             </p>
           </div>
         </div>

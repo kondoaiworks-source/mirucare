@@ -84,13 +84,14 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
   {
     id: "audit",
     href: "/admin/rules/audit-items",
-    label: "チェック見出し",
-    navDescription: "初回の標準見出し登録",
+    label: "カテゴリ",
+    navDescription: "ルールブックに載せるカテゴリ",
     icon: ShieldCheck,
-    purpose: "判定ルールの土台となるチェック見出しを登録します。",
+    purpose:
+      "ルールブックに載せるカテゴリ（何を見るか）を登録します。初回は標準セットで足ります。",
     steps: [
-      "対象（市×サービス）を選ぶ",
-      "標準見出しセットを登録する",
+      "対象（市×サービス＝ルールブック）を選ぶ",
+      "標準カテゴリセットを登録する",
       "必要なら個別追加する",
     ],
     links: [],

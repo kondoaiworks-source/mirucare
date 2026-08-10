@@ -84,7 +84,8 @@ export function UsageSettingsHub() {
           {RULES_UI.setup}
         </h1>
         <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          サービス → 対象自治体 → 根拠URL → チェック見出し → 判定ルールの順で整えます。
+          サービス → 対象自治体（ルールブック）→ 根拠URL → カテゴリ →
+          判定ルールの順で整えます。
         </p>
       </div>
 
@@ -306,11 +307,11 @@ export function UsageSettingsHub() {
           <li>
             <AdminEqualCard
               href="/admin/rules/audit-items"
-              title={RULES_UI.checkHeading}
+              title={RULES_UI.category}
               description={
                 headingsReady
                   ? `登録済み ${dash?.auditItemCount ?? 0}件（初回は完了）`
-                  : "標準見出しセットを登録します"
+                  : `${RULES_UI.standardCategorySet}を登録します`
               }
               icon={ListChecks}
               badge={

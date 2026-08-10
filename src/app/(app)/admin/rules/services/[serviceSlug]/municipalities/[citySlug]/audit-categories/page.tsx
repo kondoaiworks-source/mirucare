@@ -18,7 +18,7 @@ export async function generateMetadata({
   const { citySlug } = await Promise.resolve(params)
   const city = getPhase1CityBySlug(citySlug)
   return {
-    title: city ? `${city.name}｜監査カテゴリ設定` : "監査カテゴリ設定",
+    title: city ? `${city.name}｜カテゴリの進み具合` : "カテゴリの進み具合",
   }
 }
 

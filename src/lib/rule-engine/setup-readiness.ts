@@ -80,16 +80,16 @@ export function buildSetupReadiness(
     },
     {
       id: "audit",
-      label: "監査項目を登録する",
-      description: "運営指導で確認されやすい項目を1件以上登録します。",
+      label: "カテゴリを登録する",
+      description: "ルールブックに載せる「何を見るか」の枠を1件以上登録します。",
       href: "/admin/rules/audit-items",
-      actionLabel: "監査項目を開く",
+      actionLabel: "カテゴリを開く",
       done: input.auditItemCount > 0,
       required: true,
       detail:
         input.auditItemCount > 0
-          ? `${input.auditItemCount}件の監査項目があります`
-          : "監査項目が未登録です",
+          ? `${input.auditItemCount}件のカテゴリがあります`
+          : "カテゴリが未登録です",
       icon: ClipboardList,
     },
     {

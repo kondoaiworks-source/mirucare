@@ -20,7 +20,7 @@ export function ServicesAdmin() {
           介護サービス選定
         </h1>
         <p className="mt-2 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          介護サービスを選び、国・県・市区町村の公開情報と監査カテゴリを整えます。施設は、運用中サービスのうち公開した自治体だけを選べます（当面は訪問介護 ×
+          介護サービスを選び、国・県・市区町村の根拠URLとカテゴリを整えます。施設は、運用中サービスのうち公開した自治体だけを選べます（当面は訪問介護 ×
           神奈川の5市）。
         </p>
       </div>

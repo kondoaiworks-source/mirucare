@@ -234,7 +234,7 @@ function RuleRow({
           <p className="font-semibold text-primary-dark">{rule.title}</p>
           {rule.auditItemTitle ? (
             <p className="text-sm text-muted-foreground">
-              チェック見出し: {rule.auditItemTitle}
+              カテゴリ: {rule.auditItemTitle}
             </p>
           ) : null}
           <p className="text-base leading-relaxed text-muted-foreground line-clamp-3">

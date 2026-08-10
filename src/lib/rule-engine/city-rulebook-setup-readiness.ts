@@ -164,12 +164,12 @@ export function buildCityRulebookSetupReadiness(
     {
       id: "audit",
       order: 3,
-      label: "監査項目を登録する",
+      label: "カテゴリを登録する",
       description:
-        "監査項目画面で、この市の訪問介護ルールセットにPhase1向け見出しを登録します。",
+        "カテゴリ画面で、この市の訪問介護ルールブックにPhase1向けカテゴリを登録します。",
       done: auditReady,
       detail: auditReady
-        ? `Phase1必要 ${PHASE1_UNIQUE_AUDIT_CODES.length}件の監査項目が揃っています`
+        ? `Phase1必要 ${PHASE1_UNIQUE_AUDIT_CODES.length}件のカテゴリが揃っています`
         : `登録 ${auditSet.size}件 — 不足あり（下の網羅表を確認）`,
       anchorId: "city-setup-phase1",
     },

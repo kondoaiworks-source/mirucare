@@ -137,7 +137,7 @@ export function AppliedRulesPanel({
                     </p>
                     {r.auditItemTitle ? (
                       <p className="mt-1 text-sm text-muted-foreground">
-                        監査項目: {r.auditItemTitle}
+                        カテゴリ: {r.auditItemTitle}
                       </p>
                     ) : null}
                     <p className="mt-1 text-sm tabular-nums text-muted-foreground">

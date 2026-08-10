@@ -1121,7 +1121,7 @@ export async function createAiCheckRuleWithVersionAction(input: {
   const code = input.code.trim().toUpperCase()
   const title = input.title.trim()
   if (!input.auditItemId) {
-    return { ok: false, error: "監査項目を選んでください。" }
+    return { ok: false, error: "カテゴリを選んでください。" }
   }
   if (!code || !title) {
     return { ok: false, error: "コードと名称を入力してください。" }

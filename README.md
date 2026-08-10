@@ -83,10 +83,10 @@ SQL Editor で次を **順番に** 実行します。
 1. 運営アカウントで [http://localhost:3000/admin/rules](http://localhost:3000/admin/rules) を開く
 2. `/admin/rules/setup`（利用設定）へリダイレクトすること
 3. 左メニューが「利用設定／監視状況」の2本であること
-4. 利用設定が①サービス→②③対象自治体・根拠URL→④チェック見出し→⑤判定ルールの順であること
-5. 文言が「根拠URL／チェック見出し／判定ルール／標準見出しセット」に揃い、ルールセット・テンプレートを表に出さないこと
+4. 利用設定が①サービス→②③対象自治体・根拠URL→④カテゴリ→⑤判定ルールの順であること
+5. 文言が「根拠URL／カテゴリ／判定ルール／標準カテゴリセット」に揃い、ルールセット・テンプレート・チェック見出しを表に出さないこと
 6. 訪問介護 → 国・県の根拠URL／対象自治体 → 市の根拠URLへ進めること
-7. `/admin/rules/audit-items`（チェック見出し）で対象（市×サービス）を選び「標準見出しを登録する」ができること
+7. `/admin/rules/audit-items`（カテゴリ）で対象（市×サービス）を選び「標準カテゴリを登録する」ができること
 8. `/admin/rules/pending`（判定ルール）が「了承待ち → ルール一覧 → ルール案を生成」の順であること
    - 各資料に「原文を開く／AIで判定ルール生成／手動で判定ルール生成」が等配置であること
    - 手動追加は `/admin/rules/manual` へ遷移すること
@@ -609,7 +609,7 @@ npm install -D @types/papaparse
 | `/admin/rules/services/[slug]` | サービス詳細（利用設定から） |
 | `/admin/rules/pending` | 判定ルール（了承待ち → 一覧 → ルール案を生成） |
 | `/admin/rules/manual` | 手動で判定ルールを追加（API不要） |
-| `/admin/rules/audit-items` | チェック見出し（初回の標準見出しセット） |
+| `/admin/rules/audit-items` | カテゴリ（初回の標準カテゴリセット） |
 | `/admin/rules/history` | ルール管理のルール一覧へリダイレクト |
 | `/admin/rules/notifications` | 公開情報台帳管理（監視状況から） |
 | `/admin/rules/more` | 監視状況へリダイレクト |

@@ -1,6 +1,11 @@
 /**
  * ルール設定 UI の用語の正。
  * 画面文言はこの定義に合わせ、内部用語（rule_sets 等）は出さない。
+ *
+ * 階層の正:
+ * サービス → ルールブック（市）→ カテゴリ → 判定ルール
+ * 国・県・市の根拠URLはカテゴリの横（根拠の層）。
+ *
  * @see docs/ルールブック構想.md
  */
 
@@ -9,9 +14,13 @@ export const RULES_UI = {
   monitoring: "監視状況",
   service: "サービス",
   municipality: "対象自治体",
+  rulebook: "ルールブック",
   evidenceUrl: "根拠URL",
-  checkHeading: "チェック見出し",
-  standardHeadingSet: "標準見出しセット",
+  /** ルールブックに載せる「何を見るか」の枠（旧・チェック見出し） */
+  category: "カテゴリ",
+  /** audit_item.category（契約・加算など）の画面表示。ページ名の「カテゴリ」と区別する */
+  categoryKind: "分類",
+  standardCategorySet: "標準カテゴリセット",
   judgmentRule: "判定ルール",
   pendingRules: "了承待ちの判定ルール案",
   rulesList: "ルール一覧",
@@ -30,7 +39,7 @@ export const SETUP_STEPS = [
   {
     no: 2,
     title: "対象自治体を整える",
-    description: "公開する市区町村を決めます。",
+    description: "公開する市区町村（ルールブックの箱）を決めます。",
   },
   {
     no: 3,
@@ -39,8 +48,8 @@ export const SETUP_STEPS = [
   },
   {
     no: 4,
-    title: "チェック見出しを用意する",
-    description: "初回だけ標準セットを登録します。",
+    title: "カテゴリを用意する",
+    description: "ルールブックに載せるカテゴリを登録します（初回は標準セット）。",
   },
   {
     no: 5,

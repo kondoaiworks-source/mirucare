@@ -109,10 +109,10 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
       const inserted = result.data?.insertedCount ?? 0
       const skipped = result.data?.skippedCount ?? 0
       if (inserted === 0) {
-        toast.success("標準見出しセットは登録済みです。")
+        toast.success("標準カテゴリセットは登録済みです。")
       } else {
         toast.success(
-          `標準見出しを${inserted}件登録しました。既存${skipped}件はスキップしました。`
+          `標準カテゴリを${inserted}件登録しました。既存${skipped}件はスキップしました。`
         )
       }
       await refresh()
@@ -134,7 +134,7 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
         toast.error(result.error ?? "登録に失敗しました。")
         return
       }
-      toast.success("チェック見出しを登録しました。")
+      toast.success("カテゴリを登録しました。")
       setCode("")
       setTitle("")
       setDescription("")
@@ -150,10 +150,10 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
       }
     : {
         purpose:
-          "判定ルールの土台となるチェック見出しを登録します。初回は標準セットを使います。",
+          "ルールブックに載せるカテゴリ（何を見るか）を登録します。初回は標準セットを使います。",
         steps: [
-          "対象（市×サービス）を選ぶ",
-          "標準見出しセットを登録する",
+          "対象（市×サービス＝ルールブック）を選ぶ",
+          "標準カテゴリセットを登録する",
           "必要なら個別に追加する",
         ],
       }
@@ -170,17 +170,17 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
                 ]
               : [
                   { label: "利用設定", href: "/admin/rules/setup" },
-                  { label: "チェック見出し" },
+                  { label: "カテゴリ" },
                 ]
           }
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          {isAdditions ? "加算設定" : "チェック見出し"}
+          {isAdditions ? "加算設定" : "カテゴリ"}
         </h1>
         <p className="mt-1 text-base leading-relaxed text-muted-foreground">
           {isAdditions
             ? "加算の算定条件と必要書類を確認・編集します（任意）。"
-            : "「何を見るか」の見出しです。初回だけ標準セットを登録すれば足ります。"}
+            : "ルールブックに載せる「何を見るか」の枠です。初回だけ標準セットを登録すれば足ります。"}
         </p>
       </div>
 
@@ -200,7 +200,7 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
         <CardHeader>
           <CardTitle className="text-lg">対象を選ぶ</CardTitle>
           <CardDescription className="text-base">
-            見出しを登録する市×サービスを選びます。
+            カテゴリを登録する市×サービス（ルールブック）を選びます。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -232,10 +232,10 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
         <Card className="rounded-xl shadow-subtle">
           <CardHeader>
             <CardTitle className="text-lg">
-              標準見出しセットを登録する
+              標準カテゴリセットを登録する
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              訪問介護の標準見出しをまとめて登録します。識別コードは自動設定し、登録済みはスキップします。
+              訪問介護の標準カテゴリをまとめて登録します。識別コードは自動設定し、登録済みはスキップします。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -244,7 +244,7 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
                 登録予定：{HOME_VISIT_AUDIT_TEMPLATE_ITEMS.length}件
               </p>
               <p className="mt-1 text-muted-foreground">
-                指定・契約・計画・記録・加算・BCP・請求などの見出しです。
+                指定・契約・計画・記録・加算・BCP・請求などのカテゴリです。
               </p>
             </div>
             <Button
@@ -258,7 +258,7 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
               {pending ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />
               ) : null}
-              標準見出しを登録する
+              標準カテゴリを登録する
             </Button>
             {!ruleSetId ? (
               <p className="text-sm text-muted-foreground">
@@ -271,9 +271,9 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
 
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
-          <CardTitle className="text-lg">見出しを個別に登録する</CardTitle>
+          <CardTitle className="text-lg">カテゴリを個別に登録する</CardTitle>
           <CardDescription className="text-base">
-            上で選んだ対象に紐づけます。コードは未入力でも登録できます。
+            上で選んだルールブックに紐づけます。コードは未入力でも登録できます。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -290,7 +290,7 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
             </div>
             {!isAdditions ? (
               <div className="space-y-2">
-                <Label>カテゴリ</Label>
+                <Label>分類</Label>
                 <Select
                   value={category}
                   onValueChange={(v) => setCategory(v as AuditItemCategory)}
@@ -309,7 +309,7 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label>カテゴリ</Label>
+                <Label>分類</Label>
                 <Input className="h-11 min-h-11" value="加算" disabled />
               </div>
             )}
@@ -369,15 +369,15 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
 
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
-          <CardTitle className="text-lg">登録済みのチェック見出し</CardTitle>
+          <CardTitle className="text-lg">登録済みのカテゴリ</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>コード</TableHead>
-                <TableHead>見出し</TableHead>
-                <TableHead>カテゴリ</TableHead>
+                <TableHead>名称</TableHead>
+                <TableHead>分類</TableHead>
                 <TableHead>リスク</TableHead>
                 <TableHead>対象</TableHead>
               </TableRow>
@@ -409,7 +409,7 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-muted-foreground">
-                    まだ見出しがありません。
+                    まだカテゴリがありません。
                   </TableCell>
                 </TableRow>
               ) : null}

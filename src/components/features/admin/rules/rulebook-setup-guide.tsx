@@ -368,7 +368,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
             Phase1突合の網羅（項目1・3・7・8）
           </h3>
           <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-            運用AI監査で見る4本の突合について、監査項目・了承済みルール・行政根拠の3点が揃っているか確認します。
+            運用AI監査で見る4本の突合について、カテゴリ・了承済みルール・行政根拠の3点が揃っているか確認します。
             ✓＝揃っている、✗＝不足があります。
           </p>
           <div className="space-y-4">
@@ -407,7 +407,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
                     <thead>
                       <tr className="border-b bg-muted/40 text-muted-foreground">
                         <th className="px-3 py-2 font-semibold">判定ルール</th>
-                        <th className="px-3 py-2 font-semibold">監査項目</th>
+                        <th className="px-3 py-2 font-semibold">カテゴリ</th>
                         <th className="px-3 py-2 font-semibold">了承済み</th>
                         <th className="px-3 py-2 font-semibold">行政根拠</th>
                       </tr>
@@ -509,7 +509,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
           </summary>
           <div className="border-t border-dashed px-4 py-4">
             <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-              開発・検証用です。監査項目テンプレとPhase1判定ルールを一括投入します（根拠は付きません）。
+              開発・検証用です。標準カテゴリセットとPhase1判定ルールを一括投入します（根拠は付きません）。
               本番の初回登録は上記手順どおり、市ルールブックから進めてください。
             </p>
             <Button
@@ -527,7 +527,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
                   }
                   const d = result.data
                   toast.success(
-                    `一括登録完了（監査項目 +${d?.auditInserted ?? 0}・判定ルール +${d?.rulesInserted ?? 0}）`
+                    `一括登録完了（カテゴリ +${d?.auditInserted ?? 0}・判定ルール +${d?.rulesInserted ?? 0}）`
                   )
                   router.refresh()
                 })

@@ -278,21 +278,21 @@ export function buildRulebookSetupReadiness(
     {
       id: "auditItems",
       order: 4,
-      label: "監査項目を登録する",
+      label: "カテゴリを登録する",
       description:
-        "Phase1（項目1・3・7・8）に必要な監査項目の見出しを、各市ルールセットに揃えます。",
+        "Phase1（項目1・3・7・8）に必要なカテゴリを、各市ルールセットに揃えます。",
       howTo: [
-        "監査項目画面で訪問介護テンプレートを登録する（各市のルールセットを選択）",
-        "または市ルールブックから必要な見出しを手入力する",
-        "下の「Phase1突合の網羅」で監査項目の✓が揃うか確認する",
+        "カテゴリ画面で標準カテゴリセットを登録する（各市のルールブックを選択）",
+        "または市ルールブックから必要なカテゴリを手入力する",
+        "下の「Phase1突合の網羅」でカテゴリの✓が揃うか確認する",
       ],
       href: "/admin/rules/audit-items",
-      actionLabel: "監査項目を開く",
+      actionLabel: "カテゴリを開く",
       done: allCitiesAuditReady && registeredAuditSet.size > 0,
       required: true,
       detail: allCitiesAuditReady
-        ? `Phase1必要 ${PHASE1_AUDIT_CODES.length}件の監査項目コードが登録済み`
-        : `監査項目 ${registeredAuditSet.size}件 — Phase1コード不足あり（下表を確認）`,
+        ? `Phase1必要 ${PHASE1_AUDIT_CODES.length}件のカテゴリコードが登録済み`
+        : `カテゴリ ${registeredAuditSet.size}件 — Phase1コード不足あり（下表を確認）`,
     },
     {
       id: "generateRules",

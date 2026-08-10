@@ -276,7 +276,7 @@ export async function proposeRulesFromChangeDraft(input: {
     return {
       ok: false,
       error:
-        "監査項目がありません。詳細設定で監査項目を登録してから提案を生成してください。",
+        "カテゴリがありません。利用設定の「カテゴリ」で登録してから提案を生成してください。",
     }
   }
   if (!isGeminiConfigured()) {
@@ -314,7 +314,7 @@ export async function proposeRulesFromSourceText(input: {
     return {
       ok: false,
       error:
-        "監査項目がありません。詳細設定で監査項目を登録してから提案を生成してください。",
+        "カテゴリがありません。利用設定の「カテゴリ」で登録してから提案を生成してください。",
     }
   }
   if (!input.sourceText.trim()) {

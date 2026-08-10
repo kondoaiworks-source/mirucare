@@ -29,7 +29,7 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { categorySlug } = await Promise.resolve(params)
   const category = getAuditCategoryBySlug(categorySlug)
-  return { title: category ? category.title : "監査カテゴリ" }
+  return { title: category ? category.title : "カテゴリ" }
 }
 
 export default async function AuditCategoryDetailPage({ params }: PageProps) {
