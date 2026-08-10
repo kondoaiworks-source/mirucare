@@ -1,185 +1,33 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import Link from "next/link"
-import {
-  AlertTriangle,
-  BookOpen,
-  ClipboardCheck,
-  FileText,
-  Layers,
-  ListChecks,
-  PauseCircle,
-  PlayCircle,
-} from "lucide-react"
-import { getRulesDashboardAction } from "@/app/actions/rule-engine"
-import { listRulebookOfferingsAction } from "@/app/actions/rulebook-offerings"
+import { Layers, PauseCircle, PlayCircle } from "lucide-react"
 import { AdminEqualCard } from "@/components/features/admin/rules/admin-equal-card"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import type { RulebookOfferingRow } from "@/lib/rule-engine/offerings"
 import { RULE_SERVICES, servicePath } from "@/lib/rule-engine/services"
-import { RULES_UI, SETUP_STEPS } from "@/lib/rule-engine/ui-glossary"
-
-type Dashboard = {
-  supportedMunicipalityCount: number
-  sourceUrlCount: number
-  pendingVersionCount: number
-  approvedAiRuleCount: number
-  auditItemCount: number
-}
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 /**
- * 利用設定ハブ：①サービス → ②自治体 → ③根拠URL → ④見出し → ⑤判定ルール。
+ * 利用設定：サービス設定のみ。サマリ・横断ショートカットは置かない。
+ * @see docs/ルールブック構想.md
  */
 export function UsageSettingsHub() {
-  const [dash, setDash] = useState<Dashboard | null>(null)
-  const [offerings, setOfferings] = useState<RulebookOfferingRow[]>([])
-  const [error, setError] = useState<string | null>(null)
-
-  const refresh = useCallback(async () => {
-    setError(null)
-    const [d, o] = await Promise.all([
-      getRulesDashboardAction(),
-      listRulebookOfferingsAction({ serviceType: "訪問介護" }),
-    ])
-    if (!d.ok) {
-      setError(d.error ?? "集計に失敗しました。")
-      setDash(null)
-    } else {
-      setDash({
-        supportedMunicipalityCount: d.data?.supportedMunicipalityCount ?? 0,
-        sourceUrlCount: d.data?.sourceUrlCount ?? 0,
-        pendingVersionCount: d.data?.pendingVersionCount ?? 0,
-        approvedAiRuleCount: d.data?.approvedAiRuleCount ?? 0,
-        auditItemCount: d.data?.auditItemCount ?? 0,
-      })
-    }
-    if (!o.ok) {
-      setError((prev) => prev ?? o.error ?? "自治体一覧の取得に失敗しました。")
-      setOfferings([])
-    } else {
-      setOfferings(o.data?.rows ?? [])
-    }
-  }, [])
-
-  useEffect(() => {
-    void refresh()
-  }, [refresh])
-
-  const headingsReady = (dash?.auditItemCount ?? 0) > 0
-
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
-          {RULES_UI.setup}
-        </h1>
-        <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          サービス → 対象自治体（ルールブック）→ 根拠URL → カテゴリ →
-          判定ルールの順で整えます。
-        </p>
-      </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-primary-dark md:text-3xl">
+        {RULES_UI.setup}
+      </h1>
 
-      {error ? (
-        <Alert variant="destructive" className="rounded-xl">
-          <AlertTriangle />
-          <AlertTitle>読み込みエラー</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <section className="space-y-3" aria-labelledby="setup-flow-heading">
+      <section
+        className="rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
+        aria-labelledby="service-settings-heading"
+      >
         <h2
-          id="setup-flow-heading"
+          id="service-settings-heading"
           className="text-xl font-bold text-primary-dark"
         >
-          進め方
+          {RULES_UI.serviceSettings}
         </h2>
-        <p className="text-base text-muted-foreground">上から順に進めます。</p>
-        <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {SETUP_STEPS.map((step) => (
-            <li key={step.no}>
-              <Card className="h-full min-h-[9.5rem] rounded-xl shadow-subtle">
-                <CardHeader className="space-y-2">
-                  <p className="text-sm font-semibold tabular-nums text-muted-foreground">
-                    {step.no}
-                  </p>
-                  <CardTitle className="line-clamp-2 text-base text-primary-dark">
-                    {step.title}
-                  </CardTitle>
-                  <CardDescription className="line-clamp-2 min-h-[3rem] text-base leading-relaxed">
-                    {step.description}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="space-y-3" aria-labelledby="setup-summary-heading">
-        <h2
-          id="setup-summary-heading"
-          className="text-xl font-bold text-primary-dark"
-        >
-          登録サマリ
-        </h2>
-        <p className="text-base text-muted-foreground">いまの登録件数です。</p>
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <li>
-            <AdminEqualCard
-              title={RULES_UI.municipality}
-              description="公開準備中の市区町村数"
-              value={dash?.supportedMunicipalityCount ?? "—"}
-              icon={Layers}
-            />
-          </li>
-          <li>
-            <AdminEqualCard
-              title={RULES_UI.evidenceUrl}
-              description="登録済みの参照PDF件数"
-              value={dash?.sourceUrlCount ?? "—"}
-              icon={FileText}
-            />
-          </li>
-          <li>
-            <AdminEqualCard
-              title="了承待ち"
-              description="確認が必要な判定ルール"
-              value={dash?.pendingVersionCount ?? "—"}
-              icon={ClipboardCheck}
-              href="/admin/rules/pending"
-            />
-          </li>
-          <li>
-            <AdminEqualCard
-              title="了承済み"
-              description="チェックに使う判定ルール"
-              value={dash?.approvedAiRuleCount ?? "—"}
-              icon={BookOpen}
-              href="/admin/rules/pending#rules-list"
-            />
-          </li>
-        </ul>
-      </section>
-
-      <section className="space-y-3" aria-labelledby="step1-heading">
-        <h2 id="step1-heading" className="text-xl font-bold text-primary-dark">
-          ① {SETUP_STEPS[0].title}
-        </h2>
-        <p className="text-base text-muted-foreground">
-          {SETUP_STEPS[0].description}
-        </p>
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {RULE_SERVICES.map((svc) => {
             const active = svc.status === "active"
             return (
@@ -187,7 +35,6 @@ export function UsageSettingsHub() {
                 <AdminEqualCard
                   href={servicePath(svc.slug)}
                   title={svc.label}
-                  description={svc.description}
                   icon={Layers}
                   badge={
                     <Badge
@@ -206,159 +53,6 @@ export function UsageSettingsHub() {
               </li>
             )
           })}
-        </ul>
-      </section>
-
-      <section className="space-y-3" aria-labelledby="step2-3-heading">
-        <h2
-          id="step2-3-heading"
-          className="text-xl font-bold text-primary-dark"
-        >
-          ②③ {RULES_UI.municipality}と{RULES_UI.evidenceUrl}
-        </h2>
-        <p className="text-base text-muted-foreground">
-          市ごとに根拠URLを登録し、公開を切り替えます。
-        </p>
-        <div className="mb-2 flex flex-wrap gap-2">
-          <Button asChild className="min-h-11">
-            <Link href={servicePath("homecare", "national-prefecture")}>
-              国・県の{RULES_UI.evidenceUrl}を開く
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href={servicePath("homecare", "municipalities")}>
-              {RULES_UI.municipality}一覧を開く
-            </Link>
-          </Button>
-        </div>
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {offerings.map((row) => {
-            const cityHref = row.slug
-              ? servicePath("homecare", "municipalities", row.slug)
-              : servicePath("homecare", "municipalities")
-            return (
-              <li key={row.id}>
-                <Card className="flex h-full min-h-[9.5rem] flex-col rounded-xl shadow-subtle">
-                  <CardHeader className="space-y-2 pb-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CardTitle className="line-clamp-1 text-lg text-primary-dark">
-                        {row.municipalityName}
-                      </CardTitle>
-                      <Badge
-                        variant={row.isPublished ? "default" : "outline"}
-                        className="rounded-md"
-                      >
-                        {row.isPublished ? "公開中" : "非公開"}
-                      </Badge>
-                    </div>
-                    <CardDescription className="line-clamp-2 min-h-[3rem] text-base leading-relaxed">
-                      市の根拠PDF {row.cityPdfCount}件（国
-                      {row.nationalPdfCount}・県{row.prefecturePdfCount}）
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="mt-auto flex flex-wrap gap-2 pt-0">
-                    <Button asChild className="min-h-11">
-                      <Link href={cityHref}>{RULES_UI.evidenceUrl}を開く</Link>
-                    </Button>
-                    <Button asChild variant="outline" className="min-h-11">
-                      <Link href="/admin/rules/pending">
-                        {RULES_UI.judgmentRule}を開く
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              </li>
-            )
-          })}
-          {offerings.length === 0 ? (
-            <li className="sm:col-span-2">
-              <Card className="rounded-xl shadow-subtle">
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    {RULES_UI.municipality}がありません
-                  </CardTitle>
-                  <CardDescription className="text-base">
-                    訪問介護の対象自治体一覧から準備を始めてください。
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button asChild className="min-h-11">
-                    <Link href={servicePath("homecare", "municipalities")}>
-                      {RULES_UI.municipality}を開く
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </li>
-          ) : null}
-        </ul>
-      </section>
-
-      <section className="space-y-3" aria-labelledby="step4-heading">
-        <h2 id="step4-heading" className="text-xl font-bold text-primary-dark">
-          ④ {SETUP_STEPS[3].title}
-        </h2>
-        <p className="text-base text-muted-foreground">
-          {headingsReady
-            ? "登録済みです。不足分だけ追加できます。"
-            : SETUP_STEPS[3].description}
-        </p>
-        <ul className="grid gap-3 sm:grid-cols-2">
-          <li>
-            <AdminEqualCard
-              href="/admin/rules/audit-items"
-              title={RULES_UI.category}
-              description={
-                headingsReady
-                  ? `登録済み ${dash?.auditItemCount ?? 0}件（初回は完了）`
-                  : `${RULES_UI.standardCategorySet}を登録します`
-              }
-              icon={ListChecks}
-              badge={
-                headingsReady ? (
-                  <Badge className="rounded-md">登録済</Badge>
-                ) : (
-                  <Badge variant="secondary" className="rounded-md">
-                    初回
-                  </Badge>
-                )
-              }
-            />
-          </li>
-        </ul>
-      </section>
-
-      <section className="space-y-3" aria-labelledby="step5-heading">
-        <h2 id="step5-heading" className="text-xl font-bold text-primary-dark">
-          ⑤ {SETUP_STEPS[4].title}
-        </h2>
-        <p className="text-base text-muted-foreground">
-          {SETUP_STEPS[4].description}
-        </p>
-        <ul className="grid gap-3 sm:grid-cols-2">
-          <li>
-            <AdminEqualCard
-              href="/admin/rules/pending"
-              title={RULES_UI.pendingPage}
-              description="了承・一覧・案の生成"
-              icon={ClipboardCheck}
-              badge={
-                (dash?.pendingVersionCount ?? 0) > 0 ? (
-                  <Badge variant="secondary" className="rounded-md tabular-nums">
-                    待ち {dash?.pendingVersionCount}
-                  </Badge>
-                ) : undefined
-              }
-            />
-          </li>
-          <li>
-            <AdminEqualCard
-              href="/admin/rules/manual"
-              title="手動で追加する"
-              description="API不要で判定ルールを1件追加"
-              icon={BookOpen}
-            />
-          </li>
         </ul>
       </section>
     </div>

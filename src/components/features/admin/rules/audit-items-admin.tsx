@@ -45,6 +45,7 @@ import { AlertTriangle, Loader2 } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { PurposeGuide } from "@/components/features/admin/purpose-guide"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 const CATEGORIES: AuditItemCategory[] = [
   "契約",
@@ -169,22 +170,18 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
                   { label: "加算設定" },
                 ]
               : [
-                  { label: "利用設定", href: "/admin/rules/setup" },
-                  { label: "カテゴリ" },
+                  { label: RULES_UI.setup, href: "/admin/rules/setup" },
+                  { label: "訪問介護", href: "/admin/rules/services/homecare" },
+                  { label: RULES_UI.categorySettings },
                 ]
           }
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          {isAdditions ? "加算設定" : "カテゴリ"}
+          {isAdditions ? "加算設定" : RULES_UI.categorySettings}
         </h1>
-        <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          {isAdditions
-            ? "加算の算定条件と必要書類を確認・編集します（任意）。"
-            : "ルールブックに載せる「何を見るか」の枠です。初回だけ標準セットを登録すれば足ります。"}
-        </p>
       </div>
 
-      {purpose ? (
+      {isAdditions && purpose ? (
         <PurposeGuide purpose={purpose.purpose} steps={purpose.steps} />
       ) : null}
 

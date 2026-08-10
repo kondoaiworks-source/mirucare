@@ -158,21 +158,34 @@ export function RulebookDocumentsProposePanel({
 
   return (
     <section
-      className="space-y-4 rounded-xl border border-primary/20 bg-primary/[0.03] p-4 shadow-subtle"
-      aria-labelledby="propose-rules-heading"
+      className={cn(
+        "space-y-4",
+        heading || description
+          ? "rounded-xl border border-primary/20 bg-primary/[0.03] p-4 shadow-subtle"
+          : undefined
+      )}
+      aria-labelledby={heading ? "propose-rules-heading" : undefined}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h2
-            id="propose-rules-heading"
-            className="text-lg font-semibold text-primary-dark"
-          >
-            {heading}
-          </h2>
-          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            {description}
-          </p>
-        </div>
+        {heading || description ? (
+          <div className="min-w-0 flex-1">
+            {heading ? (
+              <h2
+                id="propose-rules-heading"
+                className="text-lg font-semibold text-primary-dark"
+              >
+                {heading}
+              </h2>
+            ) : null}
+            {description ? (
+              <p className="mt-1 text-base leading-relaxed text-muted-foreground">
+                {description}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <span className="sr-only">ルール生成</span>
+        )}
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
@@ -182,14 +195,14 @@ export function RulebookDocumentsProposePanel({
           >
             <Sparkles className="size-4" aria-hidden />
             {isRunningAll
-              ? "まとめて生成中…"
+              ? "生成中…"
               : isAnyRunning
                 ? "1件を生成中…"
-                : `まとめてAI生成（${generatable.length}件）`}
+                : "まとめてAIで生成"}
           </Button>
           {!hidePendingLink ? (
             <Button asChild variant="outline" className="min-h-11">
-              <Link href="/admin/rules/pending">判定ルールで了承する</Link>
+              <Link href="/admin/rules/pending">判定ルール管理</Link>
             </Button>
           ) : null}
         </div>
@@ -197,7 +210,7 @@ export function RulebookDocumentsProposePanel({
 
       {documents.length === 0 ? (
         <p className="text-base leading-relaxed text-muted-foreground">
-          台帳上の資料がありません。利用設定で根拠URL（PDF直リンク）を登録してください。
+          資料がありません。根拠URL設定から登録してください。
         </p>
       ) : (
         <ul className="space-y-3">
@@ -299,7 +312,7 @@ export function RulebookDocumentsProposePanel({
                           ? "AI生成中…"
                           : isRunningAll
                             ? "まとめて生成中…"
-                            : "AIで判定ルール生成"}
+                            : "AIで生成"}
                       </Button>
                       <Button
                         asChild
@@ -308,7 +321,7 @@ export function RulebookDocumentsProposePanel({
                       >
                         <Link href={manualHref}>
                           <PencilLine className="size-4" aria-hidden />
-                          手動で判定ルール生成
+                          手動で生成
                         </Link>
                       </Button>
                     </div>

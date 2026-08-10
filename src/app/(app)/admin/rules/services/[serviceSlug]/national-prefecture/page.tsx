@@ -5,6 +5,7 @@ import { NationalPrefectureAdmin } from "@/components/features/admin/rules/natio
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
 import { getRuleServiceBySlug } from "@/lib/rule-engine/services"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import { AlertCircle } from "lucide-react"
 
 export const dynamic = "force-dynamic"
@@ -20,8 +21,8 @@ export async function generateMetadata({
   const service = getRuleServiceBySlug(serviceSlug)
   return {
     title: service
-      ? `${service.label}｜国・県ルール設定`
-      : "国・県ルール設定",
+      ? `${service.label}｜${RULES_UI.nationalPrefectureSettings}`
+      : RULES_UI.nationalPrefectureSettings,
   }
 }
 

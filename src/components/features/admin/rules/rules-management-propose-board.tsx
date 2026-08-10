@@ -63,8 +63,8 @@ export function RulesManagementProposeBoard({ onProposed }: Props) {
   return (
     <RulebookDocumentsProposePanel
       documents={documents}
-      heading="ルール案を生成"
-      description="資料ごとに原文確認・AI生成・手動生成ができます。了承までチェックには使いません。"
+      heading=""
+      description=""
       hidePendingLink
       onProposed={() => {
         void refresh()

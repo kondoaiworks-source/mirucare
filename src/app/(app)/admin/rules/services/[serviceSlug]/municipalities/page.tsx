@@ -7,6 +7,7 @@ import {
   getRuleServiceBySlug,
   servicePath,
 } from "@/lib/rule-engine/services"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 export const dynamic = "force-dynamic"
 
@@ -20,7 +21,9 @@ export async function generateMetadata({
   const { serviceSlug } = await Promise.resolve(params)
   const service = getRuleServiceBySlug(serviceSlug)
   return {
-    title: service ? `${service.label}｜対象自治体` : "対象自治体",
+    title: service
+      ? `${service.label}｜${RULES_UI.municipalitySettings}`
+      : RULES_UI.municipalitySettings,
   }
 }
 
@@ -32,33 +35,49 @@ export default async function MunicipalitiesForServicePage({
   if (!service) notFound()
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <AdminBreadcrumb
           items={[
-            { label: "利用設定", href: "/admin/rules/setup" },
+            { label: RULES_UI.setup, href: "/admin/rules/setup" },
             { label: service.label, href: servicePath(service.slug) },
-            { label: "対象自治体" },
+            { label: RULES_UI.municipalitySettings },
           ]}
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          対象自治体
+          {RULES_UI.municipalitySettings}
         </h1>
-        <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          {service.label}
-          の市を公開／停止します。当面は横浜・川崎・藤沢・鎌倉・茅ヶ崎です。
-        </p>
       </div>
 
-      <OfferingsAdmin
-        fixedServiceType={service.serviceType}
-        serviceSlug={service.slug}
-        nationalPrefectureHref={servicePath(service.slug, "national-prefecture")}
-        title="対象自治体一覧（公開／停止）"
-        description="公開中の市だけが施設で選べます。国・県・市の根拠PDFが揃うと公開できます。"
-      />
+      <section
+        className="rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
+        aria-labelledby="registered-municipalities-heading"
+      >
+        <h2
+          id="registered-municipalities-heading"
+          className="mb-4 text-lg font-semibold text-primary-dark"
+        >
+          {RULES_UI.registeredMunicipalities}
+        </h2>
+        <OfferingsAdmin
+          fixedServiceType={service.serviceType}
+          serviceSlug={service.slug}
+          title=""
+        />
+      </section>
 
-      <MunicipalitiesAdmin />
+      <section
+        className="rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
+        aria-labelledby="municipality-master-heading"
+      >
+        <h2
+          id="municipality-master-heading"
+          className="mb-4 text-lg font-semibold text-primary-dark"
+        >
+          {RULES_UI.municipalityMaster}
+        </h2>
+        <MunicipalitiesAdmin embedded />
+      </section>
     </div>
   )
 }

@@ -83,15 +83,13 @@ SQL Editor で次を **順番に** 実行します。
 1. 運営アカウントで [http://localhost:3000/admin/rules](http://localhost:3000/admin/rules) を開く
 2. `/admin/rules/setup`（利用設定）へリダイレクトすること
 3. 左メニューが「利用設定／監視状況」の2本であること
-4. 利用設定が①サービス→②③対象自治体・根拠URL→④カテゴリ→⑤判定ルールの順であること
-5. 文言が「根拠URL／カテゴリ／判定ルール／標準カテゴリセット」に揃い、ルールセット・テンプレート・チェック見出しを表に出さないこと
-6. 訪問介護 → 国・県の根拠URL／対象自治体 → 市の根拠URLへ進めること
-7. `/admin/rules/audit-items`（カテゴリ）で対象（市×サービス）を選び「標準カテゴリを登録する」ができること
-8. `/admin/rules/pending`（判定ルール）が「了承待ち → ルール一覧 → ルール案を生成」の順であること
-   - 各資料に「原文を開く／AIで判定ルール生成／手動で判定ルール生成」が等配置であること
-   - 手動追加は `/admin/rules/manual` へ遷移すること
-9. 市画面は根拠URL中心で、判定ルールへ誘導すること
-10. `/admin/rules/monitoring`（監視状況）でエラー印→詳細が出ること
+4. 利用設定が「サービス設定」のみで、サマリ・進め方カードがないこと
+5. 訪問介護ハブが「カテゴリ設定／国・県設定／自治体設定」の3枠であること
+6. 文言が「カテゴリ設定／国・県設定／自治体設定／根拠URL設定／判定ルール管理／承認待ち」に揃うこと
+7. `/admin/rules/audit-items`（カテゴリ設定）へは訪問介護ハブから進めること
+8. `/admin/rules/pending`（判定ルール管理）が「承認待ち → 登録ルール一覧 → ルール生成」の枠であること
+9. 市画面に監視状況・国県への横飛びリンクがないこと（パンくずに戻る）
+10. `/admin/rules/monitoring`（監視状況）がサイドナビのもう1本であること
 11. 旧URL `/admin/rules/services`・`/admin/rules/more`・`/admin/rules/jobs` が新ハブへリダイレクトすること
 
 ## 動作確認手順（STEP 3：日次チェックのアップロード）
@@ -604,12 +602,12 @@ npm install -D @types/papaparse
 | `/pricing` | 料金プラン（公開） |
 | `/admin` | 運営レビューコンソール（運営のみ） |
 | `/admin/rules` | ルール設定（→利用設定） |
-| `/admin/rules/setup` | 利用設定（サマリ・サービス・自治体・ルール） |
-| `/admin/rules/monitoring` | 監視状況（サマリ・リスト・詳細） |
-| `/admin/rules/services/[slug]` | サービス詳細（利用設定から） |
-| `/admin/rules/pending` | 判定ルール（了承待ち → 一覧 → ルール案を生成） |
-| `/admin/rules/manual` | 手動で判定ルールを追加（API不要） |
-| `/admin/rules/audit-items` | カテゴリ（初回の標準カテゴリセット） |
+| `/admin/rules/setup` | 利用設定（サービス設定） |
+| `/admin/rules/monitoring` | 監視状況 |
+| `/admin/rules/services/[slug]` | サービス（カテゴリ／国・県／自治体） |
+| `/admin/rules/pending` | 判定ルール管理（承認待ち → 登録ルール一覧 → ルール生成） |
+| `/admin/rules/manual` | 手動で判定ルールを生成 |
+| `/admin/rules/audit-items` | カテゴリ設定 |
 | `/admin/rules/history` | ルール管理のルール一覧へリダイレクト |
 | `/admin/rules/notifications` | 公開情報台帳管理（監視状況から） |
 | `/admin/rules/more` | 監視状況へリダイレクト |

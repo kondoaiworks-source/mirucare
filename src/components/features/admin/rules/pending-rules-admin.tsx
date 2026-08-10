@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useState, useTransition } from "react"
-import Link from "next/link"
 import { toast } from "@/components/ui/sonner"
 import {
   listPendingRuleVersionsAction,
@@ -28,6 +27,7 @@ import {
   XCircle,
 } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 type Row = AiCheckRuleVersion & {
   ai_check_rules: Pick<AiCheckRule, "id" | "title" | "code"> | null
@@ -82,22 +82,19 @@ export function PendingRulesAdmin() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <AdminBreadcrumb
           items={[
-            { label: "利用設定", href: "/admin/rules/setup" },
-            { label: "判定ルール" },
+            { label: RULES_UI.setup, href: "/admin/rules/setup" },
+            { label: RULES_UI.judgmentRuleManage },
           ]}
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark">
-          判定ルール
+          {RULES_UI.judgmentRuleManage}
         </h1>
-        <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-          了承 → 一覧 → ルール案の生成の順です。了承までチェックには使いません。
-        </p>
         <p className="mt-2 text-base tabular-nums text-muted-foreground">
-          了承待ち{" "}
+          {RULES_UI.pendingApproval}{" "}
           <span className="text-2xl font-bold text-primary-dark">
             {rows.length}
           </span>
@@ -113,39 +110,21 @@ export function PendingRulesAdmin() {
         </Alert>
       ) : null}
 
-      <section className="space-y-4" aria-labelledby="pending-review-heading">
+      <section
+        className="rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5 space-y-4"
+        aria-labelledby="pending-review-heading"
+      >
         <h2
           id="pending-review-heading"
           className="text-xl font-bold text-primary-dark"
         >
-          了承待ちの判定ルール案
+          {RULES_UI.pendingApproval}
         </h2>
 
         {rows.length === 0 && !error ? (
-          <Card className="rounded-xl shadow-subtle">
-            <CardHeader>
-              <CardTitle className="text-lg">
-                現在、確認するルール案はありません
-              </CardTitle>
-              <CardDescription className="text-base">
-                下の「AIで判定ルール生成」または
-                <Link
-                  href="/admin/rules/manual"
-                  className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  手動で判定ルール生成
-                </Link>
-                で載せると、ここに表示されます。根拠URLが未登録のときは
-                <Link
-                  href="/admin/rules/setup"
-                  className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  利用設定
-                </Link>
-                から登録してください。
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          <p className="text-base text-muted-foreground">
+            確認するルール案はありません。
+          </p>
         ) : null}
 
         <ul className="space-y-4">
@@ -192,7 +171,7 @@ export function PendingRulesAdmin() {
                   {row.change_summary ? (
                     <div className="rounded-xl border border-border bg-muted/30 px-4 py-3">
                       <p className="text-sm font-medium text-muted-foreground">
-                        根拠・変更理由（了承前にご確認ください）
+                        根拠・変更理由（承認前にご確認ください）
                       </p>
                       <p className="mt-1 text-base leading-relaxed whitespace-pre-wrap text-primary-dark">
                         {row.change_summary}
@@ -250,9 +229,32 @@ export function PendingRulesAdmin() {
         </ul>
       </section>
 
-      <RulesHistoryAdmin embedded />
+      <section
+        id="rules-list"
+        className="rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
+        aria-labelledby="registered-rules-heading"
+      >
+        <h2
+          id="registered-rules-heading"
+          className="mb-4 text-xl font-bold text-primary-dark"
+        >
+          {RULES_UI.registeredRules}
+        </h2>
+        <RulesHistoryAdmin embedded />
+      </section>
 
-      <RulesManagementProposeBoard onProposed={() => void refresh()} />
+      <section
+        className="rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
+        aria-labelledby="generate-rules-heading"
+      >
+        <h2
+          id="generate-rules-heading"
+          className="mb-4 text-xl font-bold text-primary-dark"
+        >
+          {RULES_UI.generateRules}
+        </h2>
+        <RulesManagementProposeBoard onProposed={() => void refresh()} />
+      </section>
     </div>
   )
 }

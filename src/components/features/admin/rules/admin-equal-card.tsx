@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils"
 type Props = {
   href?: string
   title: string
-  description: string
+  /** 省略可。ハブでは説明を置かず見出しだけで進める */
+  description?: string
   icon?: LucideIcon
   badge?: ReactNode
   className?: string
@@ -22,7 +23,7 @@ type Props = {
 }
 
 /**
- * ハブ用の等寸カード。見出し・説明の長さを揃えて使う前提。
+ * ハブ用の等寸カード。1作業1リンク。説明は最小限。
  */
 export function AdminEqualCard({
   href,
@@ -37,7 +38,7 @@ export function AdminEqualCard({
   const inner = (
     <Card
       className={cn(
-        "h-full min-h-[9.5rem] rounded-xl shadow-subtle transition-colors",
+        "h-full min-h-[7.5rem] rounded-xl shadow-subtle transition-colors",
         (href || onClick) &&
           "group-hover:border-primary/30 group-hover:bg-primary/[0.02]",
         className
@@ -70,9 +71,11 @@ export function AdminEqualCard({
         <CardTitle className="line-clamp-1 text-lg text-primary-dark">
           {title}
         </CardTitle>
-        <CardDescription className="line-clamp-2 min-h-[3rem] text-base leading-relaxed">
-          {description}
-        </CardDescription>
+        {description ? (
+          <CardDescription className="line-clamp-2 text-base leading-relaxed">
+            {description}
+          </CardDescription>
+        ) : null}
       </CardHeader>
     </Card>
   )

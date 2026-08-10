@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -27,6 +26,7 @@ import {
 } from "@/components/ui/table"
 import { AlertTriangle, Loader2, RefreshCw } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 const LEVEL_LABEL: Record<RuleJurisdiction["level"], string> = {
   national: "国",
@@ -34,7 +34,12 @@ const LEVEL_LABEL: Record<RuleJurisdiction["level"], string> = {
   municipality: "市区町村",
 }
 
-export function MunicipalitiesAdmin() {
+type Props = {
+  /** 親画面の枠内に埋め込むとき、見出しを出さない */
+  embedded?: boolean
+}
+
+export function MunicipalitiesAdmin({ embedded = false }: Props = {}) {
   const [rows, setRows] = useState<RuleJurisdiction[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -77,33 +82,50 @@ export function MunicipalitiesAdmin() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <AdminBreadcrumb items={[{ label: "自治体マスタ" }]} />
-          <h1 className="mt-2 text-2xl font-bold text-primary-dark">
-            自治体マスタ
-          </h1>
-          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            国・都道府県・市区町村の一覧です。対応地域の追加や、旧来の「対応中」フラグの確認に使います。施設が選べる公開状態は上の「公開設定」で管理します。
-          </p>
+    <div className="space-y-4">
+      {!embedded ? (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <AdminBreadcrumb items={[{ label: RULES_UI.municipalityMaster }]} />
+            <h1 className="mt-2 text-2xl font-bold text-primary-dark">
+              {RULES_UI.municipalityMaster}
+            </h1>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="min-h-11"
+            disabled={loading || pending}
+            onClick={() => void refresh()}
+          >
+            {loading ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="size-4" aria-hidden />
+            )}
+            一覧を更新する
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="min-h-11"
-          disabled={loading || pending}
-          onClick={() => void refresh()}
-        >
-          {loading ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-          ) : (
-            <RefreshCw className="size-4" aria-hidden />
-          )}
-          一覧を更新する
-        </Button>
-      </div>
+      ) : (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="min-h-11"
+            disabled={loading || pending}
+            onClick={() => void refresh()}
+          >
+            {loading ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="size-4" aria-hidden />
+            )}
+            一覧を更新する
+          </Button>
+        </div>
+      )}
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">
@@ -116,9 +138,6 @@ export function MunicipalitiesAdmin() {
       <Card className="rounded-xl shadow-subtle">
         <CardHeader>
           <CardTitle className="text-lg">管轄一覧</CardTitle>
-          <CardDescription className="text-base">
-            「対応中」はプロダクトとしてチェック対象にしている自治体です。
-          </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
