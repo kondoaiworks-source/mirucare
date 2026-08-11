@@ -1,13 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useState, useTransition, type FormEvent } from "react"
+import { useState, useTransition, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "@/components/ui/sonner"
-import {
-  createAiCheckRuleWithVersionAction,
-  listAiRulesAction,
-} from "@/app/actions/rule-engine"
-import type { AuditItem, DocType, FindingSeverity } from "@/types/database"
+import { createAiCheckRuleWithVersionAction } from "@/app/actions/rule-engine"
+import type { DocType, FindingSeverity } from "@/types/database"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -34,16 +31,12 @@ type Props = {
 }
 
 /**
- * 手入力で判定ルール＋初版を作り、必ずルール管理（了承待ち）へ載せる。
- * API（Gemini）なしでテスト・緊急追加できる。
+ * 手入力で判定ルール＋初版を作り、承認待ちへ載せる。
  */
 export function ManualCheckRuleForm({ onCreated }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [auditItems, setAuditItems] = useState<AuditItem[]>([])
-  const [loadError, setLoadError] = useState<string | null>(null)
 
-  const [auditItemId, setAuditItemId] = useState("")
   const [code, setCode] = useState("")
   const [title, setTitle] = useState("")
   const [docType, setDocType] = useState<DocType>("提供記録")
@@ -53,31 +46,10 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
     () => new Date().toISOString().slice(0, 10)
   )
 
-  const loadAuditItems = useCallback(async () => {
-    setLoadError(null)
-    const result = await listAiRulesAction()
-    if (!result.ok) {
-      setLoadError(result.error ?? "カテゴリを取得できませんでした。")
-      return
-    }
-    const items = result.data?.auditItems ?? []
-    setAuditItems(items)
-    if (items.length > 0 && !auditItemId) {
-      setAuditItemId(items[0].id)
-    }
-  }, [auditItemId])
-
-  useEffect(() => {
-    void loadAuditItems()
-    // 初回のみ
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     startTransition(async () => {
       const result = await createAiCheckRuleWithVersionAction({
-        auditItemId,
         code,
         title,
         targetDocTypes: [docType],
@@ -91,13 +63,13 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         toast.error(result.error ?? "登録に失敗しました。")
         return
       }
-      toast.success("判定ルールを了承待ちに載せました。", {
-        description: "了承待ちから確認してください。チェックには使いません。",
+      toast.success("判定ルールを承認待ちに載せました。", {
+        description: "承認するまでチェックには使いません。",
         ...(onCreated
           ? {}
           : {
               action: {
-                label: "判定ルールを開く",
+                label: "判定ルール管理を開く",
                 onClick: () => {
                   window.location.href = "/admin/rules/pending"
                 },
@@ -114,29 +86,6 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
-      {loadError ? (
-        <p className="sm:col-span-2 text-base text-danger">{loadError}</p>
-      ) : null}
-      <div className="space-y-2 sm:col-span-2">
-        <Label>カテゴリ</Label>
-        <Select value={auditItemId} onValueChange={setAuditItemId}>
-          <SelectTrigger className="h-11 min-h-11">
-            <SelectValue placeholder="カテゴリを選んでください" />
-          </SelectTrigger>
-          <SelectContent>
-            {auditItems.map((item) => (
-              <SelectItem key={item.id} value={item.id}>
-                {item.code} — {item.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {auditItems.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            カテゴリがありません。利用設定の「カテゴリ」で標準カテゴリセットを登録してください。
-          </p>
-        ) : null}
-      </div>
       <div className="space-y-2">
         <Label htmlFor="manual-rule-code">コード</Label>
         <Input
@@ -185,9 +134,6 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
           onChange={(e) => setGuidance(e.target.value)}
           placeholder="例：同意欄の日付が空欄の可能性があります。記録をご確認ください。"
         />
-        <p className="text-sm text-muted-foreground">
-          断定せず「〜の可能性があります」「ご確認ください」調で書いてください。
-        </p>
       </div>
       <div className="space-y-2">
         <Label>重大度</Label>
@@ -217,16 +163,11 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         />
       </div>
       <div className="sm:col-span-2">
-        <Button
-          type="submit"
-          size="lg"
-          className="min-h-11"
-          disabled={pending || auditItems.length === 0}
-        >
+        <Button type="submit" size="lg" className="min-h-11" disabled={pending}>
           {pending ? (
             <Loader2 className="size-4 animate-spin" aria-hidden />
           ) : null}
-          了承待ちに載せる
+          承認待ちに載せる
         </Button>
       </div>
     </form>

@@ -14,6 +14,7 @@ import {
   type AuditItemOption,
   type ProposedCheckRule,
 } from "@/lib/knowledge/propose-rules"
+import { ensureAuditItemOptions } from "@/lib/rule-engine/default-audit-item"
 import type { AiCheckRule } from "@/types/database"
 
 export type ActionResult<T = undefined> = {
@@ -36,34 +37,11 @@ async function loadAuditItemOptions(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   service: any
 ): Promise<ActionResult<AuditItemOption[]>> {
-  const { data, error } = await service
-    .from("audit_items")
-    .select("id, code, title")
-    .eq("status", "active")
-    .order("sort_order", { ascending: true })
-    .limit(80)
-
-  if (error) {
-    return { ok: false, error: toUserErrorMessage(error) }
+  const ensured = await ensureAuditItemOptions(service)
+  if (!ensured.ok) {
+    return { ok: false, error: ensured.error }
   }
-
-  const items = (data ?? []).map(
-    (row: { id: string; code: string; title: string }) => ({
-      id: row.id,
-      code: row.code,
-      title: row.title,
-    })
-  )
-
-  if (items.length === 0) {
-    return {
-      ok: false,
-      error:
-        "カテゴリがありません。利用設定の「カテゴリ」で標準カテゴリセットを登録してからお試しください。",
-    }
-  }
-
-  return { ok: true, data: items }
+  return { ok: true, data: ensured.data }
 }
 
 async function insertPendingProposals(

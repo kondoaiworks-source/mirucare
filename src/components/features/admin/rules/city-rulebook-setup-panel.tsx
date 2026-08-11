@@ -237,10 +237,7 @@ export function CityRulebookSetupPanel({ readiness, citySlug }: Props) {
 
         <div className="flex flex-wrap gap-2 text-sm">
           <Button asChild variant="outline" size="sm" className="min-h-11">
-            <Link href="/admin/rules/audit-items">カテゴリを開く</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="min-h-11">
-            <Link href="/admin/rules/pending">ルール管理</Link>
+            <Link href="/admin/rules/pending">判定ルール管理</Link>
           </Button>
           <Button asChild variant="outline" size="sm" className="min-h-11">
             <Link href={`/admin/rules/documents?city=${citySlug}`}>

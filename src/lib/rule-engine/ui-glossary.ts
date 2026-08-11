@@ -3,8 +3,9 @@
  * 画面文言はこの定義に合わせ、内部用語（rule_sets 等）は出さない。
  *
  * 階層の正:
- * 利用設定 → サービス設定 →（訪問介護）→ カテゴリ設定 / 国・県設定 / 自治体設定
+ * 利用設定 → サービス設定 →（訪問介護）→ 国・県設定 / 自治体設定
  * 自治体設定 → 登録自治体 → 根拠URL設定 / 判定ルール管理
+ * 本線: 根拠URL → ルール案 → 承認 → サービス×自治体のルールブック
  *
  * 動線ルール:
  * - 1画面1作業。横飛びリンクは置かない
@@ -19,7 +20,6 @@ export const RULES_UI = {
   monitoring: "監視状況",
   serviceSettings: "サービス設定",
   service: "サービス",
-  categorySettings: "カテゴリ設定",
   nationalPrefectureSettings: "国・県設定",
   municipalitySettings: "自治体設定",
   registeredMunicipalities: "登録自治体",
@@ -30,9 +30,6 @@ export const RULES_UI = {
   registeredRules: "登録ルール一覧",
   rulebook: "ルールブック",
   evidenceUrl: "根拠URL",
-  category: "カテゴリ",
-  categoryKind: "分類",
-  standardCategorySet: "標準カテゴリセット",
   judgmentRule: "判定ルール",
   generateRules: "ルール生成",
   generateAiBulk: "まとめてAIで生成",

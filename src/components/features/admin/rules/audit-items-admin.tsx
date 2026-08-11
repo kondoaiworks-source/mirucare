@@ -172,12 +172,11 @@ export function AuditItemsAdmin(props: { categoryFilter?: AuditItemCategory }) {
               : [
                   { label: RULES_UI.setup, href: "/admin/rules/setup" },
                   { label: "訪問介護", href: "/admin/rules/services/homecare" },
-                  { label: RULES_UI.categorySettings },
                 ]
           }
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          {isAdditions ? "加算設定" : RULES_UI.categorySettings}
+          {isAdditions ? "加算設定" : "内部データ"}
         </h1>
       </div>
 

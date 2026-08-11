@@ -164,9 +164,9 @@ export function buildCityRulebookSetupReadiness(
     {
       id: "audit",
       order: 3,
-      label: "カテゴリを登録する",
+      label: "判定ルールの土台（内部）",
       description:
-        "カテゴリ画面で、この市の訪問介護ルールブックにPhase1向けカテゴリを登録します。",
+        "ルール案の保存に使う内部データです。事前登録は不要です。",
       done: auditReady,
       detail: auditReady
         ? `Phase1必要 ${PHASE1_UNIQUE_AUDIT_CODES.length}件のカテゴリが揃っています`

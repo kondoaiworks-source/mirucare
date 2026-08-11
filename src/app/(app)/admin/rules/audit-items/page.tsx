@@ -1,8 +1,8 @@
-import type { Metadata } from "next"
-import { AuditItemsAdmin } from "@/components/features/admin/rules/audit-items-admin"
+import { redirect } from "next/navigation"
 
-export const metadata: Metadata = { title: "カテゴリ設定" }
+export const metadata = { title: "利用設定" }
 
+/** カテゴリの事前登録は不要。サービスハブへ戻す。 */
 export default function Page() {
-  return <AuditItemsAdmin />
+  redirect("/admin/rules/services/homecare")
 }

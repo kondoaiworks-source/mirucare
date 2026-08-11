@@ -142,7 +142,7 @@ function buildProposeFromDiffPrompt(input: {
 差分明細(JSON):
 ${clip(changesJson, 40_000)}
 
-利用可能な監査項目（いずれかに紐づける）:
+内部分類（任意・あれば紐づける）:
 ${auditList || "（なし）"}
 
 必須スキーマ:
@@ -194,7 +194,7 @@ function buildProposeFromSourcePrompt(input: {
 本文:
 ${clip(input.sourceText)}
 
-利用可能な監査項目:
+内部分類（任意）:
 ${auditList || "（なし）"}
 
 必須スキーマは差分提案と同じ（proposals配列）。`
@@ -272,13 +272,6 @@ export async function proposeRulesFromChangeDraft(input: {
   changes: KnowledgeChangeItem[]
   auditItems: AuditItemOption[]
 }): Promise<ProposeRulesResult> {
-  if (input.auditItems.length === 0) {
-    return {
-      ok: false,
-      error:
-        "カテゴリがありません。利用設定の「カテゴリ」で登録してから提案を生成してください。",
-    }
-  }
   if (!isGeminiConfigured()) {
     return {
       ok: false,
@@ -310,13 +303,6 @@ export async function proposeRulesFromSourceText(input: {
   sourceText: string
   auditItems: AuditItemOption[]
 }): Promise<ProposeRulesResult> {
-  if (input.auditItems.length === 0) {
-    return {
-      ok: false,
-      error:
-        "カテゴリがありません。利用設定の「カテゴリ」で登録してから提案を生成してください。",
-    }
-  }
   if (!input.sourceText.trim()) {
     return { ok: false, error: "提案のもとになる本文がありません。" }
   }

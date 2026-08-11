@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { requireOperator } from "@/lib/operator"
 import { toUserErrorMessage } from "@/lib/auth-errors"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
+import { ensureAuditItemOptions } from "@/lib/rule-engine/default-audit-item"
 import { PHASE1_AI_RULE_SEEDS } from "@/lib/phase1-ai-rules-seed"
 import {
   buildRulebookSetupReadiness,
@@ -1103,7 +1104,7 @@ export async function listAiRulesAction(): Promise<
 }
 
 export async function createAiCheckRuleWithVersionAction(input: {
-  auditItemId: string
+  auditItemId?: string
   code: string
   title: string
   targetDocTypes: string[]
@@ -1120,9 +1121,6 @@ export async function createAiCheckRuleWithVersionAction(input: {
 
   const code = input.code.trim().toUpperCase()
   const title = input.title.trim()
-  if (!input.auditItemId) {
-    return { ok: false, error: "カテゴリを選んでください。" }
-  }
   if (!code || !title) {
     return { ok: false, error: "コードと名称を入力してください。" }
   }
@@ -1130,10 +1128,19 @@ export async function createAiCheckRuleWithVersionAction(input: {
     return { ok: false, error: "適用開始日を入力してください。" }
   }
 
+  let auditItemId = input.auditItemId?.trim() ?? ""
+  if (!auditItemId) {
+    const ensured = await ensureAuditItemOptions(op.service)
+    if (!ensured.ok || ensured.data.length === 0) {
+      return { ok: false, error: ensured.ok ? "判定ルールの土台を用意できませんでした。" : ensured.error }
+    }
+    auditItemId = ensured.data[0].id
+  }
+
   const { data: rule, error: ruleError } = await op.service
     .from("ai_check_rules")
     .insert({
-      audit_item_id: input.auditItemId,
+      audit_item_id: auditItemId,
       code,
       title,
       target_doc_types: input.targetDocTypes,

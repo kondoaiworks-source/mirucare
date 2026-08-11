@@ -278,18 +278,17 @@ export function buildRulebookSetupReadiness(
     {
       id: "auditItems",
       order: 4,
-      label: "カテゴリを登録する",
+      label: "判定ルールの土台（内部）",
       description:
-        "Phase1（項目1・3・7・8）に必要なカテゴリを、各市ルールセットに揃えます。",
+        "判定ルール保存用の内部データです。運営が事前登録する必要はありません。",
       howTo: [
-        "カテゴリ画面で標準カテゴリセットを登録する（各市のルールブックを選択）",
-        "または市ルールブックから必要なカテゴリを手入力する",
-        "下の「Phase1突合の網羅」でカテゴリの✓が揃うか確認する",
+        "根拠URLからルール案を生成すると自動で用意されます",
+        "不足があれば下の網羅表で確認できます",
       ],
-      href: "/admin/rules/audit-items",
-      actionLabel: "カテゴリを開く",
+      href: "/admin/rules/pending",
+      actionLabel: "判定ルール管理を開く",
       done: allCitiesAuditReady && registeredAuditSet.size > 0,
-      required: true,
+      required: false,
       detail: allCitiesAuditReady
         ? `Phase1必要 ${PHASE1_AUDIT_CODES.length}件のカテゴリコードが登録済み`
         : `カテゴリ ${registeredAuditSet.size}件 — Phase1コード不足あり（下表を確認）`,

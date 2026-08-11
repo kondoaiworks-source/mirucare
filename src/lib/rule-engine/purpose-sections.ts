@@ -4,7 +4,6 @@ import {
   ClipboardCheck,
   Landmark,
   Layers,
-  ShieldCheck,
   type LucideIcon,
 } from "lucide-react"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
@@ -23,7 +22,7 @@ export type PurposeLink = {
  * @see docs/ルールブック構想.md
  */
 export type PurposeSection = {
-  id: "rulebook" | "audit" | "ai"
+  id: "rulebook" | "ai"
   href: string
   label: string
   navDescription: string
@@ -44,10 +43,10 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     label: RULES_UI.setup,
     navDescription: "サービス設定",
     icon: Layers,
-    purpose: "サービスを選び、カテゴリ・根拠URL・判定ルールを整えます。",
+    purpose: "根拠URLを登録し、判定ルールを承認します。",
     steps: [
       "サービスを選ぶ",
-      "カテゴリ／国・県／自治体を設定する",
+      "国・県／自治体の根拠URLを登録する",
       "判定ルールを承認する",
     ],
     links: [
@@ -73,18 +72,6 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
       "/admin/rules/pending",
     ],
     showOnHome: true,
-  },
-  {
-    id: "audit",
-    href: "/admin/rules/audit-items",
-    label: RULES_UI.categorySettings,
-    navDescription: "カテゴリの登録・修正",
-    icon: ShieldCheck,
-    purpose: "カテゴリを登録・修正します。",
-    steps: ["対象を選ぶ", "標準セットまたは個別で登録する"],
-    links: [],
-    matchPaths: ["/admin/rules/audit-items"],
-    showOnHome: false,
   },
   {
     id: "ai",

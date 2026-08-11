@@ -1,7 +1,6 @@
 import {
   Bot,
   CheckCircle2,
-  ClipboardList,
   Coins,
   Landmark,
   MapPin,
@@ -10,7 +9,6 @@ import {
 
 export type SetupStepId =
   | "municipality"
-  | "audit"
   | "ai"
   | "clearQueue"
   | "additions"
@@ -77,20 +75,6 @@ export function buildSetupReadiness(
           ? `${input.supportedMunicipalityCount}件の市区町村が対応中`
           : "まだ対応自治体がありません",
       icon: MapPin,
-    },
-    {
-      id: "audit",
-      label: "カテゴリを登録する",
-      description: "ルールブックに載せる「何を見るか」の枠を1件以上登録します。",
-      href: "/admin/rules/audit-items",
-      actionLabel: "カテゴリを開く",
-      done: input.auditItemCount > 0,
-      required: true,
-      detail:
-        input.auditItemCount > 0
-          ? `${input.auditItemCount}件のカテゴリがあります`
-          : "カテゴリが未登録です",
-      icon: ClipboardList,
     },
     {
       id: "ai",

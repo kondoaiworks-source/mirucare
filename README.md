@@ -84,13 +84,14 @@ SQL Editor で次を **順番に** 実行します。
 2. `/admin/rules/setup`（利用設定）へリダイレクトすること
 3. 左メニューが「利用設定／監視状況」の2本であること
 4. 利用設定が「サービス設定」のみで、サマリ・進め方カードがないこと
-5. 訪問介護ハブが「カテゴリ設定／国・県設定／自治体設定」の3枠であること
-6. 文言が「カテゴリ設定／国・県設定／自治体設定／根拠URL設定／判定ルール管理／承認待ち」に揃うこと
-7. `/admin/rules/audit-items`（カテゴリ設定）へは訪問介護ハブから進めること
+5. 訪問介護ハブが「国・県設定／自治体設定」の2枠であること（カテゴリ設定が出ないこと）
+6. 文言が「国・県設定／自治体設定／根拠URL設定／判定ルール管理／承認待ち」に揃うこと
+7. `/admin/rules/audit-items` が訪問介護ハブへリダイレクトすること
 8. `/admin/rules/pending`（判定ルール管理）が「承認待ち → 登録ルール一覧 → ルール生成」の枠であること
-9. 市画面に監視状況・国県への横飛びリンクがないこと（パンくずに戻る）
-10. `/admin/rules/monitoring`（監視状況）がサイドナビのもう1本であること
-11. 旧URL `/admin/rules/services`・`/admin/rules/more`・`/admin/rules/jobs` が新ハブへリダイレクトすること
+9. カテゴリ未登録でも「AIで生成／手動で生成」できること
+10. 市画面に監視状況・国県への横飛びリンクがないこと（パンくずに戻る）
+11. `/admin/rules/monitoring`（監視状況）がサイドナビのもう1本であること
+12. 旧URL `/admin/rules/services`・`/admin/rules/more`・`/admin/rules/jobs` が新ハブへリダイレクトすること
 
 ## 動作確認手順（STEP 3：日次チェックのアップロード）
 
@@ -604,10 +605,10 @@ npm install -D @types/papaparse
 | `/admin/rules` | ルール設定（→利用設定） |
 | `/admin/rules/setup` | 利用設定（サービス設定） |
 | `/admin/rules/monitoring` | 監視状況 |
-| `/admin/rules/services/[slug]` | サービス（カテゴリ／国・県／自治体） |
+| `/admin/rules/services/[slug]` | サービス（国・県／自治体） |
 | `/admin/rules/pending` | 判定ルール管理（承認待ち → 登録ルール一覧 → ルール生成） |
 | `/admin/rules/manual` | 手動で判定ルールを生成 |
-| `/admin/rules/audit-items` | カテゴリ設定 |
+| `/admin/rules/audit-items` | 訪問介護ハブへリダイレクト |
 | `/admin/rules/history` | ルール管理のルール一覧へリダイレクト |
 | `/admin/rules/notifications` | 公開情報台帳管理（監視状況から） |
 | `/admin/rules/more` | 監視状況へリダイレクト |
