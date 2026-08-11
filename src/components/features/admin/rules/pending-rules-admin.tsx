@@ -27,16 +27,26 @@ import {
   XCircle,
 } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import {
+  checkRulesParentPath,
+  type CheckRuleManageContext,
+} from "@/lib/rule-engine/check-rule-scope"
+import { servicePath } from "@/lib/rule-engine/services"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 type Row = AiCheckRuleVersion & {
   ai_check_rules: Pick<AiCheckRule, "id" | "title" | "code"> | null
 }
 
+type Props = {
+  context: CheckRuleManageContext
+}
+
 /**
  * ルール管理：了承待ち → ルール一覧 → 判定ルール案の生成。
+ * 全市ページは使わず、国・県または市の画面から渡した範囲だけを扱う。
  */
-export function PendingRulesAdmin() {
+export function PendingRulesAdmin({ context }: Props) {
   const [rows, setRows] = useState<Row[]>([])
   const [error, setError] = useState<string | null>(null)
   const [reasons, setReasons] = useState<Record<string, string>>({})
@@ -44,14 +54,17 @@ export function PendingRulesAdmin() {
 
   const refresh = useCallback(async () => {
     setError(null)
-    const result = await listPendingRuleVersionsAction()
+    const result = await listPendingRuleVersionsAction({
+      scopeKind: context.scopeKind,
+      jurisdictionId: context.jurisdictionId,
+    })
     if (!result.ok) {
       setError(result.error ?? "取得に失敗しました。")
       setRows([])
       return
     }
     setRows(result.data?.rows ?? [])
-  }, [])
+  }, [context.jurisdictionId, context.scopeKind])
 
   useEffect(() => {
     void refresh()
@@ -85,10 +98,37 @@ export function PendingRulesAdmin() {
     <div className="space-y-6">
       <div>
         <AdminBreadcrumb
-          items={[
-            { label: RULES_UI.setup, href: "/admin/rules/setup" },
-            { label: RULES_UI.judgmentRuleManage },
-          ]}
+          items={
+            context.scopeKind === "shared"
+              ? [
+                  { label: RULES_UI.setup, href: "/admin/rules/setup" },
+                  {
+                    label: context.serviceLabel,
+                    href: servicePath(context.serviceSlug),
+                  },
+                  {
+                    label: RULES_UI.nationalPrefectureSettings,
+                    href: checkRulesParentPath(context),
+                  },
+                  { label: RULES_UI.judgmentRuleManage },
+                ]
+              : [
+                  { label: RULES_UI.setup, href: "/admin/rules/setup" },
+                  {
+                    label: context.serviceLabel,
+                    href: servicePath(context.serviceSlug),
+                  },
+                  {
+                    label: RULES_UI.municipalitySettings,
+                    href: servicePath(context.serviceSlug, "municipalities"),
+                  },
+                  {
+                    label: context.cityName ?? "自治体",
+                    href: checkRulesParentPath(context),
+                  },
+                  { label: RULES_UI.judgmentRuleManage },
+                ]
+          }
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark">
           {RULES_UI.judgmentRuleManage}
@@ -155,8 +195,7 @@ export function PendingRulesAdmin() {
                     {row.ai_check_rules?.title ?? "（ルール名不明）"}
                   </CardTitle>
                   <CardDescription className="text-base">
-                    {row.ai_check_rules?.code ?? "—"} / v{row.version_no} /
-                    適用開始 {row.effective_from}
+                    v{row.version_no} / 適用開始 {row.effective_from}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -240,7 +279,7 @@ export function PendingRulesAdmin() {
         >
           {RULES_UI.registeredRules}
         </h2>
-        <RulesHistoryAdmin embedded />
+        <RulesHistoryAdmin embedded context={context} />
       </section>
 
       <section
@@ -253,7 +292,10 @@ export function PendingRulesAdmin() {
         >
           {RULES_UI.generateRules}
         </h2>
-        <RulesManagementProposeBoard onProposed={() => void refresh()} />
+        <RulesManagementProposeBoard
+          context={context}
+          onProposed={() => void refresh()}
+        />
       </section>
     </div>
   )

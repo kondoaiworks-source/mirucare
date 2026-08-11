@@ -15,6 +15,9 @@ import {
   type ProposedCheckRule,
 } from "@/lib/knowledge/propose-rules"
 import { ensureAuditItemOptions } from "@/lib/rule-engine/default-audit-item"
+import { allocateAiCheckRuleCode } from "@/lib/rule-engine/allocate-rule-code"
+import type { CheckRuleScopeKind } from "@/lib/rule-engine/check-rule-scope"
+import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
 import type { AiCheckRule } from "@/types/database"
 
 export type ActionResult<T = undefined> = {
@@ -25,7 +28,6 @@ export type ActionResult<T = undefined> = {
 
 function revalidateProposalPaths() {
   revalidatePath("/admin/rules")
-  revalidatePath("/admin/rules/pending")
   revalidatePath("/admin/rules/ai-rules")
   revalidatePath("/admin/rules/history")
   revalidatePath("/admin/rules/regulatory", "layout")
@@ -44,6 +46,90 @@ async function loadAuditItemOptions(
   return { ok: true, data: ensured.data }
 }
 
+async function lookupCityJurisdictionId(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  service: any,
+  regionName: string | null | undefined
+): Promise<string | null> {
+  const region = regionName?.trim() ?? ""
+  if (!region) return null
+  const city = PHASE1_CITIES.find(
+    (c) => region === c.name || region.includes(c.name)
+  )
+  if (city) {
+    const { data } = await service
+      .from("rule_jurisdictions")
+      .select("id")
+      .eq("code", city.code)
+      .maybeSingle()
+    return (data?.id as string | undefined) ?? null
+  }
+  const { data } = await service
+    .from("rule_jurisdictions")
+    .select("id")
+    .eq("level", "municipality")
+    .or(`municipality_name.eq.${region},name.eq.${region}`)
+    .maybeSingle()
+  return (data?.id as string | undefined) ?? null
+}
+
+function citySlugFromRegion(regionName: string | null | undefined): string | undefined {
+  const region = regionName?.trim() ?? ""
+  return PHASE1_CITIES.find((c) => region === c.name || region.includes(c.name))
+    ?.slug
+}
+
+function scopeKindFromDocumentLevel(
+  level: string | null | undefined
+): CheckRuleScopeKind {
+  if (level === "市区町村" || level === "municipality") return "city"
+  return "shared"
+}
+
+async function resolveProposalScope(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  service: any,
+  input: {
+    scopeKind?: CheckRuleScopeKind
+    jurisdictionId?: string | null
+    regionName?: string | null
+    jurisdictionLevel?: string | null
+  }
+): Promise<
+  ActionResult<{
+    scopeKind: CheckRuleScopeKind
+    jurisdictionId: string | null
+    citySlug?: string
+  }>
+> {
+  const inferred = scopeKindFromDocumentLevel(input.jurisdictionLevel)
+  const scopeKind: CheckRuleScopeKind = input.scopeKind ?? inferred
+  if (scopeKind === "shared") {
+    return {
+      ok: true,
+      data: { scopeKind: "shared", jurisdictionId: null },
+    }
+  }
+  const jurisdictionId =
+    input.jurisdictionId?.trim() ||
+    (await lookupCityJurisdictionId(service, input.regionName))
+  if (!jurisdictionId) {
+    return {
+      ok: false,
+      error:
+        "市の判定ルールにする自治体を特定できませんでした。自治体画面から生成してください。",
+    }
+  }
+  return {
+    ok: true,
+    data: {
+      scopeKind: "city",
+      jurisdictionId,
+      citySlug: citySlugFromRegion(input.regionName),
+    },
+  }
+}
+
 async function insertPendingProposals(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   service: any,
@@ -53,22 +139,19 @@ async function insertPendingProposals(
     knowledgeChangeDraftId?: string | null
     regionName?: string | null
     jurisdictionLevel?: string | null
+    scopeKind: CheckRuleScopeKind
+    jurisdictionId: string | null
+    citySlug?: string
   }
 ): Promise<ActionResult<{ createdCount: number; codes: string[] }>> {
   const createdCodes: string[] = []
   const effectiveFrom = defaultEffectiveFrom()
 
   for (const proposal of opts.proposals) {
-    let code = proposal.code
-    const { data: existing } = await service
-      .from("ai_check_rules")
-      .select("id")
-      .eq("code", code)
-      .maybeSingle()
-
-    if (existing) {
-      code = `${code}_${Date.now().toString(36).toUpperCase().slice(-4)}`
-    }
+    const code = await allocateAiCheckRuleCode(service, {
+      scopeKind: opts.scopeKind,
+      citySlug: opts.citySlug,
+    })
 
     const { data: rule, error: ruleError } = await service
       .from("ai_check_rules")
@@ -78,6 +161,8 @@ async function insertPendingProposals(
         title: proposal.title,
         target_doc_types: proposal.targetDocTypes,
         status: "active",
+        scope_kind: opts.scopeKind,
+        jurisdiction_id: opts.jurisdictionId,
       })
       .select("*")
       .single()
@@ -225,12 +310,23 @@ export async function proposeAiCheckRulesFromDraftAction(input: {
     }
   }
 
+  const scope = await resolveProposalScope(op.service, {
+    regionName: doc?.region_name ?? null,
+    jurisdictionLevel: doc?.jurisdiction_level ?? null,
+  })
+  if (!scope.ok || !scope.data) {
+    return { ok: false, error: scope.error }
+  }
+
   const inserted = await insertPendingProposals(op.service, {
     proposals: proposed.proposals,
     sourceTitle,
     knowledgeChangeDraftId: draftId,
     regionName: doc?.region_name ?? null,
     jurisdictionLevel: doc?.jurisdiction_level ?? null,
+    scopeKind: scope.data.scopeKind,
+    jurisdictionId: scope.data.jurisdictionId,
+    citySlug: scope.data.citySlug,
   })
 
   if (!inserted.ok || !inserted.data) {
@@ -255,6 +351,9 @@ export async function proposeAiCheckRulesFromDraftAction(input: {
  */
 export async function proposeAiCheckRulesFromDocumentAction(input: {
   knowledgeDocumentId: string
+  scopeKind?: CheckRuleScopeKind
+  jurisdictionId?: string | null
+  citySlug?: string
 }): Promise<
   ActionResult<{ createdCount: number; codes: string[]; empty: boolean }>
 > {
@@ -426,12 +525,25 @@ export async function proposeAiCheckRulesFromDocumentAction(input: {
     }
   }
 
+  const scope = await resolveProposalScope(service, {
+    scopeKind: input.scopeKind,
+    jurisdictionId: input.jurisdictionId,
+    regionName: doc.region_name ?? null,
+    jurisdictionLevel: doc.jurisdiction_level ?? null,
+  })
+  if (!scope.ok || !scope.data) {
+    return { ok: false, error: scope.error }
+  }
+
   const inserted = await insertPendingProposals(service, {
     proposals: proposed.proposals,
     sourceTitle,
     knowledgeChangeDraftId: null,
     regionName: doc.region_name ?? null,
     jurisdictionLevel: doc.jurisdiction_level ?? null,
+    scopeKind: scope.data.scopeKind,
+    jurisdictionId: scope.data.jurisdictionId,
+    citySlug: input.citySlug ?? scope.data.citySlug,
   })
 
   if (!inserted.ok || !inserted.data) {

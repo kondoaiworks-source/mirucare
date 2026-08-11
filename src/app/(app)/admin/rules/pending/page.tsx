@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
-import { PendingRulesAdmin } from "@/components/features/admin/rules/pending-rules-admin"
+import { redirect } from "next/navigation"
 
 export const metadata: Metadata = { title: "判定ルール管理" }
 
+/** 全市ページは廃止。国・県または各市の判定ルール管理へ。 */
 export default function Page() {
-  return <PendingRulesAdmin />
+  redirect("/admin/rules/setup")
 }

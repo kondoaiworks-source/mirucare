@@ -104,6 +104,7 @@ export function AuditCategoryDetail({ service, category, data }: Props) {
   const { city, documents, pendingDrafts, openAlerts } = data
   const cityHref = servicePath(service.slug, "municipalities", city.slug)
   const categoriesHref = `${cityHref}/audit-categories`
+  const cityRulesHref = `${cityHref}/rules`
 
   const approved = data.approvedCheckRules.filter((r) =>
     ruleMatchesAuditCategory(r, category)
@@ -247,7 +248,7 @@ export function AuditCategoryDetail({ service, category, data }: Props) {
           <div className="rounded-xl border border-primary/20 bg-primary/[0.03] px-4 py-3 text-base leading-relaxed text-muted-foreground">
             URL登録だけでは案は出ません。台帳に本文がある資料から、
             <Link
-              href="/admin/rules/pending"
+              href={cityRulesHref}
               className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
             >
               ルール管理
@@ -255,7 +256,7 @@ export function AuditCategoryDetail({ service, category, data }: Props) {
             で「判定ルール案を生成する」を押してください。
             <div className="mt-3">
               <Button asChild className="min-h-11">
-                <Link href="/admin/rules/pending">
+                <Link href={cityRulesHref}>
                   ルール管理で案を生成・了承する
                 </Link>
               </Button>

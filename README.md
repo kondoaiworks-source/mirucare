@@ -87,11 +87,25 @@ SQL Editor で次を **順番に** 実行します。
 5. 訪問介護ハブが「国・県設定／自治体設定」の2枠であること（カテゴリ設定が出ないこと）
 6. 文言が「国・県設定／自治体設定／根拠URL設定／判定ルール管理／承認待ち」に揃うこと
 7. `/admin/rules/audit-items` が訪問介護ハブへリダイレクトすること
-8. `/admin/rules/pending`（判定ルール管理）が「承認待ち → 登録ルール一覧 → ルール生成」の枠であること
-9. カテゴリ未登録でも「AIで生成／手動で生成」できること
+8. 国・県設定に「判定ルール管理」（共通ルール）があること。横浜市など市画面にも「判定ルール管理」（その市だけ）があること
+9. カテゴリ未登録でも「AIで生成／手動で生成」できること。手動生成にコード入力欄がないこと
 10. 市画面に監視状況・国県への横飛びリンクがないこと（パンくずに戻る）
 11. `/admin/rules/monitoring`（監視状況）がサイドナビのもう1本であること
-12. 旧URL `/admin/rules/services`・`/admin/rules/more`・`/admin/rules/jobs` が新ハブへリダイレクトすること
+12. 旧URL `/admin/rules/pending`・`/admin/rules/manual`・`/admin/rules/history` が利用設定へリダイレクトすること
+
+## 動作確認手順（判定ルールを国・県／市で分ける）
+
+SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を適用する。
+
+1. 訪問介護 → 国・県設定 → 判定ルール管理を開く
+   - 国・県の資料だけが「ルール生成」に出ること
+   - 手動生成にコード入力欄がないこと
+   - 承認待ち・登録ルール一覧が共通ルールだけであること
+2. 訪問介護 → 自治体設定 → 横浜市 → 判定ルール管理を開く
+   - 横浜市の資料だけが「ルール生成」に出ること（川崎市の資料が出ないこと）
+   - 生成・承認・修正・削除がこの画面で完結すること
+3. 横浜の施設で書類チェックすると、国・県で承認した共通ルールと横浜市で承認したルールが足されること（川崎市だけのルールは載らないこと）
+4. `/admin/rules/pending` を開くと利用設定へリダイレクトすること
 
 ## 動作確認手順（STEP 3：日次チェックのアップロード）
 
@@ -457,7 +471,7 @@ npm install -D @types/papaparse
 4. 左メニューが「利用設定／監視状況」であること
 5. `/admin/rules` が利用設定（`/admin/rules/setup`）へリダイレクトすること
 6. 利用設定から訪問介護 → 市区町村、各市、監査カテゴリへ進めること
-7. 判定ルールは `/admin/rules/pending`（利用設定内）で生成・了承できること
+7. 判定ルールは国・県設定または各市の「判定ルール管理」で生成・了承できること（全市の `/admin/rules/pending` は使わない）
 8. 監視状況でエラー印 → 詳細、公開情報監視／差分へ進めること
 9. `/admin/rules/more`・`/admin/rules/jobs`・`/admin/rules/services` が新ハブへリダイレクトすること
 10. findings のレビューコンソール（`/admin`）や Stripe には影響しないこと
@@ -606,8 +620,10 @@ npm install -D @types/papaparse
 | `/admin/rules/setup` | 利用設定（サービス設定） |
 | `/admin/rules/monitoring` | 監視状況 |
 | `/admin/rules/services/[slug]` | サービス（国・県／自治体） |
-| `/admin/rules/pending` | 判定ルール管理（承認待ち → 登録ルール一覧 → ルール生成） |
-| `/admin/rules/manual` | 手動で判定ルールを生成 |
+| `/admin/rules/pending` | （旧）利用設定へリダイレクト |
+| `/admin/rules/manual` | （旧）利用設定へリダイレクト |
+| `/admin/rules/services/[slug]/national-prefecture/rules` | 国・県の判定ルール管理（共通） |
+| `/admin/rules/services/[slug]/municipalities/[city]/rules` | 市の判定ルール管理 |
 | `/admin/rules/audit-items` | 訪問介護ハブへリダイレクト |
 | `/admin/rules/history` | ルール管理のルール一覧へリダイレクト |
 | `/admin/rules/notifications` | 公開情報台帳管理（監視状況から） |

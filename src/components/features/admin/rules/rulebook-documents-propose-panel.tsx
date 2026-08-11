@@ -5,6 +5,11 @@ import { useState, useTransition } from "react"
 import { toast } from "@/components/ui/sonner"
 import { ExternalLink, FileText, PencilLine, Sparkles } from "lucide-react"
 import { proposeAiCheckRulesFromDocumentAction } from "@/app/actions/propose-check-rules"
+import {
+  checkRulesManagePath,
+  checkRulesManualPath,
+  type CheckRuleManageContext,
+} from "@/lib/rule-engine/check-rule-scope"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -42,6 +47,7 @@ type Props = {
   onProposed?: () => void
   /** 同一ページに了承一覧があるとき、了承への誘導リンクを隠す */
   hidePendingLink?: boolean
+  context: CheckRuleManageContext
 }
 
 const ACTION_BTN =
@@ -58,6 +64,7 @@ export function RulebookDocumentsProposePanel({
   description = "資料ごとに原文確認・AI生成・手動生成ができます。了承までチェックには使いません。",
   onProposed,
   hidePendingLink = false,
+  context,
 }: Props) {
   const [, startTransition] = useTransition()
   const [runningTarget, setRunningTarget] = useState<RunningTarget>(null)
@@ -90,6 +97,9 @@ export function RulebookDocumentsProposePanel({
       try {
         const result = await proposeAiCheckRulesFromDocumentAction({
           knowledgeDocumentId: doc.id,
+          scopeKind: context.scopeKind,
+          jurisdictionId: context.jurisdictionId,
+          citySlug: context.citySlug,
         })
         if (!result.ok) {
           toast.error(result.error ?? "判定ルール案の生成に失敗しました。")
@@ -129,6 +139,9 @@ export function RulebookDocumentsProposePanel({
         for (const doc of generatable) {
           const result = await proposeAiCheckRulesFromDocumentAction({
             knowledgeDocumentId: doc.id,
+            scopeKind: context.scopeKind,
+            jurisdictionId: context.jurisdictionId,
+            citySlug: context.citySlug,
           })
           if (!result.ok) {
             failures += 1
@@ -202,7 +215,7 @@ export function RulebookDocumentsProposePanel({
           </Button>
           {!hidePendingLink ? (
             <Button asChild variant="outline" className="min-h-11">
-              <Link href="/admin/rules/pending">判定ルール管理</Link>
+              <Link href={checkRulesManagePath(context)}>判定ルール管理</Link>
             </Button>
           ) : null}
         </div>
@@ -227,7 +240,7 @@ export function RulebookDocumentsProposePanel({
             ]
               .filter(Boolean)
               .join("／")
-            const manualHref = `/admin/rules/manual?from=${encodeURIComponent(d.id)}`
+            const manualHref = checkRulesManualPath(context)
 
             return (
               <li key={d.id}>

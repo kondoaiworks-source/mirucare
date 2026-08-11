@@ -10,6 +10,7 @@ import {
 import type { CityRulebookCheckRule } from "@/app/actions/city-rulebook"
 import { CityRulebookSection } from "@/components/features/admin/rules/city-rulebook-section"
 import { RULE_SCOPE_LABEL } from "@/lib/rule-engine/city-rule-scope"
+import { servicePath } from "@/lib/rule-engine/services"
 import type { AuditItemCategory } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -48,6 +49,12 @@ export function CityRulebookCheckRulesPanel({
   pending,
 }: Props) {
   const grouped = groupByCategory(approved)
+  const cityRulesHref = servicePath(
+    "homecare",
+    "municipalities",
+    citySlug,
+    "rules"
+  )
 
   return (
     <CityRulebookSection
@@ -59,14 +66,14 @@ export function CityRulebookCheckRulesPanel({
       action={
         pending.length > 0 ? (
           <Button asChild className="min-h-11">
-            <Link href="/admin/rules/pending">
+            <Link href={cityRulesHref}>
               判定ルールで了承する（{pending.length}件）
             </Link>
           </Button>
         ) : (
           <p className="text-sm text-muted-foreground">
             <Link
-              href="/admin/rules/pending#rules-list"
+              href={`${cityRulesHref}#rules-list`}
               className="text-primary underline-offset-4 hover:underline"
             >
               ルール一覧
@@ -157,7 +164,7 @@ export function CityRulebookCheckRulesPanel({
         </CardHeader>
         <CardContent>
           <Button asChild className="min-h-11">
-            <Link href="/admin/rules/manual">手動で判定ルール生成</Link>
+            <Link href={`${cityRulesHref}/manual`}>手動で判定ルール生成</Link>
           </Button>
         </CardContent>
       </Card>
@@ -193,6 +200,12 @@ function RuleRow({
   const hasEvidenceBody =
     Boolean(rule.evidenceSummary?.trim()) || rule.evidenceQuotes.length > 0
   const hasSourceLink = Boolean(rule.sourceDocumentUrl)
+  const cityRulesHref = servicePath(
+    "homecare",
+    "municipalities",
+    citySlug,
+    "rules"
+  )
 
   return (
     <li>
@@ -228,7 +241,7 @@ function RuleRow({
                   : "推奨寄り"}
             </Badge>
             <span className="text-sm text-muted-foreground tabular-nums">
-              {rule.code} / v{rule.versionNo}
+              v{rule.versionNo}
             </span>
           </div>
           <p className="font-semibold text-primary-dark">{rule.title}</p>
@@ -271,7 +284,7 @@ function RuleRow({
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm" className="min-h-11">
-                <Link href="/admin/rules/pending">判定ルールで確認する</Link>
+                <Link href={cityRulesHref}>判定ルールで確認する</Link>
               </Button>
             )}
           </div>

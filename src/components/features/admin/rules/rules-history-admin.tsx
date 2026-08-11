@@ -46,6 +46,8 @@ import {
 } from "@/components/ui/table"
 import { AlertTriangle, Loader2, Pencil, Trash2 } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import type { CheckRuleManageContext } from "@/lib/rule-engine/check-rule-scope"
+import { checkRulesManagePath } from "@/lib/rule-engine/check-rule-scope"
 
 const REVIEW_LABEL: Record<AiCheckRuleVersion["review_status"], string> = {
   draft: "下書き",
@@ -80,9 +82,10 @@ function formatDt(iso: string) {
 type Props = {
   /** ルール管理ページ内に埋め込むとき、ページ見出しを出さない */
   embedded?: boolean
+  context: CheckRuleManageContext
 }
 
-export function RulesHistoryAdmin({ embedded = false }: Props) {
+export function RulesHistoryAdmin({ embedded = false, context }: Props) {
   const [rows, setRows] = useState<Row[]>([])
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditDraft | null>(null)
@@ -90,14 +93,17 @@ export function RulesHistoryAdmin({ embedded = false }: Props) {
 
   const refresh = useCallback(async () => {
     setError(null)
-    const result = await listRuleVersionHistoryAction()
+    const result = await listRuleVersionHistoryAction({
+      scopeKind: context.scopeKind,
+      jurisdictionId: context.jurisdictionId,
+    })
     if (!result.ok) {
       setError(result.error ?? "取得に失敗しました。")
       setRows([])
       return
     }
     setRows(result.data?.rows ?? [])
-  }, [])
+  }, [context.jurisdictionId, context.scopeKind])
 
   useEffect(() => {
     void refresh()
@@ -176,7 +182,7 @@ export function RulesHistoryAdmin({ embedded = false }: Props) {
           <AdminBreadcrumb
             items={[
               { label: "利用設定", href: "/admin/rules/setup" },
-              { label: "判定ルール", href: "/admin/rules/pending" },
+              { label: "判定ルール", href: checkRulesManagePath(context) },
               { label: "ルール一覧" },
             ]}
           />
@@ -331,9 +337,6 @@ export function RulesHistoryAdmin({ embedded = false }: Props) {
                   <TableCell>
                     <div className="font-medium">
                       {row.ai_check_rules?.title ?? "—"}
-                    </div>
-                    <div className="font-mono text-xs text-muted-foreground">
-                      {row.ai_check_rules?.code}
                     </div>
                   </TableCell>
                   <TableCell className="tabular-nums">v{row.version_no}</TableCell>

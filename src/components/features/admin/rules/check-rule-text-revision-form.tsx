@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { servicePath } from "@/lib/rule-engine/services"
 import { Loader2, Pencil } from "lucide-react"
 
 type Props = {
@@ -32,9 +33,11 @@ type Props = {
  */
 export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
   const router = useRouter()
+  const manageHref = fromCitySlug
+    ? servicePath("homecare", "municipalities", fromCitySlug, "rules")
+    : "/admin/rules/setup"
   const [pending, startTransition] = useTransition()
   const [loading, setLoading] = useState(true)
-  const [code, setCode] = useState("")
   const [title, setTitle] = useState("")
   const [guidance, setGuidance] = useState("")
   const [changeSummary, setChangeSummary] = useState("")
@@ -63,7 +66,6 @@ export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
         setLoading(false)
         return
       }
-      setCode(rule.code)
       setTitle(rule.title)
       setGuidance(version.guidance_text ?? "")
       setLoading(false)
@@ -89,12 +91,12 @@ export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
         action: {
           label: "ルール管理を開く",
           onClick: () => {
-            window.location.href = "/admin/rules/pending"
+            window.location.href = manageHref
           },
         },
         duration: 12000,
       })
-      router.push("/admin/rules/pending")
+      router.push(manageHref)
       router.refresh()
     })
   }
@@ -127,7 +129,7 @@ export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
           案内文（文言）を修正する
         </CardTitle>
         <CardDescription className="text-base leading-relaxed">
-          {code} — {title}
+          {title}
           。修正案はルール管理に載り、了承されるまでチェックには使いません。
         </CardDescription>
         {fromCitySlug ? (
@@ -177,7 +179,7 @@ export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
             ルール管理に載せる
           </Button>
           <Button asChild size="lg" variant="outline" className="min-h-11">
-            <Link href="/admin/rules/pending">ルール管理を開く</Link>
+            <Link href={manageHref}>ルール管理を開く</Link>
           </Button>
         </div>
       </CardContent>

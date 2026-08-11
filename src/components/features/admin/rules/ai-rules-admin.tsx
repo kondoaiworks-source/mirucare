@@ -102,7 +102,7 @@ export function AiRulesAdmin({
             </Link>
             と
             <Link
-              href="/admin/rules/pending"
+              href="/admin/rules/setup"
               className="mx-1 font-medium text-primary underline-offset-2 hover:underline"
             >
               判定ルール
@@ -157,9 +157,6 @@ export function AiRulesAdmin({
                   <TableRow key={rule.id}>
                     <TableCell>
                       <div className="font-medium">{rule.title}</div>
-                      <div className="font-mono text-sm text-muted-foreground">
-                        {rule.code}
-                      </div>
                     </TableCell>
                     <TableCell>
                       {rule.audit_items ? `${rule.audit_items.code}` : "—"}

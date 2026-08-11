@@ -2,6 +2,10 @@
 
 import { requireOperator } from "@/lib/operator"
 import { toUserErrorMessage } from "@/lib/auth-errors"
+import {
+  documentMatchesRuleScope,
+  type CheckRuleManageContext,
+} from "@/lib/rule-engine/check-rule-scope"
 import type { KnowledgeDocument, KnowledgeSyncStatus } from "@/types/database"
 
 export type ActionResult<T = undefined> = {
@@ -35,7 +39,10 @@ function layerFromJurisdiction(
 /**
  * ルール管理用：判定ルール案を生成できる台帳資料一覧。
  */
-export async function listKnowledgeDocumentsForProposeAction(): Promise<
+export async function listKnowledgeDocumentsForProposeAction(input?: {
+  scopeKind?: CheckRuleManageContext["scopeKind"]
+  cityName?: string
+}): Promise<
   ActionResult<{ documents: KnowledgeDocumentForPropose[] }>
 > {
   const op = await requireOperator()
@@ -69,21 +76,33 @@ export async function listKnowledgeDocumentsForProposeAction(): Promise<
     }
   }
 
+  const mapped = docs.map((d) => ({
+    id: d.id,
+    title: d.title,
+    region_name: d.region_name ?? null,
+    jurisdiction_level: d.jurisdiction_level ?? null,
+    content_hash: d.content_hash ?? null,
+    source_url: d.source_url ?? null,
+    last_sync_status: d.last_sync_status ?? null,
+    status: d.status,
+    hasTextSnapshot: withSnap.has(d.id),
+    layer: layerFromJurisdiction(d.jurisdiction_level ?? null),
+  }))
+
+  const scopeKind = input?.scopeKind
+  const filtered = scopeKind
+    ? mapped.filter((d) =>
+        documentMatchesRuleScope(d, {
+          scopeKind,
+          cityName: input?.cityName,
+        })
+      )
+    : mapped
+
   return {
     ok: true,
     data: {
-      documents: docs.map((d) => ({
-        id: d.id,
-        title: d.title,
-        region_name: d.region_name ?? null,
-        jurisdiction_level: d.jurisdiction_level ?? null,
-        content_hash: d.content_hash ?? null,
-        source_url: d.source_url ?? null,
-        last_sync_status: d.last_sync_status ?? null,
-        status: d.status,
-        hasTextSnapshot: withSnap.has(d.id),
-        layer: layerFromJurisdiction(d.jurisdiction_level ?? null),
-      })),
+      documents: filtered,
     },
   }
 }

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 
 export const metadata: Metadata = { title: "ルール一覧" }
 
-/** 旧「更新履歴」URL互換。ルール管理内のルール一覧へ。 */
+/** 全市の一覧は廃止。国・県または各市の判定ルール管理へ。 */
 export default function Page() {
-  redirect("/admin/rules/pending#rules-list")
+  redirect("/admin/rules/setup")
 }

@@ -85,6 +85,8 @@ async function main() {
         title: seed.title,
         target_doc_types: seed.targetDocTypes,
         status: "active",
+        scope_kind: "shared",
+        jurisdiction_id: null,
       })
       .select("id")
       .single()

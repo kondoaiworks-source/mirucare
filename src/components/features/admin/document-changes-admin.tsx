@@ -32,6 +32,7 @@ import {
 } from "@/app/actions/knowledge-change-drafts"
 import { proposeAiCheckRulesFromDraftAction } from "@/app/actions/propose-check-rules"
 import type { KnowledgeChangeItem } from "@/lib/knowledge/diff-draft"
+import { checkRulesManagePathFromDocument } from "@/lib/rule-engine/check-rule-scope"
 import { getPhase1CityBySlug } from "@/lib/rule-engine/phase1-cities"
 
 function asChanges(raw: unknown): KnowledgeChangeItem[] {
@@ -158,6 +159,13 @@ export function DocumentChangesAdmin() {
     })
   }
 
+  function rulesHrefForDraft(draft: PendingChangeDraftRow): string {
+    return checkRulesManagePathFromDocument({
+      jurisdictionLevel: draft.knowledge_documents?.jurisdiction_level,
+      regionName: draft.knowledge_documents?.region_name,
+    })
+  }
+
   function onProposeRules(draft: PendingChangeDraftRow) {
     startTransition(async () => {
       const result = await proposeAiCheckRulesFromDraftAction({
@@ -178,7 +186,7 @@ export function DocumentChangesAdmin() {
           action: {
             label: "ルール管理を開く",
             onClick: () => {
-              window.location.href = "/admin/rules/pending"
+              window.location.href = rulesHrefForDraft(draft)
             },
           },
           duration: 12000,
@@ -281,7 +289,7 @@ export function DocumentChangesAdmin() {
             で了承して初めて使われます（自動では載りません）。
           </p>
           <Button asChild variant="outline" className="min-h-11">
-            <Link href="/admin/rules/pending">ルール管理を開く</Link>
+            <Link href="/admin/rules/setup">ルール管理を開く</Link>
           </Button>
         </AlertDescription>
       </Alert>
@@ -524,7 +532,9 @@ export function DocumentChangesAdmin() {
                       判定ルール案を生成する
                     </Button>
                     <Button asChild size="lg" variant="ghost" className="min-h-11">
-                      <Link href="/admin/rules/pending">ルール管理を開く</Link>
+                      <Link href={rulesHrefForDraft(draft)}>
+                        ルール管理を開く
+                      </Link>
                     </Button>
                     <Button asChild size="lg" variant="ghost" className="min-h-11">
                       <Link

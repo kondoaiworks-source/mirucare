@@ -2,11 +2,9 @@ import {
   matchesPhase1RuleText,
   shouldScopeCheckRulesToPhase1,
 } from "@/lib/phase1-audit"
-import {
-  classifyRuleScope,
-  isRuleApplicableToCity,
-} from "@/lib/rule-engine/city-rule-scope"
+import { isRuleInMunicipalityCheckScope } from "@/lib/rule-engine/check-rule-scope"
 import { prefectureFromMunicipality } from "@/lib/municipalities"
+import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
 import type { DocType, FindingSeverity } from "@/types/database"
 
 /** Dify 入力・書類スナップショット用のコンパクトなルール要約 */
@@ -97,9 +95,33 @@ function isEffectiveOn(
   return true
 }
 
+async function loadCityJurisdictionId(
+  admin: AdminClient,
+  municipality: string
+): Promise<string | null> {
+  const name = municipality.trim()
+  if (!name) return null
+  const phase1 = PHASE1_CITIES.find((c) => c.name === name)
+  if (phase1) {
+    const { data } = await admin
+      .from("rule_jurisdictions")
+      .select("id")
+      .eq("code", phase1.code)
+      .maybeSingle()
+    return (data?.id as string | undefined) ?? null
+  }
+  const { data } = await admin
+    .from("rule_jurisdictions")
+    .select("id")
+    .eq("level", "municipality")
+    .or(`municipality_name.eq.${name},name.eq.${name}`)
+    .maybeSingle()
+  return (data?.id as string | undefined) ?? null
+}
+
 /**
- * 承認済み AI 判定ルールと根拠資料タイトルを解決する（Service Role 前提）。
- * 自治体×ルールセットの厳密フィルタは将来拡張。まずは承認済み・有効・書類種別で絞る。
+ * 承認済み判定ルールを解決する（Service Role 前提）。
+ * 市のチェック ＝ 国・県で承認した共通ルール ＋ その市で承認したルール。
  */
 export async function resolveApprovedRulesForCheck(
   admin: AdminClient,
@@ -127,6 +149,8 @@ export async function resolveApprovedRulesForCheck(
       target_doc_types,
       status,
       audit_item_id,
+      scope_kind,
+      jurisdiction_id,
       audit_items ( id, title, source_id, status )
     `
     )
@@ -223,9 +247,9 @@ export async function resolveApprovedRulesForCheck(
 
   const resolved: ResolvedCheckRule[] = []
   const cityName = options.municipality.trim()
-  const prefectureName = cityName
-    ? prefectureFromMunicipality(cityName) || "神奈川県"
-    : ""
+  const cityJurisdictionId = cityName
+    ? await loadCityJurisdictionId(admin, cityName)
+    : null
 
   for (const [ruleId, ver] of Array.from(bestByRule.entries())) {
     const rule = ruleById.get(ruleId)
@@ -235,42 +259,14 @@ export async function resolveApprovedRulesForCheck(
       Array.isArray(auditRaw) ? auditRaw[0] : auditRaw
     ) as Record<string, unknown> | null
 
-    if (cityName) {
-      const draftRaw = ver.knowledge_document_change_drafts
-      const draft = (
-        Array.isArray(draftRaw) ? draftRaw[0] : draftRaw
-      ) as {
-        knowledge_documents:
-          | {
-              region_name: string | null
-              jurisdiction_level: string | null
-              title: string
-            }
-          | Array<{
-              region_name: string | null
-              jurisdiction_level: string | null
-              title: string
-            }>
-          | null
-      } | null
-      const docRaw = draft?.knowledge_documents
-      const doc = (Array.isArray(docRaw) ? docRaw[0] : docRaw) as {
-        region_name: string | null
-        jurisdiction_level: string | null
-        title: string
-      } | null
-      const evidence = extractEvidence(ver.check_logic)
-      const scope = classifyRuleScope({
-        cityName,
-        prefectureName,
-        regionName: doc?.region_name ?? evidence.regionName,
-        jurisdictionLevel:
-          doc?.jurisdiction_level ?? evidence.jurisdictionLevel,
-        evidenceRegionName: evidence.regionName,
-        evidenceJurisdictionLevel: evidence.jurisdictionLevel,
-        changeSummary: (ver.change_summary as string | null) ?? null,
+    if (
+      !isRuleInMunicipalityCheckScope({
+        scopeKind: (rule.scope_kind as string | null) ?? "shared",
+        ruleJurisdictionId: (rule.jurisdiction_id as string | null) ?? null,
+        cityJurisdictionId,
       })
-      if (!isRuleApplicableToCity(scope)) continue
+    ) {
+      continue
     }
 
     resolved.push({
@@ -311,27 +307,6 @@ export async function resolveApprovedRulesForCheck(
   }
 
   return { asOf, rules, regulatoryBasis, truncated }
-}
-
-function extractEvidence(logic: unknown): {
-  regionName: string | null
-  jurisdictionLevel: string | null
-} {
-  if (!logic || typeof logic !== "object") {
-    return { regionName: null, jurisdictionLevel: null }
-  }
-  const evidence = (logic as { evidence?: Record<string, unknown> }).evidence
-  if (!evidence || typeof evidence !== "object") {
-    return { regionName: null, jurisdictionLevel: null }
-  }
-  return {
-    regionName:
-      typeof evidence.regionName === "string" ? evidence.regionName : null,
-    jurisdictionLevel:
-      typeof evidence.jurisdictionLevel === "string"
-        ? evidence.jurisdictionLevel
-        : null,
-  }
 }
 
 async function loadRegulatoryBasis(

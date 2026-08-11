@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation"
 import { toast } from "@/components/ui/sonner"
 import { createAiCheckRuleWithVersionAction } from "@/app/actions/rule-engine"
 import type { DocType, FindingSeverity } from "@/types/database"
+import {
+  checkRulesManagePath,
+  type CheckRuleManageContext,
+} from "@/lib/rule-engine/check-rule-scope"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,18 +30,19 @@ const DOC_TYPES: DocType[] = [
 ]
 
 type Props = {
+  context: CheckRuleManageContext
   /** 登録後にルール管理へ誘導するとき */
   onCreated?: () => void
 }
 
 /**
  * 手入力で判定ルール＋初版を作り、承認待ちへ載せる。
+ * コードは内部自動採番（入力欄なし）。
  */
-export function ManualCheckRuleForm({ onCreated }: Props) {
+export function ManualCheckRuleForm({ context, onCreated }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
-  const [code, setCode] = useState("")
   const [title, setTitle] = useState("")
   const [docType, setDocType] = useState<DocType>("提供記録")
   const [guidance, setGuidance] = useState("")
@@ -50,7 +55,6 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
     e.preventDefault()
     startTransition(async () => {
       const result = await createAiCheckRuleWithVersionAction({
-        code,
         title,
         targetDocTypes: [docType],
         guidanceText: guidance,
@@ -58,11 +62,15 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
         effectiveFrom,
         submitForReview: true,
         changeSummary: "手入力の初版",
+        scopeKind: context.scopeKind,
+        jurisdictionId: context.jurisdictionId,
+        citySlug: context.citySlug,
       })
       if (!result.ok) {
         toast.error(result.error ?? "登録に失敗しました。")
         return
       }
+      const manageHref = checkRulesManagePath(context)
       toast.success("判定ルールを承認待ちに載せました。", {
         description: "承認するまでチェックには使いません。",
         ...(onCreated
@@ -71,12 +79,11 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
               action: {
                 label: "判定ルール管理を開く",
                 onClick: () => {
-                  window.location.href = "/admin/rules/pending"
+                  window.location.href = manageHref
                 },
               },
             }),
       })
-      setCode("")
       setTitle("")
       setGuidance("")
       onCreated?.()
@@ -86,13 +93,13 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
-      <div className="space-y-2">
-        <Label htmlFor="manual-rule-code">コード</Label>
+      <div className="space-y-2 sm:col-span-2">
+        <Label htmlFor="manual-rule-title">ルール名</Label>
         <Input
-          id="manual-rule-code"
-          className="h-11 min-h-11 font-mono text-base"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
+          id="manual-rule-title"
+          className="h-11 min-h-11 text-base"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           required
         />
       </div>
@@ -113,16 +120,6 @@ export function ManualCheckRuleForm({ onCreated }: Props) {
             ))}
           </SelectContent>
         </Select>
-      </div>
-      <div className="space-y-2 sm:col-span-2">
-        <Label htmlFor="manual-rule-title">ルール名</Label>
-        <Input
-          id="manual-rule-title"
-          className="h-11 min-h-11 text-base"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
       </div>
       <div className="space-y-2 sm:col-span-2">
         <Label htmlFor="manual-rule-guide">判定の観点・案内文</Label>

@@ -8,15 +8,17 @@ import {
 import { RulebookDocumentsProposePanel } from "@/components/features/admin/rules/rulebook-documents-propose-panel"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertTriangle, Loader2 } from "lucide-react"
+import type { CheckRuleManageContext } from "@/lib/rule-engine/check-rule-scope"
 
 type Props = {
+  context: CheckRuleManageContext
   onProposed?: () => void
 }
 
 /**
  * ルール管理ページ上部：台帳資料から判定ルール案を生成する。
  */
-export function RulesManagementProposeBoard({ onProposed }: Props) {
+export function RulesManagementProposeBoard({ context, onProposed }: Props) {
   const [documents, setDocuments] = useState<KnowledgeDocumentForPropose[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -24,7 +26,10 @@ export function RulesManagementProposeBoard({ onProposed }: Props) {
   const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const result = await listKnowledgeDocumentsForProposeAction()
+    const result = await listKnowledgeDocumentsForProposeAction({
+      scopeKind: context.scopeKind,
+      cityName: context.cityName,
+    })
     if (!result.ok || !result.data) {
       setError(
         result.error ??
@@ -35,7 +40,7 @@ export function RulesManagementProposeBoard({ onProposed }: Props) {
       setDocuments(result.data.documents)
     }
     setLoading(false)
-  }, [])
+  }, [context.cityName, context.scopeKind])
 
   useEffect(() => {
     void refresh()
@@ -66,6 +71,7 @@ export function RulesManagementProposeBoard({ onProposed }: Props) {
       heading=""
       description=""
       hidePendingLink
+      context={context}
       onProposed={() => {
         void refresh()
         onProposed?.()

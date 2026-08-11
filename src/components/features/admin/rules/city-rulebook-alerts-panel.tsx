@@ -93,7 +93,7 @@ export function CityRulebookAlertsPanel({
           action: {
             label: "ルール管理を開く",
             onClick: () => {
-              window.location.href = "/admin/rules/pending"
+              window.location.href = `/admin/rules/services/homecare/municipalities/${citySlug}/rules`
             },
           },
           duration: 12000,

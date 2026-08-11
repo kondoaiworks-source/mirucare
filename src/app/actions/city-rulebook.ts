@@ -8,11 +8,8 @@ import {
   NATIONAL_JURISDICTION_CODE,
   type Phase1City,
 } from "@/lib/rule-engine/phase1-cities"
-import {
-  classifyRuleScope,
-  isRuleApplicableToCity,
-  type RuleScopeKind,
-} from "@/lib/rule-engine/city-rule-scope"
+import { isRuleInMunicipalityCheckScope } from "@/lib/rule-engine/check-rule-scope"
+import type { RuleScopeKind } from "@/lib/rule-engine/city-rule-scope"
 import type {
   KnowledgeDocument,
   KnowledgeDocumentChangeDraft,
@@ -355,7 +352,10 @@ export async function getCityRulebookAction(
   const nationalDocuments = documents.filter((d) => d.layer === "national")
   const prefectureDocuments = documents.filter((d) => d.layer === "prefecture")
 
-  const checkRules = await loadCityCheckRules(op.service, city)
+  const checkRules = await loadCityCheckRules(
+    op.service,
+    cityLayerJurisdiction.id
+  )
 
   const { data: ruleSet } = await op.service
     .from("rule_sets")
@@ -478,7 +478,7 @@ function evidenceFromLogic(logic: unknown): {
 async function loadCityCheckRules(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   service: any,
-  city: Phase1City
+  cityJurisdictionId: string
 ): Promise<{
   approved: CityRulebookCheckRule[]
   pending: CityRulebookCheckRule[]
@@ -504,6 +504,8 @@ async function loadCityCheckRules(
         code,
         title,
         status,
+        scope_kind,
+        jurisdiction_id,
         audit_items ( id, title, code, category )
       ),
       knowledge_document_change_drafts (
@@ -541,6 +543,8 @@ async function loadCityCheckRules(
       code: string
       title: string
       status: string
+      scope_kind?: string | null
+      jurisdiction_id?: string | null
       audit_items:
         | {
             id: string
@@ -597,18 +601,17 @@ async function loadCityCheckRules(
     } | null
 
     const evidence = evidenceFromLogic(row.check_logic)
-    const scopeKind = classifyRuleScope({
-      cityName: city.name,
-      prefectureName: city.prefectureName,
-      regionName: doc?.region_name ?? evidence.regionName,
-      jurisdictionLevel:
-        doc?.jurisdiction_level ?? evidence.jurisdictionLevel,
-      evidenceRegionName: evidence.regionName,
-      evidenceJurisdictionLevel: evidence.jurisdictionLevel,
-      changeSummary: (row.change_summary as string | null) ?? null,
-    })
-
-    if (!isRuleApplicableToCity(scopeKind)) continue
+    const storedKind = rule.scope_kind === "city" ? "city" : "shared"
+    if (
+      !isRuleInMunicipalityCheckScope({
+        scopeKind: storedKind,
+        ruleJurisdictionId: rule.jurisdiction_id ?? null,
+        cityJurisdictionId,
+      })
+    ) {
+      continue
+    }
+    const scopeKind: RuleScopeKind = storedKind
 
     const status = row.review_status as "approved" | "pending_review"
     if (status === "approved") {
@@ -640,7 +643,8 @@ async function loadCityCheckRules(
     }
 
     if (status === "pending_review") {
-      pending.push(item)
+      // 市画面では市固有の承認待ちだけ扱う（共通は国・県設定）
+      if (storedKind === "city") pending.push(item)
       continue
     }
 

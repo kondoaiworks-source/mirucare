@@ -5,6 +5,8 @@ import { requireOperator } from "@/lib/operator"
 import { toUserErrorMessage } from "@/lib/auth-errors"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
 import { ensureAuditItemOptions } from "@/lib/rule-engine/default-audit-item"
+import { allocateAiCheckRuleCode } from "@/lib/rule-engine/allocate-rule-code"
+import type { CheckRuleScopeKind } from "@/lib/rule-engine/check-rule-scope"
 import { PHASE1_AI_RULE_SEEDS } from "@/lib/phase1-ai-rules-seed"
 import {
   buildRulebookSetupReadiness,
@@ -49,6 +51,22 @@ function revalidateRules(path?: string) {
   revalidatePath("/admin/rules/regulatory", "layout")
   revalidatePath("/admin/rules/services", "layout")
   if (path) revalidatePath(path)
+}
+
+function normalizeRuleScope(input: {
+  scopeKind?: CheckRuleScopeKind | string | null
+  jurisdictionId?: string | null
+}): { scopeKind: CheckRuleScopeKind; jurisdictionId: string | null } | { error: string } {
+  const scopeKind: CheckRuleScopeKind =
+    input.scopeKind === "city" ? "city" : "shared"
+  const jurisdictionId = input.jurisdictionId?.trim() || null
+  if (scopeKind === "city" && !jurisdictionId) {
+    return { error: "市の判定ルールには自治体の指定が必要です。" }
+  }
+  if (scopeKind === "shared") {
+    return { scopeKind: "shared", jurisdictionId: null }
+  }
+  return { scopeKind: "city", jurisdictionId }
 }
 
 export async function getRulesDashboardAction(): Promise<
@@ -926,6 +944,8 @@ export async function seedPhase1AiRulesAction(input?: {
         title: seed.title,
         target_doc_types: seed.targetDocTypes,
         status: "active",
+        scope_kind: "shared",
+        jurisdiction_id: null,
       })
       .select("id")
       .single()
@@ -1105,7 +1125,8 @@ export async function listAiRulesAction(): Promise<
 
 export async function createAiCheckRuleWithVersionAction(input: {
   auditItemId?: string
-  code: string
+  /** 廃止。内部で自動採番する */
+  code?: string
   title: string
   targetDocTypes: string[]
   guidanceText: string
@@ -1115,18 +1136,26 @@ export async function createAiCheckRuleWithVersionAction(input: {
   submitForReview: boolean
   /** 公開情報監視の変更ドラフトから起こした場合の紐付け */
   knowledgeChangeDraftId?: string
+  scopeKind?: CheckRuleScopeKind
+  jurisdictionId?: string | null
+  citySlug?: string
 }): Promise<ActionResult> {
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
 
-  const code = input.code.trim().toUpperCase()
   const title = input.title.trim()
-  if (!code || !title) {
-    return { ok: false, error: "コードと名称を入力してください。" }
+  if (!title) {
+    return { ok: false, error: "ルール名を入力してください。" }
   }
   if (!input.effectiveFrom) {
     return { ok: false, error: "適用開始日を入力してください。" }
   }
+
+  const scope = normalizeRuleScope({
+    scopeKind: input.scopeKind,
+    jurisdictionId: input.jurisdictionId,
+  })
+  if ("error" in scope) return { ok: false, error: scope.error }
 
   let auditItemId = input.auditItemId?.trim() ?? ""
   if (!auditItemId) {
@@ -1137,6 +1166,27 @@ export async function createAiCheckRuleWithVersionAction(input: {
     auditItemId = ensured.data[0].id
   }
 
+  const dupQuery = op.service
+    .from("ai_check_rules")
+    .select("id")
+    .eq("title", title)
+    .eq("scope_kind", scope.scopeKind)
+    .eq("status", "active")
+  const { data: dup } = scope.jurisdictionId
+    ? await dupQuery.eq("jurisdiction_id", scope.jurisdictionId).maybeSingle()
+    : await dupQuery.is("jurisdiction_id", null).maybeSingle()
+  if (dup) {
+    return {
+      ok: false,
+      error: "同じ名前のルールがすでにあります。ルール名をご確認ください。",
+    }
+  }
+
+  const code = await allocateAiCheckRuleCode(op.service, {
+    scopeKind: scope.scopeKind,
+    citySlug: input.citySlug,
+  })
+
   const { data: rule, error: ruleError } = await op.service
     .from("ai_check_rules")
     .insert({
@@ -1145,6 +1195,8 @@ export async function createAiCheckRuleWithVersionAction(input: {
       title,
       target_doc_types: input.targetDocTypes,
       status: "active",
+      scope_kind: scope.scopeKind,
+      jurisdiction_id: scope.jurisdictionId,
     })
     .select("*")
     .single()
@@ -1180,7 +1232,10 @@ export async function createAiCheckRuleWithVersionAction(input: {
   return { ok: true }
 }
 
-export async function listPendingRuleVersionsAction(): Promise<
+export async function listPendingRuleVersionsAction(input?: {
+  scopeKind?: CheckRuleScopeKind
+  jurisdictionId?: string | null
+}): Promise<
   ActionResult<{
     rows: Array<
       AiCheckRuleVersion & {
@@ -1192,16 +1247,31 @@ export async function listPendingRuleVersionsAction(): Promise<
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
 
-  const { data, error } = await op.service
+  const scopeKind: CheckRuleScopeKind =
+    input?.scopeKind === "city" ? "city" : "shared"
+  const jurisdictionId = input?.jurisdictionId?.trim() || null
+  if (scopeKind === "city" && !jurisdictionId) {
+    return { ok: false, error: "市の判定ルールには自治体の指定が必要です。" }
+  }
+
+  let query = op.service
     .from("ai_check_rule_versions")
     .select(
       `
       *,
-      ai_check_rules ( id, title, code )
+      ai_check_rules!inner ( id, title, code, scope_kind, jurisdiction_id )
     `
     )
     .eq("review_status", "pending_review")
-    .order("created_at", { ascending: false })
+    .eq("ai_check_rules.scope_kind", scopeKind)
+
+  if (scopeKind === "city" && jurisdictionId) {
+    query = query.eq("ai_check_rules.jurisdiction_id", jurisdictionId)
+  } else {
+    query = query.is("ai_check_rules.jurisdiction_id", null)
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false })
 
   if (error) return { ok: false, error: toUserErrorMessage(error) }
 
@@ -1356,7 +1426,10 @@ export async function proposeAiCheckRuleTextRevisionAction(input: {
   return { ok: true, data: { versionId: created.id as string } }
 }
 
-export async function listRuleVersionHistoryAction(): Promise<
+export async function listRuleVersionHistoryAction(input?: {
+  scopeKind?: CheckRuleScopeKind
+  jurisdictionId?: string | null
+}): Promise<
   ActionResult<{
     rows: Array<
       AiCheckRuleVersion & {
@@ -1368,14 +1441,30 @@ export async function listRuleVersionHistoryAction(): Promise<
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
 
-  const { data, error } = await op.service
+  const scopeKind: CheckRuleScopeKind =
+    input?.scopeKind === "city" ? "city" : "shared"
+  const jurisdictionId = input?.jurisdictionId?.trim() || null
+  if (scopeKind === "city" && !jurisdictionId) {
+    return { ok: false, error: "市の判定ルールには自治体の指定が必要です。" }
+  }
+
+  let query = op.service
     .from("ai_check_rule_versions")
     .select(
       `
       *,
-      ai_check_rules ( id, title, code )
+      ai_check_rules!inner ( id, title, code, scope_kind, jurisdiction_id )
     `
     )
+    .eq("ai_check_rules.scope_kind", scopeKind)
+
+  if (scopeKind === "city" && jurisdictionId) {
+    query = query.eq("ai_check_rules.jurisdiction_id", jurisdictionId)
+  } else {
+    query = query.is("ai_check_rules.jurisdiction_id", null)
+  }
+
+  const { data, error } = await query
     .order("created_at", { ascending: false })
     .limit(100)
 

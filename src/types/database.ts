@@ -528,6 +528,8 @@ export type AuditItem = {
   updated_at: string
 }
 
+export type AiCheckRuleScopeKind = "shared" | "city"
+
 export type AiCheckRule = {
   id: string
   audit_item_id: string
@@ -535,6 +537,10 @@ export type AiCheckRule = {
   title: string
   target_doc_types: string[]
   status: "active" | "retired"
+  /** shared=国・県の共通。city=市区町村固有 */
+  scope_kind: AiCheckRuleScopeKind
+  /** city のとき必須。shared は null */
+  jurisdiction_id: string | null
   created_at: string
   updated_at: string
 }

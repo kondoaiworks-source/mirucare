@@ -42,7 +42,7 @@ export function ProposeRulesFromDocumentButton({
           action: {
             label: "ルール管理を開く",
             onClick: () => {
-              window.location.href = "/admin/rules/pending"
+              window.location.href = "/admin/rules/setup"
             },
           },
           duration: 12000,

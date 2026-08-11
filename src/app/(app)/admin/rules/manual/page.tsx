@@ -1,10 +1,11 @@
 import type { Metadata } from "next"
-import { ManualCheckRulePage } from "@/components/features/admin/rules/manual-check-rule-page"
+import { redirect } from "next/navigation"
 
 export const metadata: Metadata = {
   title: "手動で判定ルール生成",
 }
 
+/** 全市の手動生成は廃止。国・県または各市の判定ルール管理から開く。 */
 export default function Page() {
-  return <ManualCheckRulePage />
+  redirect("/admin/rules/setup")
 }

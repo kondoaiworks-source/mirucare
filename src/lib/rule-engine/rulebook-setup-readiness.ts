@@ -285,7 +285,7 @@ export function buildRulebookSetupReadiness(
         "根拠URLからルール案を生成すると自動で用意されます",
         "不足があれば下の網羅表で確認できます",
       ],
-      href: "/admin/rules/pending",
+      href: "/admin/rules/services/homecare",
       actionLabel: "判定ルール管理を開く",
       done: allCitiesAuditReady && registeredAuditSet.size > 0,
       required: false,
@@ -327,7 +327,7 @@ export function buildRulebookSetupReadiness(
         "問題なければ了承する",
         "下の「Phase1突合の網羅」ですべて✓になるか確認する",
       ],
-      href: "/admin/rules/pending",
+      href: "/admin/rules/services/homecare",
       actionLabel: "ルール管理を開く",
       done: allPhase1Approved,
       required: true,
@@ -348,7 +348,7 @@ export function buildRulebookSetupReadiness(
       ],
       href:
         input.pendingVersionCount > 0
-          ? "/admin/rules/pending"
+          ? "/admin/rules/services/homecare"
           : "/admin/rules/notifications",
       actionLabel: "要対応を確認する",
       done: queueCount === 0,

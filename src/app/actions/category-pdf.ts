@@ -54,7 +54,7 @@ export type CategoryPdfBoard = {
 
 function revalidateCategoryPaths() {
   revalidatePath("/admin/rules/services", "layout")
-  revalidatePath("/admin/rules/pending")
+  revalidatePath("/admin/rules/services", "layout")
   revalidatePath("/admin/rules/documents")
   revalidatePath("/admin/document-changes")
 }

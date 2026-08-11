@@ -4,6 +4,7 @@ import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { AdminEqualCard } from "@/components/features/admin/rules/admin-equal-card"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
+import { checkRulesManagePath } from "@/lib/rule-engine/check-rule-scope"
 import { servicePath } from "@/lib/rule-engine/services"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
@@ -78,14 +79,28 @@ export function MunicipalityCityHub({ service, data }: Props) {
         <ul className="grid gap-3 sm:grid-cols-2">
           <li>
             <AdminEqualCard
-              href="/admin/rules/pending"
+              href={checkRulesManagePath({
+                serviceSlug: service.slug,
+                serviceLabel: service.label,
+                scopeKind: "city",
+                jurisdictionId: layerJurisdictions.city.id,
+                citySlug: city.slug,
+                cityName: city.name,
+              })}
               title={RULES_UI.pendingApproval}
               icon={ClipboardCheck}
             />
           </li>
           <li>
             <AdminEqualCard
-              href="/admin/rules/pending#rules-list"
+              href={`${checkRulesManagePath({
+                serviceSlug: service.slug,
+                serviceLabel: service.label,
+                scopeKind: "city",
+                jurisdictionId: layerJurisdictions.city.id,
+                citySlug: city.slug,
+                cityName: city.name,
+              })}#rules-list`}
               title={RULES_UI.registeredRules}
               icon={ClipboardCheck}
             />

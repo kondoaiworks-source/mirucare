@@ -69,7 +69,7 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
       "/admin/rules/setup",
       "/admin/rules/services",
       "/admin/rules/regulatory",
-      "/admin/rules/pending",
+      "/admin/rules/services",
     ],
     showOnHome: true,
   },
@@ -83,7 +83,7 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     steps: ["判定ルール管理で承認する"],
     links: [
       {
-        href: "/admin/rules/pending",
+        href: "/admin/rules/services/homecare",
         label: RULES_UI.judgmentRuleManage,
         description: "承認・一覧・生成",
         icon: BookOpen,

@@ -84,7 +84,7 @@ export function buildSetupReadiness(
         input.approvedAiRuleCount > 0
           ? "/admin/rules/ai-rules"
           : input.pendingVersionCount > 0
-            ? "/admin/rules/pending"
+            ? "/admin/rules/services/homecare"
             : "/admin/rules/ai-rules",
       actionLabel:
         input.pendingVersionCount > 0
@@ -107,7 +107,7 @@ export function buildSetupReadiness(
         "ルール管理・自治体ルール変更（差分）・同期アラートを解消します。",
       href:
         input.pendingVersionCount > 0
-          ? "/admin/rules/pending"
+          ? "/admin/rules/services/homecare"
           : input.pendingKnowledgeDraftCount > 0
             ? "/admin/document-changes"
             : "/admin/rules/jobs",

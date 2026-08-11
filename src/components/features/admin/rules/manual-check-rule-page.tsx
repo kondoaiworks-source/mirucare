@@ -5,29 +5,73 @@ import { useRouter } from "next/navigation"
 import { ManualCheckRuleForm } from "@/components/features/admin/rules/manual-check-rule-form"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { Button } from "@/components/ui/button"
+import {
+  checkRulesManagePath,
+  checkRulesParentPath,
+  type CheckRuleManageContext,
+} from "@/lib/rule-engine/check-rule-scope"
+import { servicePath } from "@/lib/rule-engine/services"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
+
+type Props = {
+  context: CheckRuleManageContext
+}
 
 /**
  * 手入力で判定ルールを1件追加する専用ページ（API不要）。
  */
-export function ManualCheckRulePage() {
+export function ManualCheckRulePage({ context }: Props) {
   const router = useRouter()
+  const manageHref = checkRulesManagePath(context)
+  const parentHref = checkRulesParentPath(context)
 
   return (
     <div className="space-y-6">
       <div>
         <AdminBreadcrumb
-          items={[
-            { label: "利用設定", href: "/admin/rules/setup" },
-            { label: "判定ルール", href: "/admin/rules/pending" },
-            { label: "手動で追加" },
-          ]}
+          items={
+            context.scopeKind === "shared"
+              ? [
+                  { label: RULES_UI.setup, href: "/admin/rules/setup" },
+                  {
+                    label: context.serviceLabel,
+                    href: servicePath(context.serviceSlug),
+                  },
+                  {
+                    label: RULES_UI.nationalPrefectureSettings,
+                    href: parentHref,
+                  },
+                  {
+                    label: RULES_UI.judgmentRuleManage,
+                    href: manageHref,
+                  },
+                  { label: RULES_UI.generateManual },
+                ]
+              : [
+                  { label: RULES_UI.setup, href: "/admin/rules/setup" },
+                  {
+                    label: context.serviceLabel,
+                    href: servicePath(context.serviceSlug),
+                  },
+                  {
+                    label: RULES_UI.municipalitySettings,
+                    href: servicePath(context.serviceSlug, "municipalities"),
+                  },
+                  {
+                    label: context.cityName ?? "自治体",
+                    href: parentHref,
+                  },
+                  {
+                    label: RULES_UI.judgmentRuleManage,
+                    href: manageHref,
+                  },
+                  { label: RULES_UI.generateManual },
+                ]
+          }
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
           手動で判定ルールを追加
         </h1>
-        <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          API不要で1件追加します。了承までチェックには使いません。
-        </p>
       </div>
 
       <section
@@ -39,21 +83,19 @@ export function ManualCheckRulePage() {
             id="manual-rule-heading"
             className="text-lg font-semibold text-primary-dark"
           >
-            手入力（API不要）
+            手入力
           </h2>
-          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-            Geminiが使えないときや、案を転記するときに使います。
-          </p>
         </div>
         <ManualCheckRuleForm
+          context={context}
           onCreated={() => {
-            router.push("/admin/rules/pending")
+            router.push(manageHref)
           }}
         />
       </section>
 
       <Button asChild variant="outline" className="min-h-11">
-        <Link href="/admin/rules/pending">判定ルールに戻る</Link>
+        <Link href={manageHref}>判定ルールに戻る</Link>
       </Button>
     </div>
   )
