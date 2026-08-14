@@ -21,12 +21,13 @@ import {
 import { resolveSelectedDomains } from "@/lib/rule-engine/domains"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
 import { getPhase1CityBySlug, PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
-import { getRuleServiceBySlug } from "@/lib/rule-engine/services"
+import { getRuleServiceBySlug, getRuleServiceByType } from "@/lib/rule-engine/services"
 import {
   defaultEffectiveFrom,
   proposeRulesFromSourceText,
 } from "@/lib/knowledge/propose-rules"
 import { isGeminiConfigured } from "@/lib/knowledge/gemini"
+import { ensureKnowledgeDocumentFromRuleSource } from "@/lib/knowledge/ensure-from-rule-source"
 import { getLatestSnapshot, readSnapshotText } from "@/lib/knowledge/snapshots"
 import type {
   AiCheckRule,
@@ -72,6 +73,8 @@ export type ComposeJobView = {
   items: ComposeJobItemView[]
   includedCount: number
   pendingCount: number
+  cityCount: number
+  sharedCount: number
 }
 
 function revalidateCompose(serviceSlug?: string) {
@@ -233,6 +236,7 @@ async function loadScopedRules(
       title: String(row.title ?? ""),
       domainId: (row.domain_id as string | null) ?? null,
       templateCode,
+      scopeKind,
       raw: row as unknown as AiCheckRule,
       latestVersion: latest,
     })
@@ -259,17 +263,43 @@ async function attachCityPdfRules(input: {
 
   const { data: sourceRows } = await input.service
     .from("rule_sources")
-    .select("knowledge_document_id")
+    .select("id, knowledge_document_id, title")
     .eq("jurisdiction_id", input.cityJurisdictionId)
     .eq("status", "active")
-    .not("knowledge_document_id", "is", null)
     .limit(20)
 
-  const linkedIds = new Set(
-    ((sourceRows ?? []) as Array<{ knowledge_document_id: string | null }>)
-      .map((r) => r.knowledge_document_id)
-      .filter((id): id is string => Boolean(id))
-  )
+  const linkedIds = new Set<string>()
+  for (const row of (sourceRows ?? []) as Array<{
+    id: string
+    knowledge_document_id: string | null
+  }>) {
+    if (linkedIds.size >= MAX_CITY_PDFS) break
+    const existingId = row.knowledge_document_id
+    if (existingId) {
+      try {
+        const snapshot = await getLatestSnapshot(input.service, existingId)
+        if (snapshot) {
+          linkedIds.add(existingId)
+          continue
+        }
+      } catch {
+        // 本文が無いときは同期を試みる
+      }
+    }
+    try {
+      const ensured = await ensureKnowledgeDocumentFromRuleSource(
+        input.service,
+        row.id
+      )
+      if (ensured.knowledgeDocumentId) {
+        linkedIds.add(ensured.knowledgeDocumentId)
+      }
+    } catch (err) {
+      console.error("[compose] ensure_city_source_failed", {
+        error: err instanceof Error ? err.message.slice(0, 160) : "unknown",
+      })
+    }
+  }
 
   const { data: docs } = await input.service
     .from("knowledge_documents")
@@ -284,9 +314,15 @@ async function attachCityPdfRules(input: {
       const level = String(doc.jurisdiction_level ?? "")
       const region = String(doc.region_name ?? "")
       const isCityLevel = level === "市区町村" || level === "municipality"
-      return (
-        isCityLevel && (region === cityName || region.includes(cityName))
-      )
+      if (!isCityLevel) return false
+      if (!region) return false
+      if (region === cityName || region.includes(cityName) || cityName.includes(region)) {
+        return true
+      }
+      const strip = (s: string) => s.replace(/[市区町村]$/, "")
+      const a = strip(region)
+      const b = strip(cityName)
+      return a.length >= 2 && a === b
     }
   )
 
@@ -368,7 +404,12 @@ async function attachCityPdfRules(input: {
       })
       .select("id")
       .single()
-    if (ruleError || !rule) continue
+    if (ruleError || !rule) {
+      console.error("[compose] city_pdf_rule_insert_failed", {
+        error: String(ruleError?.message ?? "").slice(0, 160),
+      })
+      continue
+    }
 
     const { error: verError } = await input.service
       .from("ai_check_rule_versions")
@@ -393,7 +434,12 @@ async function attachCityPdfRules(input: {
         review_status: "pending_review",
         change_summary: `市資料から下書き（${titles.join("／")}）`,
       })
-    if (verError) continue
+    if (verError) {
+      console.error("[compose] city_pdf_version_insert_failed", {
+        error: String(verError.message ?? "").slice(0, 160),
+      })
+      continue
+    }
 
     const itemPayload = {
       job_id: input.jobId,
@@ -420,6 +466,36 @@ async function attachCityPdfRules(input: {
     return `${cityName}の資料を確認しましたが、新たに出す市固有ルールはありませんでした。`
   }
   return `${cityName}の資料から市固有ルールを${created}件載せました。`
+}
+
+async function attachLeftoverCityRules(input: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  service: any
+  jobId: string
+  existingRules: ExistingComposeRule[]
+  pickedIds: Set<string>
+}): Promise<number> {
+  let added = 0
+  for (const extra of input.existingRules) {
+    if (extra.scopeKind !== "city") continue
+    if (input.pickedIds.has(extra.id)) continue
+    const { error } = await input.service.from("rulebook_compose_items").insert({
+      job_id: input.jobId,
+      rule_id: extra.id,
+      domain_id: extra.domainId,
+      origin: "existing",
+      included: true,
+    })
+    if (error) {
+      console.error("[compose] leftover_city_item_failed", {
+        error: String(error.message ?? "").slice(0, 160),
+      })
+      continue
+    }
+    input.pickedIds.add(extra.id)
+    added += 1
+  }
+  return added
 }
 
 export async function startComposeRulebookAction(input: {
@@ -479,12 +555,54 @@ export async function startComposeRulebookAction(input: {
   const openId = (openJobs?.[0] as { id?: string } | undefined)?.id
   let jobId = openId ?? null
   if (jobId) {
-    const { count } = await op.service
+    const { data: openItems } = await op.service
       .from("rulebook_compose_items")
-      .select("id", { count: "exact", head: true })
+      .select("id, rule_id, origin, ai_check_rules ( scope_kind )")
       .eq("job_id", jobId)
-    if ((count ?? 0) > 0) {
-      return { ok: true, data: { jobId, cityPdfNote: null } }
+    const itemRows = (openItems ?? []) as Array<{
+      rule_id: string
+      origin: string
+      ai_check_rules:
+        | { scope_kind?: string | null }
+        | Array<{ scope_kind?: string | null }>
+        | null
+    }>
+    if (itemRows.length > 0) {
+      const hasCity = itemRows.some((row) => {
+        if (row.origin === "city_pdf") return true
+        const raw = row.ai_check_rules
+        const rule = Array.isArray(raw) ? raw[0] : raw
+        return rule?.scope_kind === "city"
+      })
+      if (hasCity) {
+        return { ok: true, data: { jobId, cityPdfNote: null } }
+      }
+      const existingRules = await loadScopedRules(op.service, jurisdictionId)
+      const pickedIds = new Set(itemRows.map((r) => r.rule_id))
+      await attachLeftoverCityRules({
+        service: op.service,
+        jobId,
+        existingRules,
+        pickedIds,
+      })
+      const auditRes = await ensureAuditItemOptions(op.service)
+      const cityPdfNote = await attachCityPdfRules({
+        service: op.service,
+        jobId,
+        cityName: String(city.municipality_name || city.name || ""),
+        cityJurisdictionId: jurisdictionId,
+        citySlug: PHASE1_CITIES.find(
+          (c) =>
+            c.name === String(city.municipality_name || city.name || "") ||
+            c.code === String(city.code ?? "")
+        )?.slug,
+        domains: selected.domains,
+        existingRules,
+        pickedIds,
+        auditItemId: auditRes.ok ? auditRes.data[0]?.id ?? "" : "",
+      })
+      revalidateCompose(input.serviceSlug)
+      return { ok: true, data: { jobId, cityPdfNote } }
     }
   }
 
@@ -662,6 +780,89 @@ export async function startComposeRulebookAction(input: {
   return { ok: true, data: { jobId: job.id as string, cityPdfNote } }
 }
 
+export async function fillCityPdfRulesAction(input: {
+  jobId: string
+}): Promise<ActionResult<{ cityPdfNote: string | null }>> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+
+  const jobId = input.jobId.trim()
+  if (!jobId) return { ok: false, error: "下書きが指定されていません。" }
+
+  const { data: jobRow, error: jobError } = await op.service
+    .from("rulebook_compose_jobs")
+    .select("*")
+    .eq("id", jobId)
+    .maybeSingle()
+  if (jobError) return { ok: false, error: toUserErrorMessage(jobError) }
+  if (!jobRow) return { ok: false, error: "下書きが見つかりません。" }
+
+  const job = jobRow as RulebookComposeJob
+  if (job.status !== "draft") {
+    return { ok: false, error: "確定済みのルールブックには追加できません。" }
+  }
+
+  const { data: city, error: cityError } = await op.service
+    .from("rule_jurisdictions")
+    .select("id, name, municipality_name, code, level, is_supported")
+    .eq("id", job.jurisdiction_id)
+    .maybeSingle()
+  if (cityError) return { ok: false, error: toUserErrorMessage(cityError) }
+  if (!city) return { ok: false, error: "対象の自治体が見つかりません。" }
+
+  const { data: domainRows, error: domainError } = await op.service
+    .from("rule_domains")
+    .select("*")
+    .order("sort_order", { ascending: true })
+  if (domainError) return { ok: false, error: toUserErrorMessage(domainError) }
+
+  const allDomains = (domainRows ?? []).map((r) =>
+    asDomain(r as Record<string, unknown>)
+  )
+  const selectedDomains = job.domain_id
+    ? allDomains.filter((d) => d.id === job.domain_id)
+    : job.domain_ids.length > 0
+      ? allDomains.filter((d) => job.domain_ids.includes(d.id))
+      : allDomains
+
+  const { data: itemRows } = await op.service
+    .from("rulebook_compose_items")
+    .select("rule_id")
+    .eq("job_id", jobId)
+  const pickedIds = new Set(
+    ((itemRows ?? []) as Array<{ rule_id: string }>).map((r) => r.rule_id)
+  )
+
+  const existingRules = await loadScopedRules(op.service, job.jurisdiction_id)
+  await attachLeftoverCityRules({
+    service: op.service,
+    jobId,
+    existingRules,
+    pickedIds,
+  })
+
+  const auditRes = await ensureAuditItemOptions(op.service)
+  const cityPdfNote = await attachCityPdfRules({
+    service: op.service,
+    jobId,
+    cityName: String(city.municipality_name || city.name || ""),
+    cityJurisdictionId: job.jurisdiction_id,
+    citySlug: PHASE1_CITIES.find(
+      (c) =>
+        c.name === String(city.municipality_name || city.name || "") ||
+        c.code === String(city.code ?? "")
+    )?.slug,
+    domains: selectedDomains,
+    existingRules,
+    pickedIds,
+    auditItemId: auditRes.ok ? auditRes.data[0]?.id ?? "" : "",
+  })
+
+  const serviceSlug = getRuleServiceByType(job.service_type)?.slug
+  revalidateCompose(serviceSlug)
+  return { ok: true, data: { cityPdfNote } }
+}
+
 export async function getComposeJobAction(input: {
   jobId: string
 }): Promise<ActionResult<ComposeJobView>> {
@@ -785,6 +986,10 @@ export async function getComposeJobAction(input: {
   const pendingCount = included.filter(
     (i) => i.version?.review_status === "pending_review"
   ).length
+  const cityCount = included.filter(
+    (i) => i.origin === "city_pdf" || i.rule?.scope_kind === "city"
+  ).length
+  const sharedCount = included.length - cityCount
 
   return {
     ok: true,
@@ -798,6 +1003,8 @@ export async function getComposeJobAction(input: {
       items,
       includedCount: included.length,
       pendingCount,
+      cityCount,
+      sharedCount,
     },
   }
 }

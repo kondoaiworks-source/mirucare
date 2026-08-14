@@ -7,6 +7,7 @@ import {
   addComposeManualRuleAction,
   confirmComposeJobAction,
   discardComposeJobAction,
+  fillCityPdfRulesAction,
   getComposeJobAction,
   retireComposeRuleAction,
   setComposeItemIncludedAction,
@@ -19,6 +20,7 @@ import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import type { FindingSeverity } from "@/types/database"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -204,6 +206,22 @@ export function ComposeRulebookReview({ service, initial }: Props) {
     })
   }
 
+  function fillCityPdf() {
+    startTransition(async () => {
+      const result = await fillCityPdfRulesAction({ jobId: data.job.id })
+      if (!result.ok) {
+        toast.error(result.error ?? "市の資料からルールを出せませんでした。")
+        return
+      }
+      if (result.data?.cityPdfNote) {
+        toast.message(result.data.cityPdfNote)
+      } else {
+        toast.success("市の資料を確認しました。")
+      }
+      await reload()
+    })
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -222,9 +240,36 @@ export function ComposeRulebookReview({ service, initial }: Props) {
           {data.serviceLabel}／{data.domainLabel}／{data.cityName}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          下書き {data.includedCount}件（承認待ち {data.pendingCount}件）。確定するまでチェックには使いません。
+          下書き {data.includedCount}件（国・県 {data.sharedCount}件／市固有 {data.cityCount}件。承認待ち {data.pendingCount}件）。確定するまでチェックには使いません。
         </p>
       </div>
+
+      {isDraft ? (
+        <Alert className="rounded-xl px-4 py-4">
+          <AlertTitle className="text-base font-semibold text-primary-dark">
+            {data.cityCount > 0
+              ? `市固有ルールが${data.cityCount}件あります`
+              : "市固有ルールはまだありません"}
+          </AlertTitle>
+          <AlertDescription className="space-y-3 text-base leading-relaxed">
+            <p>
+              国・県の標準観点は自動で出ます。市固有は、その市の資料から出します。資料の同期に時間がかかることがあります。
+            </p>
+            <Button
+              type="button"
+              variant={data.cityCount > 0 ? "outline" : "default"}
+              className="min-h-11"
+              disabled={pending}
+              onClick={fillCityPdf}
+            >
+              {pending ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : null}
+              {RULES_UI.fillCityPdfRules}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {grouped.map(([domainTitle, items]) => (
         <section

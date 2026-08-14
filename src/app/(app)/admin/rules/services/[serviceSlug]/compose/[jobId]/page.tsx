@@ -8,7 +8,7 @@ import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import { AlertCircle } from "lucide-react"
 
 export const dynamic = "force-dynamic"
-export const maxDuration = 60
+export const maxDuration = 120
 
 type PageProps = {
   params:

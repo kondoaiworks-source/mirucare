@@ -5,7 +5,7 @@ import { getRuleServiceBySlug } from "@/lib/rule-engine/services"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 export const dynamic = "force-dynamic"
-export const maxDuration = 60
+export const maxDuration = 120
 
 type PageProps = {
   params: Promise<{ serviceSlug: string }> | { serviceSlug: string }

@@ -23,6 +23,7 @@ export type ExistingComposeRule = {
   title: string
   domainId: string | null
   templateCode?: string | null
+  scopeKind?: "shared" | "city"
 }
 
 export function pickTemplateItemsForDomains(input: {

@@ -59,18 +59,21 @@ describe("compose-rulebook", () => {
           code: "HC_GOV_STAFFING_STANDARDS",
           title: "人員基準",
           domainId: staffing.id,
+          scopeKind: "shared",
         },
         {
           id: "city",
           code: "YOKOHAMA-1",
           title: "横浜市の常勤換算の独自様式",
           domainId: staffing.id,
+          scopeKind: "city",
         },
       ],
       staffing,
       new Set(["picked"])
     )
     expect(extra.map((r) => r.id)).toEqual(["city"])
+    expect(extra[0]?.scopeKind).toBe("city")
   })
 
   it("assigns a city proposal to the matching domain", () => {
