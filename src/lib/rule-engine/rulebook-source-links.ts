@@ -85,10 +85,15 @@ export function groupRulebookSourceLinks(
 
 export function sourceListPath(
   serviceSlug: string,
-  citySlug?: string | null
+  citySlug?: string | null,
+  opts?: { layer?: RulebookSourceLink["layer"]; needsText?: boolean }
 ): string {
   const base = `/admin/rules/services/${serviceSlug}/sources`
+  const params = new URLSearchParams()
   const slug = citySlug?.trim()
-  if (!slug) return base
-  return `${base}?city=${encodeURIComponent(slug)}`
+  if (slug) params.set("city", slug)
+  if (opts?.layer) params.set("layer", opts.layer)
+  if (opts?.needsText) params.set("needs", "text")
+  const query = params.toString()
+  return query ? `${base}?${query}` : base
 }

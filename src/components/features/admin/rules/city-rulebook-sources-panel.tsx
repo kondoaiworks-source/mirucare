@@ -14,8 +14,10 @@ import {
   MATERIAL_CATEGORIES,
   MATERIAL_CATEGORY_LABEL,
   SOURCE_URL_DIRECT_FILE_HINT,
+  SOURCE_URL_FIX_HINT,
   SOURCE_URL_MONITORING_ALERT_BODY,
   SOURCE_URL_MONITORING_ALERT_TITLE,
+  looksLikeDirectFileUrl,
   primarySourceUrl,
 } from "@/lib/rule-engine/source-urls"
 import type { RuleMaterialCategory } from "@/types/database"
@@ -41,6 +43,7 @@ import {
 import {
   CheckCircle2,
   ExternalLink,
+  FileWarning,
   Info,
   Pencil,
   Plus,
@@ -64,6 +67,8 @@ type Props = {
   sources: CityRulebookSource[]
   /** 折りたたみ内など。監視注意は先頭レイヤだけ出すときに false */
   showMonitoringAlert?: boolean
+  /** 保存・削除後に親が一覧を取り直す */
+  onChanged?: () => void
 }
 
 type EditDraft = {
@@ -85,6 +90,7 @@ export function CityRulebookSourcesPanel({
   jurisdictionId,
   sources,
   showMonitoringAlert = true,
+  onChanged,
 }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -101,6 +107,7 @@ export function CityRulebookSourcesPanel({
   const canManage = Boolean(jurisdictionId)
 
   function refresh() {
+    onChanged?.()
     router.refresh()
   }
 
@@ -164,7 +171,12 @@ export function CityRulebookSourcesPanel({
         toast.error(result.error ?? "保存に失敗しました。")
         return
       }
-      toast.success("公開情報を更新しました。")
+      toast.success(result.data?.monitorMessage ?? "リンクを更新しました。", {
+        description: result.data?.monitoringReady
+          ? "本文が取れたら、ルールブックを作るから下書きを作り直してください。"
+          : "PDFの直リンクだと本文の取得が始まります。",
+        duration: 10000,
+      })
       setEditing(null)
       refresh()
     })
@@ -203,10 +215,14 @@ export function CityRulebookSourcesPanel({
   }
 
   return (
-    <section className="space-y-3" aria-label={`${layerLabel}の根拠URL`}>
+    <section
+      id={`source-layer-${layer}`}
+      className="space-y-3"
+      aria-label={`${layerLabel}の公式URL`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-base font-semibold text-primary-dark">
-          根拠URL（{LAYER_BADGE[layer]}）
+          {layerLabel}の公式URL
         </p>
         <Button
           type="button"
@@ -257,7 +273,7 @@ export function CityRulebookSourcesPanel({
               {layerLabel}の根拠URLを追加
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              公式の公開情報PDF（直リンク）または公開情報リンク（HTML）を登録します。チェックに使うルールは「判定ルール案を生成→了承」が必要です。
+              公式の公開情報PDF（直リンク）または公開情報リンク（HTML）を登録します。本文が無いときは、人がリンク先を開いて直します。直したあとは「ルールブックを作る」から下書きを作り直してください。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -356,29 +372,43 @@ export function CityRulebookSourcesPanel({
 
       {sources.length === 0 && !showAdd ? (
         <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-4 text-base text-muted-foreground">
-          まだ根拠URLがありません。「根拠URLを追加する」から入れてください。
+          まだ公式URLがありません。「根拠URLを追加する」から入れてください。
         </p>
       ) : (
         <ul className="space-y-2">
           {sources.map((s) => {
             const url = primarySourceUrl(s)
             const isEditing = editing?.id === s.id
+            const hasText = s.hasText === true
+            const looksPdf = looksLikeDirectFileUrl(url, s.file_type)
+            const needsLinkFix = Boolean(url) && !hasText
             const needsAttention =
               s.human_review_status === "needs_review" ||
               s.human_review_status === "outdated" ||
-              s.human_review_status === "unverified" ||
-              !url
+              !url ||
+              needsLinkFix
             return (
               <li key={s.id}>
                 <Card
                   className={
                     needsAttention
-                      ? "rounded-xl border-warning/40 shadow-subtle"
+                      ? "rounded-xl border-accent/40 shadow-subtle"
                       : "rounded-xl shadow-subtle"
                   }
                 >
                   {isEditing && editing ? (
                     <CardContent className="space-y-4 py-4">
+                      {needsLinkFix ? (
+                        <Alert className="rounded-xl border-accent/40 bg-accent/5">
+                          <FileWarning className="text-accent" aria-hidden />
+                          <AlertTitle className="text-base text-primary-dark">
+                            本文がありません。リンク先を確認してください
+                          </AlertTitle>
+                          <AlertDescription className="text-base leading-relaxed">
+                            {SOURCE_URL_FIX_HINT}
+                          </AlertDescription>
+                        </Alert>
+                      ) : null}
                       <div className="space-y-2">
                         <Label htmlFor={`edit-title-${s.id}`}>資料名</Label>
                         <Input
@@ -494,11 +524,23 @@ export function CityRulebookSourcesPanel({
                       <Badge variant="outline" className="rounded-md">
                         {LAYER_BADGE[layer]}
                       </Badge>
-                      {needsAttention ? (
-                        <Badge variant="destructive" className="rounded-md">
-                          {!url ? "URLなし／要修正" : "要確認"}
+                      {hasText ? (
+                        <Badge variant="outline" className="rounded-md">
+                          本文あり
                         </Badge>
-                      ) : null}
+                      ) : (
+                        <Badge
+                          variant="destructive"
+                          className="inline-flex items-center gap-1 rounded-md"
+                        >
+                          <FileWarning className="size-3.5" aria-hidden />
+                          {!url
+                            ? "URLなし"
+                            : looksPdf
+                              ? "本文なし"
+                              : "一覧ページの可能性"}
+                        </Badge>
+                      )}
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-primary-dark">
                           {s.title}
@@ -537,14 +579,14 @@ export function CityRulebookSourcesPanel({
                         )}
                         <Button
                           type="button"
-                          variant={needsAttention ? "default" : "outline"}
+                          variant={needsLinkFix || !url ? "default" : "outline"}
                           size="sm"
                           className="min-h-11"
                           disabled={pending}
                           onClick={() => startEdit(s)}
                         >
                           <Pencil className="size-4" aria-hidden />
-                          修正する
+                          {needsLinkFix || !url ? "リンクを直す" : "修正する"}
                         </Button>
                         {s.human_review_status !== "verified" ? (
                           <Button

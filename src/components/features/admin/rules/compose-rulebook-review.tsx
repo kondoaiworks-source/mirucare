@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, useTransition, type FormEvent } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "@/components/ui/sonner"
 import {
@@ -18,7 +19,9 @@ import { servicePath } from "@/lib/rule-engine/services"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import type { FindingSeverity } from "@/types/database"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
+import { sourceListPath } from "@/lib/rule-engine/rulebook-source-links"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2 } from "lucide-react"
+import { FileWarning, Loader2 } from "lucide-react"
 
 type Props = {
   service: RuleServiceDef
@@ -238,6 +241,28 @@ export function ComposeRulebookReview({ service, initial }: Props) {
           >
             公式資料からの抽出
           </h2>
+          {data.extractionNotes.some((note) => note.status === "no_text") ? (
+            <Alert className="rounded-xl border-accent/40 bg-accent/5">
+              <FileWarning className="text-accent" aria-hidden />
+              <AlertTitle className="text-base text-primary-dark">
+                本文が無い資料があります
+              </AlertTitle>
+              <AlertDescription className="space-y-3 text-base leading-relaxed">
+                <p>
+                  AIではなく、人がリンク先を確認します。一覧ページならPDFの直リンクに直してください。
+                </p>
+                <Button asChild className="min-h-11">
+                  <Link
+                    href={sourceListPath(service.slug, data.citySlug, {
+                      needsText: true,
+                    })}
+                  >
+                    資料先でリンクを確認する
+                  </Link>
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <ul className="space-y-2">
             {data.extractionNotes.map((note) => (
               <li key={note.layer} className="text-base leading-relaxed">
@@ -249,6 +274,22 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                   （資料 {note.sourceCount}件／本文 {note.textCount}件）{" "}
                 </span>
                 <span>{note.message}</span>
+                {note.status === "no_text" || note.status === "no_sources" ? (
+                  <div className="mt-2">
+                    <Button asChild variant="outline" className="min-h-11">
+                      <Link
+                        href={sourceListPath(service.slug, data.citySlug, {
+                          layer: note.layer,
+                          needsText: note.status === "no_text",
+                        })}
+                      >
+                        {note.status === "no_sources"
+                          ? "資料先でURLを追加する"
+                          : "資料先でリンクを直す"}
+                      </Link>
+                    </Button>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

@@ -8,6 +8,7 @@ import {
   pickDomainForCityProposal,
   pickTemplateItemsForDomains,
   summarizeExtractionNotes,
+  COMPOSE_NO_TEXT_HINT,
 } from "@/lib/rule-engine/compose-rulebook"
 import { SYSTEM_DOMAIN_SEEDS } from "@/lib/rule-engine/domains"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
@@ -160,5 +161,10 @@ describe("compose-rulebook", () => {
         },
       ])
     ).toBe("公式資料から国 5件を載せました。")
+  })
+
+  it("tells operators to fix links when there is no source text", () => {
+    expect(COMPOSE_NO_TEXT_HINT).toContain("資料先")
+    expect(COMPOSE_NO_TEXT_HINT).toContain("PDF")
   })
 })

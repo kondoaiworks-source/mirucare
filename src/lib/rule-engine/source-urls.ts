@@ -76,3 +76,38 @@ export const SOURCE_URL_MONITORING_ALERT_BODY =
 /** 直接ファイルURL欄の短い補足 */
 export const SOURCE_URL_DIRECT_FILE_HINT =
   "公開情報PDFの直リンクです。更新の自動監視に必要です。公開情報リンク（一覧ページ）だけでは監視が始まらないことがあります。"
+
+/** 本文が無いときの、人によるリンク確認 */
+export const SOURCE_URL_FIX_HINT =
+  "リンク先を開いて確認してください。規則・様式のPDF直リンクならそのままでよい。お知らせや一覧のHTMLなら、PDFの直URLに直してください。ページ移転や404なら新しい公式ページに更新してください。"
+
+export function looksLikeDirectFileUrl(
+  url: string | null | undefined,
+  fileType?: string | null
+): boolean {
+  if (fileType === "pdf") return true
+  const lower = url?.trim().toLowerCase() ?? ""
+  if (!lower) return false
+  return lower.includes(".pdf") || lower.includes("application/pdf")
+}
+
+/** 台帳に読める本文があるか（URL一致または紐付け） */
+export function ruleSourceHasReadableText(input: {
+  knowledgeDocumentId?: string | null
+  url?: string | null
+  documents: Array<{
+    id: string
+    source_url?: string | null
+    hasTextSnapshot: boolean
+  }>
+}): boolean {
+  if (input.knowledgeDocumentId) {
+    const byId = input.documents.find((d) => d.id === input.knowledgeDocumentId)
+    if (byId?.hasTextSnapshot) return true
+  }
+  const url = input.url?.trim()
+  if (!url) return false
+  return input.documents.some(
+    (d) => d.hasTextSnapshot && d.source_url?.trim() === url
+  )
+}

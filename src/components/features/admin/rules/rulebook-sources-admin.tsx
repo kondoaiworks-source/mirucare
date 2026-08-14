@@ -1,14 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { getCityRulebookAction, type CityRulebookData } from "@/app/actions/city-rulebook"
 import { listComposeOptionsAction } from "@/app/actions/compose-rulebook"
+import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
 import { servicePath } from "@/lib/rule-engine/services"
-import {
-  collectRulebookSourceLinks,
-  groupRulebookSourceLinks,
-} from "@/lib/rule-engine/rulebook-source-links"
+import { SOURCE_URL_FIX_HINT } from "@/lib/rule-engine/source-urls"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
@@ -21,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { AlertTriangle, ExternalLink } from "lucide-react"
+import { AlertTriangle, FileWarning } from "lucide-react"
 
 type Props = {
   service: RuleServiceDef
@@ -34,6 +32,8 @@ type MunicipalityOption = {
   slug: string | null
 }
 
+const LAYERS = ["national", "prefecture", "city"] as const
+
 export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -45,6 +45,23 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<CityRulebookData | null>(null)
+  const [onlyNeedsText, setOnlyNeedsText] = useState(
+    searchParams.get("needs") === "text"
+  )
+
+  const loadCity = useCallback(async (slug: string, silent = false) => {
+    if (!silent) setLoading(true)
+    setError(null)
+    const result = await getCityRulebookAction(slug)
+    if (!result.ok || !result.data) {
+      setError(result.error ?? "資料先を開けませんでした。")
+      setData(null)
+      setLoading(false)
+      return
+    }
+    setData(result.data)
+    setLoading(false)
+  }, [])
 
   useEffect(() => {
     void (async () => {
@@ -67,23 +84,21 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
     if (!citySlug) return
     let cancelled = false
     void (async () => {
-      setLoading(true)
-      setError(null)
-      const result = await getCityRulebookAction(citySlug)
+      await loadCity(citySlug)
       if (cancelled) return
-      if (!result.ok || !result.data) {
-        setError(result.error ?? "資料先を開けませんでした。")
-        setData(null)
-        setLoading(false)
-        return
-      }
-      setData(result.data)
-      setLoading(false)
     })()
     return () => {
       cancelled = true
     }
-  }, [citySlug])
+  }, [citySlug, loadCity])
+
+  useEffect(() => {
+    const layer = searchParams.get("layer")
+    if (!layer || !LAYERS.includes(layer as (typeof LAYERS)[number])) return
+    const el = document.getElementById(`source-layer-${layer}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [searchParams, data, loading])
 
   function syncCityInUrl(nextSlug: string) {
     setCitySlug(nextSlug)
@@ -94,14 +109,10 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
     router.replace(query ? `${pathname}?${query}` : pathname)
   }
 
-  const sourceLinks = useMemo(
-    () => (data ? collectRulebookSourceLinks(data) : []),
-    [data]
-  )
-  const sourcesByLayer = useMemo(
-    () => (data ? groupRulebookSourceLinks(data, sourceLinks) : []),
-    [data, sourceLinks]
-  )
+  const missingTextCount = useMemo(() => {
+    if (!data) return 0
+    return data.sources.filter((s) => !s.hasText).length
+  }, [data])
 
   return (
     <div className="space-y-6">
@@ -117,7 +128,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
           {RULES_UI.sourceList}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          ルールブックを作るときに確認する、国・県・市の公式資料です。読むだけです。
+          ルールブックを作るときに読む、国・県・市の公式資料です。本文が無いときは、人がリンク先を確認して直します。
         </p>
       </div>
 
@@ -139,6 +150,17 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
             </SelectContent>
           </Select>
         </div>
+        {data && missingTextCount > 0 ? (
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-base">
+            <input
+              type="checkbox"
+              className="size-5 shrink-0 accent-primary"
+              checked={onlyNeedsText}
+              onChange={(e) => setOnlyNeedsText(e.target.checked)}
+            />
+            本文がないものだけ見る（{missingTextCount}件）
+          </label>
+        ) : null}
       </section>
 
       {error ? (
@@ -152,43 +174,62 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
       {loading ? (
         <p className="text-base text-muted-foreground">読み込み中です。</p>
       ) : data ? (
-        <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
-          {sourceLinks.length === 0 ? (
-            <p className="text-base text-muted-foreground">
-              この自治体の資料先はまだありません。
-            </p>
+        <div className="space-y-6">
+          {missingTextCount > 0 ? (
+            <Alert className="rounded-xl border-accent/40 bg-accent/5">
+              <FileWarning className="text-accent" aria-hidden />
+              <AlertTitle className="text-base text-primary-dark">
+                本文が無い資料が {missingTextCount}件あります
+              </AlertTitle>
+              <AlertDescription className="text-base leading-relaxed">
+                {SOURCE_URL_FIX_HINT}{" "}
+                直したあと、ルールブックを作るから下書きを作り直してください。
+              </AlertDescription>
+            </Alert>
           ) : (
-            <div className="space-y-6">
-              {sourcesByLayer.map((group) =>
-                group.items.length === 0 ? null : (
-                  <div key={group.layer} className="space-y-2">
-                    <h2 className="text-lg font-semibold text-primary-dark">
-                      {group.label}
-                    </h2>
-                    <ul className="space-y-2">
-                      {group.items.map((item) => (
-                        <li key={item.key}>
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex min-h-11 items-center gap-2 text-base text-primary underline-offset-4 hover:underline"
-                          >
-                            {item.title}
-                            <ExternalLink
-                              className="size-4 shrink-0"
-                              aria-hidden
-                            />
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )
-              )}
-            </div>
+            <p className="text-base leading-relaxed text-muted-foreground">
+              この自治体の資料は、本文がある状態です。原文を開いて内容を確認できます。
+            </p>
           )}
-        </section>
+
+          {LAYERS.map((layer, index) => {
+            const layerLabel =
+              layer === "national"
+                ? "国"
+                : layer === "prefecture"
+                  ? data.city.prefectureName
+                  : data.city.name
+            const layerSources = data.sources.filter((s) => s.layer === layer)
+            const visible = onlyNeedsText
+              ? layerSources.filter((s) => !s.hasText)
+              : layerSources
+            const textCount = layerSources.filter((s) => s.hasText).length
+            return (
+              <section
+                key={layer}
+                className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
+              >
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  資料 {layerSources.length}件／本文 {textCount}件
+                </p>
+                {onlyNeedsText && visible.length === 0 ? (
+                  <p className="text-base text-muted-foreground">
+                    {layerLabel}に、本文が無い資料はありません。
+                  </p>
+                ) : (
+                  <CityRulebookSourcesPanel
+                    layer={layer}
+                    layerLabel={layerLabel}
+                    jurisdictionId={data.layerJurisdictions[layer]?.id ?? null}
+                    sources={visible}
+                    showMonitoringAlert={index === 0 && !onlyNeedsText}
+                    onChanged={() => void loadCity(citySlug, true)}
+                  />
+                )}
+              </section>
+            )
+          })}
+        </div>
       ) : null}
     </div>
   )

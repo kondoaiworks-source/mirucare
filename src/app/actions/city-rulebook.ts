@@ -22,6 +22,10 @@ import {
   buildCityRulebookSetupReadiness,
   type CityRulebookSetupReadiness,
 } from "@/lib/rule-engine/city-rulebook-setup-readiness"
+import {
+  primarySourceUrl,
+  ruleSourceHasReadableText,
+} from "@/lib/rule-engine/source-urls"
 
 export type ActionResult<T = undefined> = {
   ok: boolean
@@ -32,6 +36,8 @@ export type ActionResult<T = undefined> = {
 export type CityRulebookSource = RuleSource & {
   layer: "national" | "prefecture" | "city"
   jurisdictionName: string
+  /** AIが読める本文スナップショットがあるか */
+  hasText: boolean
 }
 
 export type CityRulebookDocument = KnowledgeDocument & {
@@ -271,6 +277,7 @@ export async function getCityRulebookAction(
       ...(row as RuleSource),
       layer,
       jurisdictionName: j?.name ?? city.name,
+      hasText: false,
     }
   })
 
@@ -285,18 +292,54 @@ export async function getCityRulebookAction(
   if (documents.length > 0) {
     const { data: snapRows } = await op.service
       .from("knowledge_document_snapshots")
-      .select("knowledge_document_id")
+      .select("knowledge_document_id, text_bytes")
       .in(
         "knowledge_document_id",
         documents.map((d) => d.id)
       )
       .limit(500)
-    const withSnap = new Set(
-      (snapRows ?? []).map((r) => r.knowledge_document_id as string)
+    const withText = new Set(
+      (snapRows ?? [])
+        .filter((r) => Number(r.text_bytes) > 0)
+        .map((r) => r.knowledge_document_id as string)
     )
     for (const d of documents) {
-      d.hasTextSnapshot = withSnap.has(d.id)
+      d.hasTextSnapshot = withText.has(d.id)
     }
+  }
+
+  const idsWithText = new Set(
+    documents.filter((d) => d.hasTextSnapshot).map((d) => d.id)
+  )
+  const extraLinkedIds = [
+    ...new Set(
+      sources
+        .map((s) => s.knowledge_document_id)
+        .filter((id): id is string => Boolean(id) && !idsWithText.has(id))
+    ),
+  ]
+  if (extraLinkedIds.length > 0) {
+    const { data: extraSnaps } = await op.service
+      .from("knowledge_document_snapshots")
+      .select("knowledge_document_id, text_bytes")
+      .in("knowledge_document_id", extraLinkedIds)
+      .limit(500)
+    for (const row of extraSnaps ?? []) {
+      if (Number(row.text_bytes) > 0) {
+        idsWithText.add(row.knowledge_document_id as string)
+      }
+    }
+  }
+
+  for (const source of sources) {
+    const linkedId = source.knowledge_document_id
+    source.hasText =
+      Boolean(linkedId && idsWithText.has(linkedId)) ||
+      ruleSourceHasReadableText({
+        knowledgeDocumentId: linkedId,
+        url: primarySourceUrl(source),
+        documents,
+      })
   }
 
   const relevantDocIds = new Set(documents.map((d) => d.id))

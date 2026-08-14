@@ -19,6 +19,7 @@ import {
   isThinComposeGuidance,
   parseExtractionNotes,
   summarizeExtractionNotes,
+  COMPOSE_NO_TEXT_HINT,
   type ExistingComposeRule,
   type ComposeExtractionNote,
 } from "@/lib/rule-engine/compose-rulebook"
@@ -345,7 +346,7 @@ function noteForPack(input: {
   const messages: Record<ComposeExtractionNote["status"], string> = {
     extracted: `${input.label}の公式資料から ${input.ruleCount}件を載せました。`,
     no_sources: `${input.label}の資料はまだありません。`,
-    no_text: `${input.label}の資料本文がまだありません。同期後に下書きを作り直してください。`,
+    no_text: `${input.label}の資料本文がまだありません。${COMPOSE_NO_TEXT_HINT}`,
     ai_unavailable: `${input.label}の資料はありますが、AI設定がないため観点を出せませんでした。`,
     ai_failed: `${input.label}の資料は確認しましたが、観点を自動で出せませんでした。`,
     empty: `${input.label}の資料は確認しましたが、新たに出す観点はありませんでした。`,

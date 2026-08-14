@@ -51,6 +51,10 @@ export type ComposeExtractionNote = {
   message: string
 }
 
+/** 本文0件のとき、了承画面と抽出メモで使う */
+export const COMPOSE_NO_TEXT_HINT =
+  "資料先でリンクを開き、PDFの直リンクに直してから下書きを作り直してください。"
+
 export function pickTemplateItemsForDomains(input: {
   items: readonly HomeVisitAuditTemplateItem[]
   domains: Array<RuleDomainMatchInput & { id: string }>

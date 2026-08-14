@@ -60,5 +60,13 @@ describe("rulebook-source-links", () => {
     expect(sourceListPath("homecare", "yokohama")).toBe(
       "/admin/rules/services/homecare/sources?city=yokohama"
     )
+    expect(
+      sourceListPath("homecare", "yokohama", {
+        layer: "prefecture",
+        needsText: true,
+      })
+    ).toBe(
+      "/admin/rules/services/homecare/sources?city=yokohama&layer=prefecture&needs=text"
+    )
   })
 })
