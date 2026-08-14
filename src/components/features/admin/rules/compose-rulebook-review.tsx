@@ -42,6 +42,7 @@ const ORIGIN_LABEL: Record<ComposeJobItemView["origin"], string> = {
   existing: "既存",
   template: "自動",
   manual: "追加",
+  city_pdf: "市資料",
 }
 
 const SCOPE_LABEL: Record<string, string> = {

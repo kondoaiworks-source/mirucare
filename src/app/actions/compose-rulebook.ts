@@ -14,13 +14,20 @@ import {
   defaultComposeSeverity,
   docTypesForTemplateCategory,
   templateCodeFromCheckLogic,
+  pickDomainForCityProposal,
+  isDuplicateCityProposalTitle,
   type ExistingComposeRule,
 } from "@/lib/rule-engine/compose-rulebook"
 import { resolveSelectedDomains } from "@/lib/rule-engine/domains"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
 import { getPhase1CityBySlug, PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
 import { getRuleServiceBySlug } from "@/lib/rule-engine/services"
-import { defaultEffectiveFrom } from "@/lib/knowledge/propose-rules"
+import {
+  defaultEffectiveFrom,
+  proposeRulesFromSourceText,
+} from "@/lib/knowledge/propose-rules"
+import { isGeminiConfigured } from "@/lib/knowledge/gemini"
+import { getLatestSnapshot, readSnapshotText } from "@/lib/knowledge/snapshots"
 import type {
   AiCheckRule,
   AiCheckRuleVersion,
@@ -233,11 +240,193 @@ async function loadScopedRules(
   return rows
 }
 
+const MAX_CITY_PDFS = 3
+
+async function attachCityPdfRules(input: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  service: any
+  jobId: string
+  cityName: string
+  cityJurisdictionId: string
+  citySlug?: string
+  domains: RuleDomain[]
+  existingRules: ExistingComposeRule[]
+  pickedIds: Set<string>
+  auditItemId: string
+}): Promise<string | null> {
+  const cityName = input.cityName.trim()
+  if (!cityName) return null
+
+  const { data: sourceRows } = await input.service
+    .from("rule_sources")
+    .select("knowledge_document_id")
+    .eq("jurisdiction_id", input.cityJurisdictionId)
+    .eq("status", "active")
+    .not("knowledge_document_id", "is", null)
+    .limit(20)
+
+  const linkedIds = new Set(
+    ((sourceRows ?? []) as Array<{ knowledge_document_id: string | null }>)
+      .map((r) => r.knowledge_document_id)
+      .filter((id): id is string => Boolean(id))
+  )
+
+  const { data: docs } = await input.service
+    .from("knowledge_documents")
+    .select("id, title, region_name, jurisdiction_level, source_url, status")
+    .eq("status", "active")
+    .limit(300)
+
+  const cityDocs = ((docs ?? []) as Array<Record<string, unknown>>).filter(
+    (doc) => {
+      const id = String(doc.id)
+      if (linkedIds.has(id)) return true
+      const level = String(doc.jurisdiction_level ?? "")
+      const region = String(doc.region_name ?? "")
+      const isCityLevel = level === "市区町村" || level === "municipality"
+      return (
+        isCityLevel && (region === cityName || region.includes(cityName))
+      )
+    }
+  )
+
+  if (cityDocs.length === 0) {
+    return `${cityName}の資料はまだありません。標準の観点のみ出しています。`
+  }
+
+  const chunks: string[] = []
+  const titles: string[] = []
+  for (const doc of cityDocs.slice(0, MAX_CITY_PDFS)) {
+    try {
+      const snapshot = await getLatestSnapshot(input.service, String(doc.id))
+      if (!snapshot) continue
+      const text = (await readSnapshotText(input.service, snapshot)).trim()
+      if (!text) continue
+      titles.push(String(doc.title ?? "市資料"))
+      chunks.push(`===== 資料: ${doc.title} =====\n${text.slice(0, 25000)}`)
+    } catch {
+      continue
+    }
+  }
+
+  if (chunks.length === 0) {
+    return `${cityName}の資料本文がまだありません。同期後に下書きを作り直すと、市固有ルールが出ます。`
+  }
+
+  if (!isGeminiConfigured()) {
+    return `${cityName}の資料は見つかりましたが、AI設定がないため市固有ルールは出せませんでした。`
+  }
+
+  const auditRes = await ensureAuditItemOptions(input.service)
+  if (!auditRes.ok || auditRes.data.length === 0) {
+    return `${cityName}の資料は見つかりましたが、市固有ルールを出せませんでした。`
+  }
+
+  const proposed = await proposeRulesFromSourceText({
+    documentTitle: titles.join("／"),
+    regionName: cityName,
+    jurisdictionLevel: "市区町村",
+    sourceText: chunks.join("\n\n"),
+    auditItems: auditRes.data,
+    cityUnique: true,
+    skipRetry: true,
+  })
+
+  if (!proposed.ok) {
+    console.error("[compose] city_pdf_propose_failed", {
+      error: proposed.error.slice(0, 160),
+    })
+    return `${cityName}の資料は確認しましたが、市固有ルールを自動で出せませんでした。標準の観点のみです。`
+  }
+
+  const existingTitles = [
+    ...input.existingRules.map((r) => r.title),
+  ]
+  const domainInputs = input.domains.map(domainMatchInput)
+  const effectiveFrom = defaultEffectiveFrom()
+  let created = 0
+
+  for (const proposal of proposed.proposals) {
+    if (isDuplicateCityProposalTitle(proposal.title, existingTitles)) continue
+    const domainId = pickDomainForCityProposal(proposal, domainInputs)
+    const code = await allocateAiCheckRuleCode(input.service, {
+      scopeKind: "city",
+      citySlug: input.citySlug,
+    })
+
+    const { data: rule, error: ruleError } = await input.service
+      .from("ai_check_rules")
+      .insert({
+        audit_item_id: proposal.auditItemId || input.auditItemId,
+        code,
+        title: proposal.title,
+        target_doc_types: proposal.targetDocTypes,
+        status: "active",
+        scope_kind: "city",
+        jurisdiction_id: input.cityJurisdictionId,
+        domain_id: domainId,
+      })
+      .select("id")
+      .single()
+    if (ruleError || !rule) continue
+
+    const { error: verError } = await input.service
+      .from("ai_check_rule_versions")
+      .insert({
+        rule_id: rule.id,
+        version_no: 1,
+        check_logic: {
+          type: "city_pdf",
+          notes: proposal.guidanceText,
+          evidence: {
+            sourceTitle: titles.join("／"),
+            evidenceSummary: proposal.evidenceSummary,
+            evidenceQuotes: proposal.evidenceQuotes,
+            proposedBy: "gemini",
+            regionName: cityName,
+            jurisdictionLevel: "市区町村",
+          },
+        },
+        guidance_text: proposal.guidanceText,
+        severity: proposal.severity,
+        effective_from: effectiveFrom,
+        review_status: "pending_review",
+        change_summary: `市資料から下書き（${titles.join("／")}）`,
+      })
+    if (verError) continue
+
+    const itemPayload = {
+      job_id: input.jobId,
+      rule_id: rule.id,
+      domain_id: domainId,
+      included: true,
+    }
+    const { error: itemError } = await input.service
+      .from("rulebook_compose_items")
+      .insert({ ...itemPayload, origin: "city_pdf" })
+    if (itemError) {
+      const { error: fallbackError } = await input.service
+        .from("rulebook_compose_items")
+        .insert({ ...itemPayload, origin: "existing" })
+      if (fallbackError) continue
+    }
+
+    input.pickedIds.add(rule.id as string)
+    existingTitles.push(proposal.title)
+    created += 1
+  }
+
+  if (created === 0) {
+    return `${cityName}の資料を確認しましたが、新たに出す市固有ルールはありませんでした。`
+  }
+  return `${cityName}の資料から市固有ルールを${created}件載せました。`
+}
+
 export async function startComposeRulebookAction(input: {
   serviceSlug: string
   domainValue: string
   jurisdictionId: string
-}): Promise<ActionResult<{ jobId: string }>> {
+}): Promise<ActionResult<{ jobId: string; cityPdfNote: string | null }>> {
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
 
@@ -295,7 +484,7 @@ export async function startComposeRulebookAction(input: {
       .select("id", { count: "exact", head: true })
       .eq("job_id", jobId)
     if ((count ?? 0) > 0) {
-      return { ok: true, data: { jobId } }
+      return { ok: true, data: { jobId, cityPdfNote: null } }
     }
   }
 
@@ -453,8 +642,24 @@ export async function startComposeRulebookAction(input: {
     }
   }
 
+  const cityPdfNote = await attachCityPdfRules({
+    service: op.service,
+    jobId: job.id,
+    cityName: String(city.municipality_name || city.name || ""),
+    cityJurisdictionId: jurisdictionId,
+    citySlug: PHASE1_CITIES.find(
+      (c) =>
+        c.name === String(city.municipality_name || city.name || "") ||
+        c.code === String(city.code ?? "")
+    )?.slug,
+    domains: selected.domains,
+    existingRules,
+    pickedIds,
+    auditItemId,
+  })
+
   revalidateCompose(input.serviceSlug)
-  return { ok: true, data: { jobId: job.id as string } }
+  return { ok: true, data: { jobId: job.id as string, cityPdfNote } }
 }
 
 export async function getComposeJobAction(input: {
@@ -624,7 +829,10 @@ export async function setComposeItemIncludedAction(input: {
     return { ok: false, error: "確定済みの下書きは変更できません。" }
   }
 
-  if (!input.included && item.origin === "template") {
+  if (
+    !input.included &&
+    (item.origin === "template" || item.origin === "city_pdf")
+  ) {
     const { data: version } = await op.service
       .from("ai_check_rule_versions")
       .select("id, review_status")
@@ -851,7 +1059,13 @@ export async function discardComposeJobAction(input: {
     .eq("job_id", jobId)
 
   for (const item of items ?? []) {
-    if (item.origin !== "template" && item.origin !== "manual") continue
+    if (
+      item.origin !== "template" &&
+      item.origin !== "manual" &&
+      item.origin !== "city_pdf"
+    ) {
+      continue
+    }
     const { data: version } = await op.service
       .from("ai_check_rule_versions")
       .select("id")

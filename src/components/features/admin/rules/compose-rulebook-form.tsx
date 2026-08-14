@@ -69,6 +69,9 @@ export function ComposeRulebookForm({ service }: Props) {
         toast.error(result.error ?? "下書きを作れませんでした。")
         return
       }
+      if (result.data.cityPdfNote) {
+        toast.message(result.data.cityPdfNote)
+      }
       router.push(
         servicePath(service.slug, "compose", result.data.jobId)
       )

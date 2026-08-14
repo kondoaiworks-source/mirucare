@@ -172,11 +172,20 @@ function buildProposeFromSourcePrompt(input: {
   jurisdictionLevel: string | null
   sourceText: string
   auditItems: AuditItemOption[]
+  cityUnique?: boolean
 }): string {
   const auditList = input.auditItems
     .slice(0, 40)
     .map((a) => `- ${a.code}: ${a.title}`)
     .join("\n")
+
+  const cityPolicy = input.cityUnique
+    ? `
+この資料は市区町村の独自資料です。
+- 国・県の共通基準（人員配置の一般論、記録の一般論など）は出さない
+- この市だけに当てはまる様式・届出・独自加算・独自の記載方法・独自の期限だけを提案する
+- 該当がなければ proposals は空配列`
+    : ""
 
   return `あなたは介護保険の実地指導（運営指導）向けWチェック支援のルール設計者です。
 根拠資料の本文から、書類チェック用の「判定ルール案」をJSONのみで提案してください。
@@ -187,6 +196,7 @@ function buildProposeFromSourcePrompt(input: {
 - 記載方法・記載漏れ・同意／署名／期限／加算・整合性など、実務で見落としやすい観点を優先
 - 提案は最大${MAX_PROPOSALS}件
 - 根拠（本文のどの趣旨か）を必ず書く。引用は本文に実在しそうな短い句に限る
+${cityPolicy}
 
 対象資料: ${input.documentTitle}
 管轄: ${input.jurisdictionLevel ?? "不明"} / ${input.regionName ?? "—"}
@@ -302,6 +312,8 @@ export async function proposeRulesFromSourceText(input: {
   jurisdictionLevel: string | null
   sourceText: string
   auditItems: AuditItemOption[]
+  cityUnique?: boolean
+  skipRetry?: boolean
 }): Promise<ProposeRulesResult> {
   if (!input.sourceText.trim()) {
     return { ok: false, error: "提案のもとになる本文がありません。" }
@@ -314,7 +326,9 @@ export async function proposeRulesFromSourceText(input: {
     }
   }
 
-  const gemini = await generateGeminiJson(buildProposeFromSourcePrompt(input))
+  const gemini = await generateGeminiJson(buildProposeFromSourcePrompt(input), {
+    retry: input.skipRetry ? false : undefined,
+  })
   if (!gemini.ok) {
     return { ok: false, error: gemini.error }
   }

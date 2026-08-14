@@ -10,7 +10,7 @@ import {
 } from "@/lib/rule-engine/domains"
 import type { HomeVisitAuditTemplateItem } from "@/lib/rule-engine/home-visit-audit-template"
 
-export type ComposeOrigin = "existing" | "template" | "manual"
+export type ComposeOrigin = "existing" | "template" | "manual" | "city_pdf"
 
 export type ComposeTemplatePick = {
   domainId: string
@@ -89,6 +89,29 @@ export function defaultComposeSeverity(
   item: HomeVisitAuditTemplateItem
 ): FindingSeverity {
   return item.riskLevel
+}
+
+export function pickDomainForCityProposal(
+  proposal: { title: string; guidanceText: string; auditItemTitle?: string },
+  domains: Array<RuleDomainMatchInput & { id: string }>
+): string | null {
+  const hay = {
+    code: "",
+    title: `${proposal.title} ${proposal.guidanceText} ${proposal.auditItemTitle ?? ""}`,
+  }
+  for (const domain of domains) {
+    if (ruleMatchesDomain(hay, domain)) return domain.id
+  }
+  return domains[0]?.id ?? null
+}
+
+export function isDuplicateCityProposalTitle(
+  proposalTitle: string,
+  existingTitles: string[]
+): boolean {
+  const needle = proposalTitle.trim()
+  if (!needle) return true
+  return existingTitles.some((t) => t.trim() === needle)
 }
 
 export function templateCodeFromCheckLogic(

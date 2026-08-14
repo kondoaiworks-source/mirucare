@@ -547,7 +547,11 @@ export type RuleDomain = {
 }
 
 export type RulebookComposeJobStatus = "draft" | "confirmed" | "discarded"
-export type RulebookComposeOrigin = "existing" | "template" | "manual"
+export type RulebookComposeOrigin =
+  | "existing"
+  | "template"
+  | "manual"
+  | "city_pdf"
 
 export type RulebookComposeJob = {
   id: string

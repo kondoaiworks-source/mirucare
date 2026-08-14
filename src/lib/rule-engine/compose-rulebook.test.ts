@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   extraExistingRulesForDomain,
   findExistingRuleForTemplate,
+  isDuplicateCityProposalTitle,
+  pickDomainForCityProposal,
   pickTemplateItemsForDomains,
 } from "@/lib/rule-engine/compose-rulebook"
 import { SYSTEM_DOMAIN_SEEDS } from "@/lib/rule-engine/domains"
@@ -69,5 +71,38 @@ describe("compose-rulebook", () => {
       new Set(["picked"])
     )
     expect(extra.map((r) => r.id)).toEqual(["city"])
+  })
+
+  it("assigns a city proposal to the matching domain", () => {
+    const staffing = domains[0]
+    const billing = domains.find((d) => d.slug === "billing")
+    expect(staffing).toBeTruthy()
+    expect(
+      pickDomainForCityProposal(
+        {
+          title: "横浜市の常勤換算の独自様式",
+          guidanceText: "常勤換算の人数をご確認ください。",
+        },
+        domains
+      )
+    ).toBe(staffing.id)
+    expect(
+      pickDomainForCityProposal(
+        {
+          title: "過誤申立の独自期限",
+          guidanceText: "請求の過誤申立期限をご確認ください。",
+        },
+        domains
+      )
+    ).toBe(billing?.id)
+  })
+
+  it("skips duplicate city proposal titles", () => {
+    expect(
+      isDuplicateCityProposalTitle("横浜市の独自様式", ["横浜市の独自様式"])
+    ).toBe(true)
+    expect(
+      isDuplicateCityProposalTitle("横浜市の独自様式", ["別ルール"])
+    ).toBe(false)
   })
 })

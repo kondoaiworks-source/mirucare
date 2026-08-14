@@ -79,7 +79,8 @@ async function callGeminiOnce(
  * 1回失敗 → 1分待機 → 1回リトライ。それでも失敗なら ok:false。
  */
 export async function generateGeminiJson(
-  prompt: string
+  prompt: string,
+  opts?: { retry?: boolean }
 ): Promise<GeminiGenerateResult> {
   const apiKey = process.env.GEMINI_API_KEY?.trim()
   const model = getGeminiModel()
@@ -94,6 +95,8 @@ export async function generateGeminiJson(
     model,
     error: first.error.slice(0, 160),
   })
+
+  if (opts?.retry === false) return first
 
   await new Promise((r) => setTimeout(r, RETRY_WAIT_MS))
 
