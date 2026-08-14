@@ -8,7 +8,7 @@ import { SYSTEM_DOMAIN_SEEDS } from "@/lib/rule-engine/domains"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
 
 describe("compose-rulebook", () => {
-  const domains = SYSTEM_DOMAIN_SEEDS.map((seed, i) => ({
+  const domains = SYSTEM_DOMAIN_SEEDS.map((seed) => ({
     id: `id-${seed.slug}`,
     ...seed,
   }))
