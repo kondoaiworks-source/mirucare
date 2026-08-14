@@ -1,4 +1,4 @@
-import { Building2, Landmark } from "lucide-react"
+import { BookOpen, Building2, Landmark } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { AdminEqualCard } from "@/components/features/admin/rules/admin-equal-card"
 import { Badge } from "@/components/ui/badge"
@@ -11,11 +11,16 @@ type Props = {
 }
 
 /**
- * サービス配下のハブ。国・県／自治体の2枠。
- * 判定ルールは承認済みがルールブックになる。カテゴリの事前登録は不要。
+ * サービス配下のハブ。ルールブック作成／国・県／自治体。
  */
 export function ServiceHub({ service }: Props) {
   const menus = [
+    {
+      id: "compose",
+      title: RULES_UI.composeRulebook,
+      href: servicePath(service.slug, "compose"),
+      icon: BookOpen,
+    },
     {
       id: "national-prefecture",
       title: RULES_UI.nationalPrefectureSettings,
@@ -53,7 +58,7 @@ export function ServiceHub({ service }: Props) {
         </div>
       </div>
 
-      <ul className="grid gap-3 sm:grid-cols-2">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {menus.map((menu) => (
           <li key={menu.id}>
             <AdminEqualCard

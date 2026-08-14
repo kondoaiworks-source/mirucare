@@ -35,6 +35,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
         icon: Settings2,
         matchPaths: [
           "/admin/rules/setup",
+          "/admin/rules/domains",
           "/admin/rules/services",
           "/admin/rules/pending",
           "/admin/rules/manual",

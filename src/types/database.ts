@@ -528,6 +528,51 @@ export type AuditItem = {
   updated_at: string
 }
 
+export type RuleDomainStatus = "active" | "retired"
+
+/** チェック領域マスタ。「全て」は行にしない */
+export type RuleDomain = {
+  id: string
+  slug: string
+  title: string
+  description: string
+  keywords: string[]
+  template_categories: string[]
+  template_codes: string[]
+  sort_order: number
+  status: RuleDomainStatus
+  is_system: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type RulebookComposeJobStatus = "draft" | "confirmed" | "discarded"
+export type RulebookComposeOrigin = "existing" | "template" | "manual"
+
+export type RulebookComposeJob = {
+  id: string
+  service_type: ServiceType
+  domain_id: string | null
+  domain_ids: string[]
+  jurisdiction_id: string
+  status: RulebookComposeJobStatus
+  created_by: string | null
+  confirmed_at: string | null
+  confirmed_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type RulebookComposeItem = {
+  id: string
+  job_id: string
+  rule_id: string
+  domain_id: string | null
+  origin: RulebookComposeOrigin
+  included: boolean
+  created_at: string
+}
+
 export type AiCheckRuleScopeKind = "shared" | "city"
 
 export type AiCheckRule = {
@@ -541,6 +586,8 @@ export type AiCheckRule = {
   scope_kind: AiCheckRuleScopeKind
   /** city のとき必須。shared は null */
   jurisdiction_id: string | null
+  /** チェック領域。ルールブック生成の軸 */
+  domain_id: string | null
   created_at: string
   updated_at: string
 }

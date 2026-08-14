@@ -43,11 +43,11 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     label: RULES_UI.setup,
     navDescription: "サービス設定",
     icon: Layers,
-    purpose: "根拠URLを登録し、判定ルールを承認します。",
+    purpose: "サービス・領域・自治体を選び、ルールブックを確定します。",
     steps: [
-      "サービスを選ぶ",
-      "国・県／自治体の根拠URLを登録する",
-      "判定ルールを承認する",
+      "サービスと領域と自治体を選ぶ",
+      "下書きのルールブックを直す",
+      "確定する",
     ],
     links: [
       {
@@ -67,6 +67,7 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     linksDescription: "",
     matchPaths: [
       "/admin/rules/setup",
+      "/admin/rules/domains",
       "/admin/rules/services",
       "/admin/rules/regulatory",
       "/admin/rules/services",
