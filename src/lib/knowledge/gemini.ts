@@ -2,7 +2,7 @@
  * Gemini API（サーバーサイド専用）。キーは環境変数のみ。
  */
 
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-pro"
+export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
 const RETRY_WAIT_MS = 60_000
 
 export function getGeminiModel(): string {

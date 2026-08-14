@@ -24,7 +24,7 @@
 |------|----------------|--------------|
 | `CRON_SECRET` | Vercel Production | 毎日の自動同期が **毎回失敗（401）** |
 | `GEMINI_API_KEY` | Vercel Production | 変更は検知するが **AI整理なし** の承認待ちになる |
-| `GEMINI_MODEL` | 任意（既定で可） | 既定 `gemini-2.5-pro` を使用 |
+| `GEMINI_MODEL` | 任意（既定で可） | 既定 `gemini-3.5-flash` を使用 |
 | `RESEND_API_KEY` | Vercel Production | 通知メールが送れない（ログのみ・処理は継続） |
 | `RESEND_FROM_EMAIL` | Vercel Production | キーがあっても送信元が不正だと失敗しやすい |
 | `OPERATOR_EMAILS` | Vercel Production | マニュアル個別の通知先が無いとき、フォールバック先が無い |
@@ -90,7 +90,7 @@ npm run backfill:knowledge-snapshots
 | Name | Value | 備考 |
 |------|--------|------|
 | `GEMINI_API_KEY` | （発行したキー） | 必須 |
-| `GEMINI_MODEL` | `gemini-2.5-pro` | 省略可。上書きしたいときだけ |
+| `GEMINI_MODEL` | `gemini-3.5-flash` | 省略可。上書きしたいときだけ |
 
 4. 保存後、**Redeploy**（環境変数は再デプロイで有効）
 
