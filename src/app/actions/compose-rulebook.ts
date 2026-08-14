@@ -21,7 +21,7 @@ import {
 import { resolveSelectedDomains } from "@/lib/rule-engine/domains"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
 import { getPhase1CityBySlug, PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
-import { getRuleServiceBySlug, getRuleServiceByType } from "@/lib/rule-engine/services"
+import { getRuleServiceBySlug } from "@/lib/rule-engine/services"
 import {
   defaultEffectiveFrom,
   proposeRulesFromSourceText,
@@ -778,89 +778,6 @@ export async function startComposeRulebookAction(input: {
 
   revalidateCompose(input.serviceSlug)
   return { ok: true, data: { jobId: job.id as string, cityPdfNote } }
-}
-
-export async function fillCityPdfRulesAction(input: {
-  jobId: string
-}): Promise<ActionResult<{ cityPdfNote: string | null }>> {
-  const op = await requireOperator()
-  if ("error" in op) return { ok: false, error: op.error }
-
-  const jobId = input.jobId.trim()
-  if (!jobId) return { ok: false, error: "下書きが指定されていません。" }
-
-  const { data: jobRow, error: jobError } = await op.service
-    .from("rulebook_compose_jobs")
-    .select("*")
-    .eq("id", jobId)
-    .maybeSingle()
-  if (jobError) return { ok: false, error: toUserErrorMessage(jobError) }
-  if (!jobRow) return { ok: false, error: "下書きが見つかりません。" }
-
-  const job = jobRow as RulebookComposeJob
-  if (job.status !== "draft") {
-    return { ok: false, error: "確定済みのルールブックには追加できません。" }
-  }
-
-  const { data: city, error: cityError } = await op.service
-    .from("rule_jurisdictions")
-    .select("id, name, municipality_name, code, level, is_supported")
-    .eq("id", job.jurisdiction_id)
-    .maybeSingle()
-  if (cityError) return { ok: false, error: toUserErrorMessage(cityError) }
-  if (!city) return { ok: false, error: "対象の自治体が見つかりません。" }
-
-  const { data: domainRows, error: domainError } = await op.service
-    .from("rule_domains")
-    .select("*")
-    .order("sort_order", { ascending: true })
-  if (domainError) return { ok: false, error: toUserErrorMessage(domainError) }
-
-  const allDomains = (domainRows ?? []).map((r) =>
-    asDomain(r as Record<string, unknown>)
-  )
-  const selectedDomains = job.domain_id
-    ? allDomains.filter((d) => d.id === job.domain_id)
-    : job.domain_ids.length > 0
-      ? allDomains.filter((d) => job.domain_ids.includes(d.id))
-      : allDomains
-
-  const { data: itemRows } = await op.service
-    .from("rulebook_compose_items")
-    .select("rule_id")
-    .eq("job_id", jobId)
-  const pickedIds = new Set(
-    ((itemRows ?? []) as Array<{ rule_id: string }>).map((r) => r.rule_id)
-  )
-
-  const existingRules = await loadScopedRules(op.service, job.jurisdiction_id)
-  await attachLeftoverCityRules({
-    service: op.service,
-    jobId,
-    existingRules,
-    pickedIds,
-  })
-
-  const auditRes = await ensureAuditItemOptions(op.service)
-  const cityPdfNote = await attachCityPdfRules({
-    service: op.service,
-    jobId,
-    cityName: String(city.municipality_name || city.name || ""),
-    cityJurisdictionId: job.jurisdiction_id,
-    citySlug: PHASE1_CITIES.find(
-      (c) =>
-        c.name === String(city.municipality_name || city.name || "") ||
-        c.code === String(city.code ?? "")
-    )?.slug,
-    domains: selectedDomains,
-    existingRules,
-    pickedIds,
-    auditItemId: auditRes.ok ? auditRes.data[0]?.id ?? "" : "",
-  })
-
-  const serviceSlug = getRuleServiceByType(job.service_type)?.slug
-  revalidateCompose(serviceSlug)
-  return { ok: true, data: { cityPdfNote } }
 }
 
 export async function getComposeJobAction(input: {

@@ -34,7 +34,6 @@ export const RULES_UI = {
   domain: "領域",
   composeRulebook: "ルールブックを作る",
   composeDraft: "ルールブック下書き",
-  fillCityPdfRules: "市の資料からルールを出す",
   confirmRulebook: "確定する",
   viewRulebook: "ルールブックを見る",
   sourceList: "資料先",
