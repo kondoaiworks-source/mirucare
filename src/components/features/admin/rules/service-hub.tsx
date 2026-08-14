@@ -1,4 +1,4 @@
-import { BookOpen, Eye } from "lucide-react"
+import { BookOpen, Eye, FileText } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { AdminEqualCard } from "@/components/features/admin/rules/admin-equal-card"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +11,7 @@ type Props = {
 }
 
 /**
- * サービス配下のハブ。ルールブックを作る／見る。
+ * サービス配下のハブ。ルールブックを作る／見る／資料先。
  */
 export function ServiceHub({ service }: Props) {
   const menus = [
@@ -26,6 +26,12 @@ export function ServiceHub({ service }: Props) {
       title: RULES_UI.viewRulebook,
       href: servicePath(service.slug, "book"),
       icon: Eye,
+    },
+    {
+      id: "sources",
+      title: RULES_UI.sourceList,
+      href: servicePath(service.slug, "sources"),
+      icon: FileText,
     },
   ] as const
 

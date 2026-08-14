@@ -16,33 +16,39 @@ import {
 } from "lucide-react"
 
 /**
- * エラーは閉じるまで残す（長い Gemini メッセージなどを読み切れるように）。
- * 成功・情報は通常どおり自動で閉じる。
+ * 案内を読み切れるよう、バツを押すまで残す。
+ * 呼び出し側の duration よりこちらを優先する。
  */
-function persistentError(
+function persist(
+  fn: (message: string | ReactNode, data?: ExternalToast) => string | number,
   message: string | ReactNode,
   data?: ExternalToast
 ) {
-  return sonnerToast.error(message, {
-    duration: Infinity,
+  return fn(message, {
     closeButton: true,
     ...data,
+    duration: Infinity,
   })
 }
 
 export const toast = Object.assign(
   (message: string | ReactNode, data?: ExternalToast) =>
-    sonnerToast(message, data),
+    persist(sonnerToast, message, data),
   {
-    success: sonnerToast.success,
-    info: sonnerToast.info,
-    warning: sonnerToast.warning,
-    message: sonnerToast.message,
+    success: (message: string | ReactNode, data?: ExternalToast) =>
+      persist(sonnerToast.success, message, data),
+    info: (message: string | ReactNode, data?: ExternalToast) =>
+      persist(sonnerToast.info, message, data),
+    warning: (message: string | ReactNode, data?: ExternalToast) =>
+      persist(sonnerToast.warning, message, data),
+    message: (message: string | ReactNode, data?: ExternalToast) =>
+      persist(sonnerToast.message, message, data),
+    error: (message: string | ReactNode, data?: ExternalToast) =>
+      persist(sonnerToast.error, message, data),
     loading: sonnerToast.loading,
     promise: sonnerToast.promise,
     custom: sonnerToast.custom,
     dismiss: sonnerToast.dismiss,
-    error: persistentError,
   }
 )
 

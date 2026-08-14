@@ -31,7 +31,7 @@ export const RULES_ADMIN_NAV_GROUPS: RulesAdminNavGroup[] = [
       {
         href: "/admin/rules/setup",
         label: "利用設定",
-        description: "サービス設定 → ルールブックを作る／見る",
+        description: "サービス設定 → ルールブックを作る／見る／資料先",
         icon: Settings2,
         matchPaths: [
           "/admin/rules/setup",

@@ -38,7 +38,12 @@ export default function RootLayout({
       <body className="min-h-dvh font-sans antialiased">
         <TooltipProvider>
           {children}
-          <Toaster position="top-center" richColors closeButton />
+          <Toaster
+            position="top-center"
+            richColors
+            closeButton
+            duration={Infinity}
+          />
         </TooltipProvider>
       </body>
     </html>

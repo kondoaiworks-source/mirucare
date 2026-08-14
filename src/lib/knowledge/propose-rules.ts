@@ -11,7 +11,7 @@ import type { KnowledgeChangeItem } from "@/lib/knowledge/diff-draft"
 import type { DocType, FindingSeverity } from "@/types/database"
 
 const GEMINI_INPUT_MAX_CHARS = 80_000
-const MAX_PROPOSALS = 8
+const MAX_PROPOSALS = 12
 
 export type AuditItemOption = {
   id: string
@@ -32,6 +32,8 @@ export type ProposedCheckRule = {
   /** 原文に近い引用（あれば） */
   evidenceQuotes: string[]
   changeSummary: string
+  /** 国・県の共通 / 市固有。本文提案のときだけ付く */
+  scopeKind?: "shared" | "city"
 }
 
 export type ProposeRulesResult =
@@ -61,6 +63,20 @@ function todayIsoDate(): string {
 
 export function defaultEffectiveFrom(): string {
   return todayIsoDate()
+}
+
+function normalizeScopeKind(v: unknown): "shared" | "city" {
+  const s = String(v ?? "").trim().toLowerCase()
+  if (
+    s === "city" ||
+    s === "municipality" ||
+    s === "市区町村" ||
+    s === "市" ||
+    s === "市固有"
+  ) {
+    return "city"
+  }
+  return "shared"
 }
 
 function normalizeSeverity(v: unknown): FindingSeverity {
@@ -173,11 +189,19 @@ function buildProposeFromSourcePrompt(input: {
   sourceText: string
   auditItems: AuditItemOption[]
   cityUnique?: boolean
+  layered?: boolean
+  serviceLabel?: string
+  domainLabels?: string[]
 }): string {
   const auditList = input.auditItems
     .slice(0, 40)
     .map((a) => `- ${a.code}: ${a.title}`)
     .join("\n")
+
+  const domainLine =
+    input.domainLabels && input.domainLabels.length > 0
+      ? input.domainLabels.join("／")
+      : "対象領域全般"
 
   const cityPolicy = input.cityUnique
     ? `
@@ -189,6 +213,23 @@ function buildProposeFromSourcePrompt(input: {
 - 1件以上出せる場合は空配列にしない`
     : ""
 
+  const layeredPolicy = input.layered
+    ? `
+本文は国・都道府県・市区町村の公式資料を層ごとに分けています。
+対象サービス: ${input.serviceLabel ?? "訪問介護"}
+対象領域: ${domainLine}
+- 国・県の資料からは、このサービス・領域で実地指導（運営指導）で見落としやすいチェック観点を出す（scope は "shared"）
+- 市の資料からは、市の様式・届出・独自加算・独自期限・提出先など市固有を出す（scope は "city"）。ルール名に市名を入れる
+- 断定・合否は禁止。案内文は「〜の可能性があります」「〜をご確認ください」
+- 国の一般論の繰り返しだけは出さない。資料に具体があるものを優先
+- shared と city を混ぜてよい。最大${MAX_PROPOSALS}件。空配列にしない`
+    : ""
+
+  const schemaExtra = input.layered
+    ? `
+各提案に "scope": "shared" | "city" を付ける。`
+    : ""
+
   return `あなたは介護保険の実地指導（運営指導）向けWチェック支援のルール設計者です。
 根拠資料の本文から、書類チェック用の「判定ルール案」をJSONのみで提案してください。
 
@@ -198,7 +239,7 @@ function buildProposeFromSourcePrompt(input: {
 - 記載方法・記載漏れ・同意／署名／期限／加算・整合性など、実務で見落としやすい観点を優先
 - 提案は最大${MAX_PROPOSALS}件
 - 根拠（本文のどの趣旨か）を必ず書く。引用は本文に実在しそうな短い句に限る
-${cityPolicy}
+${layeredPolicy}${cityPolicy}${schemaExtra}
 
 対象資料: ${input.documentTitle}
 管轄: ${input.jurisdictionLevel ?? "不明"} / ${input.regionName ?? "—"}
@@ -209,7 +250,9 @@ ${clip(input.sourceText)}
 内部分類（任意）:
 ${auditList || "（なし）"}
 
-必須スキーマは差分提案と同じ（proposals配列）。`
+必須スキーマは差分提案と同じ（proposals配列）。${
+    input.layered ? "加えて各要素に scope を付ける。" : ""
+  }`
 }
 
 function parseProposals(
@@ -264,6 +307,7 @@ function parseProposals(
         changeSummary: String(p.change_summary ?? "")
           .trim()
           .slice(0, 500),
+        scopeKind: normalizeScopeKind(p.scope ?? p.scope_kind),
       })
     }
 
@@ -316,6 +360,9 @@ export async function proposeRulesFromSourceText(input: {
   auditItems: AuditItemOption[]
   cityUnique?: boolean
   skipRetry?: boolean
+  layered?: boolean
+  serviceLabel?: string
+  domainLabels?: string[]
 }): Promise<ProposeRulesResult> {
   if (!input.sourceText.trim()) {
     return { ok: false, error: "提案のもとになる本文がありません。" }

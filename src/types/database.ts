@@ -552,6 +552,7 @@ export type RulebookComposeOrigin =
   | "template"
   | "manual"
   | "city_pdf"
+  | "official"
 
 export type RulebookComposeJob = {
   id: string

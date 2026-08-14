@@ -10,7 +10,7 @@ import {
 } from "@/lib/rule-engine/domains"
 import type { HomeVisitAuditTemplateItem } from "@/lib/rule-engine/home-visit-audit-template"
 
-export type ComposeOrigin = "existing" | "template" | "manual" | "city_pdf"
+export type ComposeOrigin = "existing" | "template" | "manual" | "city_pdf" | "official"
 
 export type ComposeTemplatePick = {
   domainId: string

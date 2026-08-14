@@ -7,7 +7,6 @@ import {
   getCityRulebookAction,
   type CityRulebookCheckRule,
   type CityRulebookData,
-  type CityRulebookSource,
 } from "@/app/actions/city-rulebook"
 import { listComposeOptionsAction } from "@/app/actions/compose-rulebook"
 import {
@@ -35,11 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  AlertTriangle,
-  ExternalLink,
-  Loader2,
-} from "lucide-react"
+import { AlertTriangle, Loader2 } from "lucide-react"
 
 type Props = {
   service: RuleServiceDef
@@ -52,67 +47,9 @@ type MunicipalityOption = {
   slug: string | null
 }
 
-type SourceLink = {
-  key: string
-  layer: "national" | "prefecture" | "city"
-  layerLabel: string
-  title: string
-  url: string
-}
-
 const SCOPE_LABEL: Record<string, string> = {
   shared: "国・県",
   city: "市固有",
-}
-
-const LAYER_ORDER = ["national", "prefecture", "city"] as const
-
-function sourceUrl(source: CityRulebookSource): string | null {
-  const url =
-    source.direct_file_url?.trim() ||
-    source.official_url?.trim() ||
-    source.parent_page_url?.trim() ||
-    ""
-  return url || null
-}
-
-function collectSourceLinks(data: CityRulebookData): SourceLink[] {
-  const seen = new Set<string>()
-  const out: SourceLink[] = []
-
-  const layerLabel = (layer: SourceLink["layer"]) => {
-    if (layer === "national") return "国"
-    if (layer === "prefecture") return data.city.prefectureName
-    return data.city.name
-  }
-
-  for (const source of data.sources) {
-    const url = sourceUrl(source)
-    if (!url || seen.has(url)) continue
-    seen.add(url)
-    out.push({
-      key: source.id,
-      layer: source.layer,
-      layerLabel: layerLabel(source.layer),
-      title: source.title,
-      url,
-    })
-  }
-
-  for (const doc of data.documents) {
-    const url = doc.source_url?.trim() || ""
-    if (!url || seen.has(url)) continue
-    seen.add(url)
-    out.push({
-      key: doc.id,
-      layer: doc.layer,
-      layerLabel: layerLabel(doc.layer),
-      title: doc.title,
-      url,
-    })
-  }
-
-  return out
 }
 
 export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
@@ -223,22 +160,6 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
     }
     return Array.from(map.entries())
   }, [visibleRules, domains])
-
-  const sourceLinks = useMemo(
-    () => (data ? collectSourceLinks(data) : []),
-    [data]
-  )
-
-  const sourcesByLayer = LAYER_ORDER.map((layer) => ({
-    layer,
-    label:
-      layer === "national"
-        ? "国"
-        : layer === "prefecture"
-          ? data?.city.prefectureName ?? "県"
-          : data?.city.name ?? "市",
-    items: sourceLinks.filter((s) => s.layer === layer),
-  }))
 
   async function reload() {
     if (!citySlug) return
@@ -538,50 +459,6 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
                 追加する
               </Button>
             </form>
-          </section>
-
-          <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
-            <h2 className="text-lg font-semibold text-primary-dark">
-              {RULES_UI.sourceList}
-            </h2>
-            <p className="text-base leading-relaxed text-muted-foreground">
-              このルールブックを作るときに確認する公式の資料先です。
-            </p>
-            {sourceLinks.length === 0 ? (
-              <p className="text-base text-muted-foreground">
-                この自治体の資料先はまだありません。
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {sourcesByLayer.map((group) =>
-                  group.items.length === 0 ? null : (
-                    <div key={group.layer} className="space-y-2">
-                      <h3 className="text-base font-semibold text-primary-dark">
-                        {group.label}
-                      </h3>
-                      <ul className="space-y-2">
-                        {group.items.map((item) => (
-                          <li key={item.key}>
-                            <a
-                              href={item.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex min-h-11 items-center gap-2 text-base text-primary underline-offset-4 hover:underline"
-                            >
-                              {item.title}
-                              <ExternalLink
-                                className="size-4 shrink-0"
-                                aria-hidden
-                              />
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )
-                )}
-              </div>
-            )}
           </section>
         </>
       ) : null}
