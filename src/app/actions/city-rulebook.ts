@@ -311,13 +311,13 @@ export async function getCityRulebookAction(
   const idsWithText = new Set(
     documents.filter((d) => d.hasTextSnapshot).map((d) => d.id)
   )
-  const extraLinkedIds = [
-    ...new Set(
+  const extraLinkedIds = Array.from(
+    new Set(
       sources
         .map((s) => s.knowledge_document_id)
         .filter((id): id is string => Boolean(id) && !idsWithText.has(id))
-    ),
-  ]
+    )
+  )
   if (extraLinkedIds.length > 0) {
     const { data: extraSnaps } = await op.service
       .from("knowledge_document_snapshots")
