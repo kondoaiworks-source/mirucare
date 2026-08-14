@@ -315,7 +315,8 @@ export async function getCityRulebookAction(
     new Set(
       sources
         .map((s) => s.knowledge_document_id)
-        .filter((id): id is string => Boolean(id) && !idsWithText.has(id))
+        .filter((id): id is string => Boolean(id))
+        .filter((id) => !idsWithText.has(id))
     )
   )
   if (extraLinkedIds.length > 0) {
