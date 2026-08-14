@@ -564,6 +564,7 @@ export type RulebookComposeJob = {
   created_by: string | null
   confirmed_at: string | null
   confirmed_by: string | null
+  extraction_notes?: unknown
   created_at: string
   updated_at: string
 }

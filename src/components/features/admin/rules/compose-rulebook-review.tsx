@@ -223,9 +223,37 @@ export function ComposeRulebookReview({ service, initial }: Props) {
           {data.serviceLabel}／{data.domainLabel}／{data.cityName}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          下書き {data.includedCount}件（国・県 {data.sharedCount}件／市固有 {data.cityCount}件。承認待ち {data.pendingCount}件）。確定するまでチェックには使いません。
+          下書き {data.includedCount}件（国・県 {data.sharedCount}件／市固有 {data.cityCount}件。承認待ち {data.pendingCount}件）。確定するまでチェックには使いません。案内文は、どの書類の何を見比べるかを人が判断できる文にしてください。
         </p>
       </div>
+
+      {data.extractionNotes.length > 0 ? (
+        <section
+          className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
+          aria-labelledby="extraction-notes-heading"
+        >
+          <h2
+            id="extraction-notes-heading"
+            className="text-lg font-semibold text-primary-dark"
+          >
+            公式資料からの抽出
+          </h2>
+          <ul className="space-y-2">
+            {data.extractionNotes.map((note) => (
+              <li key={note.layer} className="text-base leading-relaxed">
+                <span className="font-semibold text-primary-dark">
+                  {note.label}
+                </span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  （資料 {note.sourceCount}件／本文 {note.textCount}件）{" "}
+                </span>
+                <span>{note.message}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {grouped.map(([domainTitle, items]) => (
         <section
@@ -375,6 +403,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                 className="min-h-24 text-base"
                 value={addGuidance}
                 onChange={(e) => setAddGuidance(e.target.value)}
+                placeholder="例：勤務表と提供記録で、実施日時がずれていないかご確認ください。"
                 required
               />
             </div>

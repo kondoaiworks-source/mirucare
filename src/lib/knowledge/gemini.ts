@@ -20,7 +20,8 @@ export type GeminiGenerateResult =
 async function callGeminiOnce(
   prompt: string,
   model: string,
-  apiKey: string
+  apiKey: string,
+  timeoutMs = 120_000
 ): Promise<GeminiGenerateResult> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`
 
@@ -29,7 +30,7 @@ async function callGeminiOnce(
     response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(120_000),
+      signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
@@ -80,7 +81,7 @@ async function callGeminiOnce(
  */
 export async function generateGeminiJson(
   prompt: string,
-  opts?: { retry?: boolean }
+  opts?: { retry?: boolean; timeoutMs?: number }
 ): Promise<GeminiGenerateResult> {
   const apiKey = process.env.GEMINI_API_KEY?.trim()
   const model = getGeminiModel()
@@ -88,7 +89,7 @@ export async function generateGeminiJson(
     return { ok: false, model, error: "GEMINI_API_KEY 未設定" }
   }
 
-  const first = await callGeminiOnce(prompt, model, apiKey)
+  const first = await callGeminiOnce(prompt, model, apiKey, opts?.timeoutMs)
   if (first.ok) return first
 
   console.error("[gemini] first_attempt_failed", {
@@ -100,7 +101,12 @@ export async function generateGeminiJson(
 
   await new Promise((r) => setTimeout(r, RETRY_WAIT_MS))
 
-  const second = await callGeminiOnce(prompt, model, apiKey)
+  const second = await callGeminiOnce(
+    prompt,
+    model,
+    apiKey,
+    opts?.timeoutMs
+  )
   if (!second.ok) {
     console.error("[gemini] retry_failed", {
       model,

@@ -3,8 +3,11 @@ import {
   extraExistingRulesForDomain,
   findExistingRuleForTemplate,
   isDuplicateCityProposalTitle,
+  isThinComposeGuidance,
+  composeItemGuidance,
   pickDomainForCityProposal,
   pickTemplateItemsForDomains,
+  summarizeExtractionNotes,
 } from "@/lib/rule-engine/compose-rulebook"
 import { SYSTEM_DOMAIN_SEEDS } from "@/lib/rule-engine/domains"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
@@ -107,5 +110,55 @@ describe("compose-rulebook", () => {
     expect(
       isDuplicateCityProposalTitle("横浜市の独自様式", ["別ルール"])
     ).toBe(false)
+  })
+
+  it("treats the old template memo as thin guidance", () => {
+    expect(
+      isThinComposeGuidance(
+        "訪問介護監査項目（最大公約数）の「指定・運営体制」内にある「管理者配置」の観点です。関連書類・記録をご確認ください。"
+      )
+    ).toBe(true)
+    expect(
+      isThinComposeGuidance(
+        "勤務表・雇用契約・資格証で、管理者が配置されているかご確認ください。"
+      )
+    ).toBe(false)
+  })
+
+  it("writes comparison-style template guidance instead of a section memo", () => {
+    const item = HOME_VISIT_AUDIT_TEMPLATE_ITEMS.find(
+      (i) => i.code === "HC_GOV_MANAGER_PLACEMENT"
+    )
+    expect(item).toBeTruthy()
+    if (!item) return
+    const text = composeItemGuidance(item)
+    expect(text).toContain("勤務表")
+    expect(text).toContain("ご確認ください")
+    expect(text).not.toContain("最大公約数")
+  })
+
+  it("summarizes extraction notes for the toast", () => {
+    expect(
+      summarizeExtractionNotes([
+        {
+          layer: "national",
+          label: "国",
+          status: "extracted",
+          sourceCount: 2,
+          textCount: 2,
+          ruleCount: 5,
+          message: "国の公式資料から 5件を載せました。",
+        },
+        {
+          layer: "city",
+          label: "横浜市",
+          status: "no_sources",
+          sourceCount: 0,
+          textCount: 0,
+          ruleCount: 0,
+          message: "横浜市の資料はまだありません。",
+        },
+      ])
+    ).toBe("公式資料から国 5件を載せました。")
   })
 })

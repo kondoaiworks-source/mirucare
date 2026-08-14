@@ -16,7 +16,11 @@ import {
   templateCodeFromCheckLogic,
   pickDomainForCityProposal,
   isDuplicateCityProposalTitle,
+  isThinComposeGuidance,
+  parseExtractionNotes,
+  summarizeExtractionNotes,
   type ExistingComposeRule,
+  type ComposeExtractionNote,
 } from "@/lib/rule-engine/compose-rulebook"
 import { resolveSelectedDomains } from "@/lib/rule-engine/domains"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
@@ -25,6 +29,7 @@ import { getRuleServiceBySlug } from "@/lib/rule-engine/services"
 import {
   defaultEffectiveFrom,
   proposeRulesFromSourceText,
+  COMPOSE_MAX_PROPOSALS,
 } from "@/lib/knowledge/propose-rules"
 import { isGeminiConfigured } from "@/lib/knowledge/gemini"
 import { ensureKnowledgeDocumentFromRuleSource } from "@/lib/knowledge/ensure-from-rule-source"
@@ -75,6 +80,7 @@ export type ComposeJobView = {
   pendingCount: number
   cityCount: number
   sharedCount: number
+  extractionNotes: ComposeExtractionNote[]
 }
 
 function revalidateCompose(serviceSlug?: string) {
@@ -237,6 +243,9 @@ async function loadScopedRules(
       domainId: (row.domain_id as string | null) ?? null,
       templateCode,
       scopeKind,
+      guidanceText: latest?.guidance_text ?? null,
+      reviewStatus: latest?.review_status ?? null,
+      latestVersionNo: latest ? Number(latest.version_no) : 0,
       raw: row as unknown as AiCheckRule,
       latestVersion: latest,
     })
@@ -244,10 +253,25 @@ async function loadScopedRules(
   return rows
 }
 
-const MAX_DOCS_PER_LAYER = 2
-const MAX_CHARS_PER_DOC = 12_000
+const MAX_DOCS_PER_LAYER = 3
+const MAX_CHARS_PER_DOC = 10_000
+const LAYER_GEMINI_TIMEOUT_MS = 50_000
 
 type OfficialLayer = "national" | "prefecture" | "city"
+
+type LayerPack = {
+  sourceCount: number
+  docs: Array<{ title: string; text: string }>
+}
+
+type OfficialExtractResult = {
+  notes: ComposeExtractionNote[]
+  sharedCreated: number
+  cityCreated: number
+  sharedHasText: boolean
+  cityHasText: boolean
+  sourceNote: string
+}
 
 function regionMatchesName(region: string, name: string): boolean {
   if (!region || !name) return false
@@ -285,6 +309,82 @@ async function ensureSourceDocumentId(
   }
 }
 
+function emptyLayerPack(): LayerPack {
+  return { sourceCount: 0, docs: [] }
+}
+
+function packToChunks(
+  pack: LayerPack,
+  label: string
+): { titles: string[]; chunks: string[] } {
+  const titles: string[] = []
+  const chunks: string[] = []
+  for (const doc of pack.docs) {
+    titles.push(doc.title)
+    chunks.push(`===== ${label}資料: ${doc.title} =====\n${doc.text}`)
+  }
+  return { titles, chunks }
+}
+
+function noteForPack(input: {
+  layer: OfficialLayer
+  label: string
+  pack: LayerPack
+  ruleCount: number
+  status?: ComposeExtractionNote["status"]
+  extra?: string
+}): ComposeExtractionNote {
+  const { pack } = input
+  let status = input.status
+  if (!status) {
+    if (pack.sourceCount === 0) status = "no_sources"
+    else if (pack.docs.length === 0) status = "no_text"
+    else if (input.ruleCount > 0) status = "extracted"
+    else status = "empty"
+  }
+  const messages: Record<ComposeExtractionNote["status"], string> = {
+    extracted: `${input.label}の公式資料から ${input.ruleCount}件を載せました。`,
+    no_sources: `${input.label}の資料はまだありません。`,
+    no_text: `${input.label}の資料本文がまだありません。同期後に下書きを作り直してください。`,
+    ai_unavailable: `${input.label}の資料はありますが、AI設定がないため観点を出せませんでした。`,
+    ai_failed: `${input.label}の資料は確認しましたが、観点を自動で出せませんでした。`,
+    empty: `${input.label}の資料は確認しましたが、新たに出す観点はありませんでした。`,
+    gap_filled: `${input.label}の資料が無いため、書類と見比べる標準の観点で穴埋めしました。`,
+  }
+  return {
+    layer: input.layer,
+    label: input.label,
+    status,
+    sourceCount: pack.sourceCount,
+    textCount: pack.docs.length,
+    ruleCount: input.ruleCount,
+    message: input.extra?.trim() || messages[status],
+  }
+}
+
+async function readDocsForLayer(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  service: any,
+  docs: Array<Record<string, unknown>>
+): Promise<Array<{ title: string; text: string }>> {
+  const out: Array<{ title: string; text: string }> = []
+  for (const doc of docs.slice(0, MAX_DOCS_PER_LAYER)) {
+    try {
+      const snapshot = await getLatestSnapshot(service, String(doc.id))
+      if (!snapshot) continue
+      const text = (await readSnapshotText(service, snapshot)).trim()
+      if (!text) continue
+      out.push({
+        title: String(doc.title ?? "資料"),
+        text: text.slice(0, MAX_CHARS_PER_DOC),
+      })
+    } catch {
+      continue
+    }
+  }
+  return out
+}
+
 async function attachOfficialSourceRules(input: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   service: any
@@ -298,9 +398,18 @@ async function attachOfficialSourceRules(input: {
   existingRules: ExistingComposeRule[]
   pickedIds: Set<string>
   auditItemId: string
-}): Promise<string | null> {
+  auditItems: Array<{ id: string; code: string; title: string }>
+}): Promise<OfficialExtractResult> {
+  const empty: OfficialExtractResult = {
+    notes: [],
+    sharedCreated: 0,
+    cityCreated: 0,
+    sharedHasText: false,
+    cityHasText: false,
+    sourceNote: "",
+  }
   const cityName = input.cityName.trim()
-  if (!cityName) return null
+  if (!cityName) return empty
 
   const { data: layerRows } = await input.service
     .from("rule_jurisdictions")
@@ -334,6 +443,11 @@ async function attachOfficialSourceRules(input: {
     prefecture: new Set(),
     city: new Set(),
   }
+  const sourceCountByLayer: Record<OfficialLayer, number> = {
+    national: 0,
+    prefecture: 0,
+    city: 0,
+  }
 
   const layerOfJurisdiction = (jurisdictionId: string): OfficialLayer => {
     if (jurisdictionId === nationalId) return "national"
@@ -347,6 +461,7 @@ async function attachOfficialSourceRules(input: {
     jurisdiction_id: string
   }>) {
     const layer = layerOfJurisdiction(row.jurisdiction_id)
+    sourceCountByLayer[layer] += 1
     if (linkedByLayer[layer].size >= MAX_DOCS_PER_LAYER) continue
     const docId = await ensureSourceDocumentId(
       input.service,
@@ -409,102 +524,458 @@ async function attachOfficialSourceRules(input: {
     city: cityName,
   }
 
-  const chunks: string[] = []
-  const titles: string[] = []
+  const packs: Record<OfficialLayer, LayerPack> = {
+    national: emptyLayerPack(),
+    prefecture: emptyLayerPack(),
+    city: emptyLayerPack(),
+  }
   for (const layer of ["national", "prefecture", "city"] as const) {
-    for (const doc of docsByLayer[layer].slice(0, MAX_DOCS_PER_LAYER)) {
-      try {
-        const snapshot = await getLatestSnapshot(input.service, String(doc.id))
-        if (!snapshot) continue
-        const text = (await readSnapshotText(input.service, snapshot)).trim()
-        if (!text) continue
-        const title = String(doc.title ?? layerLabels[layer])
-        titles.push(title)
-        chunks.push(
-          `===== ${layerLabels[layer]}資料: ${title} =====\n${text.slice(0, MAX_CHARS_PER_DOC)}`
-        )
-      } catch {
-        continue
-      }
+    const fallbackCount = docsByLayer[layer].length
+    packs[layer] = {
+      sourceCount: Math.max(sourceCountByLayer[layer], fallbackCount),
+      docs: await readDocsForLayer(input.service, docsByLayer[layer]),
     }
   }
 
-  if (chunks.length === 0) {
-    const hasAnyDoc =
-      docsByLayer.national.length +
-        docsByLayer.prefecture.length +
-        docsByLayer.city.length >
-      0
-    if (!hasAnyDoc) {
-      return "国・県・市の資料はまだありません。標準の観点のみ出しています。"
-    }
-    return "公式資料の本文がまだありません。同期後に下書きを作り直すと、資料からのルールが出ます。"
-  }
+  const sharedHasText =
+    packs.national.docs.length + packs.prefecture.docs.length > 0
+  const cityHasText = packs.city.docs.length > 0
 
-  if (!isGeminiConfigured()) {
-    return "公式資料は見つかりましたが、AI設定がないため資料からのルールは出せませんでした。標準の観点のみです。"
-  }
-
-  const auditRes = await ensureAuditItemOptions(input.service)
-  if (!auditRes.ok || auditRes.data.length === 0) {
-    return "公式資料は見つかりましたが、資料からのルールを出せませんでした。"
-  }
-
-  const proposed = await proposeRulesFromSourceText({
-    documentTitle: titles.join("／"),
-    regionName: cityName,
-    jurisdictionLevel: "国・都道府県・市区町村",
-    sourceText: chunks.join("\n\n"),
-    auditItems: auditRes.data,
-    layered: true,
-    skipRetry: true,
-    serviceLabel: input.serviceLabel,
-    domainLabels: input.domains.map((d) => d.title),
-  })
-
-  if (!proposed.ok) {
-    console.error("[compose] official_propose_failed", {
-      error: proposed.error.slice(0, 160),
-    })
-    return "公式資料は確認しましたが、資料からのルールを自動で出せませんでした。標準の観点のみです。"
-  }
-
-  const existingTitles = [...input.existingRules.map((r) => r.title)]
+  const existingTitles = input.existingRules
+    .filter((r) => !isThinComposeGuidance(r.guidanceText))
+    .map((r) => r.title)
   const domainInputs = input.domains.map(domainMatchInput)
   const effectiveFrom = defaultEffectiveFrom()
   let sharedCreated = 0
   let cityCreated = 0
 
-  for (const proposal of proposed.proposals) {
-    if (isDuplicateCityProposalTitle(proposal.title, existingTitles)) continue
-    const domainId = pickDomainForCityProposal(proposal, domainInputs)
-    const scopeKind = proposal.scopeKind === "city" ? "city" : "shared"
-    const code = await allocateAiCheckRuleCode(input.service, {
-      scopeKind,
-      citySlug: scopeKind === "city" ? input.citySlug : undefined,
-    })
+  const saveProposals = async (
+    proposals: Array<{
+      title: string
+      guidanceText: string
+      targetDocTypes: string[]
+      auditItemId: string
+      severity: "high" | "mid" | "low"
+      evidenceSummary: string
+      evidenceQuotes: string[]
+      scopeKind?: "shared" | "city"
+    }>,
+    sourceTitle: string,
+    forceScope: "shared" | "city"
+  ) => {
+    for (const proposal of proposals) {
+      if (isDuplicateCityProposalTitle(proposal.title, existingTitles)) continue
+      if (isThinComposeGuidance(proposal.guidanceText)) continue
+      const domainId = pickDomainForCityProposal(proposal, domainInputs)
+      const scopeKind = forceScope
+      const code = await allocateAiCheckRuleCode(input.service, {
+        scopeKind,
+        citySlug: scopeKind === "city" ? input.citySlug : undefined,
+      })
 
+      const { data: rule, error: ruleError } = await input.service
+        .from("ai_check_rules")
+        .insert({
+          audit_item_id: proposal.auditItemId || input.auditItemId,
+          code,
+          title: proposal.title,
+          target_doc_types: proposal.targetDocTypes,
+          status: "active",
+          scope_kind: scopeKind,
+          jurisdiction_id:
+            scopeKind === "city" ? input.cityJurisdictionId : null,
+          domain_id: domainId,
+        })
+        .select("id")
+        .single()
+      if (ruleError || !rule) {
+        console.error("[compose] official_rule_insert_failed", {
+          error: String(ruleError?.message ?? "").slice(0, 160),
+        })
+        continue
+      }
+
+      const { error: verError } = await input.service
+        .from("ai_check_rule_versions")
+        .insert({
+          rule_id: rule.id,
+          version_no: 1,
+          check_logic: {
+            type: "official",
+            notes: proposal.guidanceText,
+            evidence: {
+              sourceTitle,
+              evidenceSummary: proposal.evidenceSummary,
+              evidenceQuotes: proposal.evidenceQuotes,
+              proposedBy: "gemini",
+              regionName: cityName,
+              jurisdictionLevel: "国・都道府県・市区町村",
+              scopeKind,
+            },
+          },
+          guidance_text: proposal.guidanceText,
+          severity: proposal.severity,
+          effective_from: effectiveFrom,
+          review_status: "pending_review",
+          change_summary: `公式資料から下書き（${sourceTitle}）`,
+        })
+      if (verError) {
+        console.error("[compose] official_version_insert_failed", {
+          error: String(verError.message ?? "").slice(0, 160),
+        })
+        continue
+      }
+
+      const itemPayload = {
+        job_id: input.jobId,
+        rule_id: rule.id,
+        domain_id: domainId,
+        included: true,
+      }
+      const { error: itemError } = await input.service
+        .from("rulebook_compose_items")
+        .insert({ ...itemPayload, origin: "official" })
+      if (itemError) {
+        const fallbackOrigin = scopeKind === "city" ? "city_pdf" : "existing"
+        const { error: fallbackError } = await input.service
+          .from("rulebook_compose_items")
+          .insert({ ...itemPayload, origin: fallbackOrigin })
+        if (fallbackError) continue
+      }
+
+      input.pickedIds.add(rule.id as string)
+      existingTitles.push(proposal.title)
+      if (scopeKind === "city") cityCreated += 1
+      else sharedCreated += 1
+    }
+  }
+
+  const runPropose = async (opts: {
+    titles: string[]
+    chunks: string[]
+    forceScope: "shared" | "city"
+    cityUnique?: boolean
+    layered?: boolean
+    jurisdictionLevel: string
+  }) => {
+    if (opts.chunks.length === 0) {
+      return { ok: false as const, error: "no_text" }
+    }
+    if (!isGeminiConfigured()) {
+      return { ok: false as const, error: "ai_unavailable" }
+    }
+    const proposed = await proposeRulesFromSourceText({
+      documentTitle: opts.titles.join("／"),
+      regionName: cityName,
+      jurisdictionLevel: opts.jurisdictionLevel,
+      sourceText: opts.chunks.join("\n\n"),
+      auditItems: input.auditItems,
+      layered: opts.layered,
+      cityUnique: opts.cityUnique,
+      skipRetry: true,
+      forceScope: opts.forceScope,
+      maxProposals: COMPOSE_MAX_PROPOSALS,
+      timeoutMs: LAYER_GEMINI_TIMEOUT_MS,
+      serviceLabel: input.serviceLabel,
+      domainLabels: input.domains.map((d) => d.title),
+    })
+    if (!proposed.ok) {
+      console.error("[compose] official_propose_failed", {
+        scope: opts.forceScope,
+        error: proposed.error.slice(0, 160),
+      })
+      return { ok: false as const, error: "ai_failed" }
+    }
+    await saveProposals(
+      proposed.proposals,
+      opts.titles.join("／"),
+      opts.forceScope
+    )
+    return { ok: true as const }
+  }
+
+  let sharedStatus: ComposeExtractionNote["status"] | undefined
+  if (sharedHasText) {
+    const national = packToChunks(packs.national, layerLabels.national)
+    const prefecture = packToChunks(packs.prefecture, layerLabels.prefecture)
+    const titles = [...national.titles, ...prefecture.titles]
+    const chunks = [...national.chunks, ...prefecture.chunks]
+    const proposed = await runPropose({
+      titles,
+      chunks,
+      forceScope: "shared",
+      layered: true,
+      jurisdictionLevel: "国・都道府県",
+    })
+    if (!proposed.ok) {
+      sharedStatus =
+        proposed.error === "ai_unavailable" ? "ai_unavailable" : "ai_failed"
+    } else if (sharedCreated === 0) {
+      sharedStatus = "empty"
+    }
+  }
+
+  let cityStatus: ComposeExtractionNote["status"] | undefined
+  if (cityHasText) {
+    const city = packToChunks(packs.city, layerLabels.city)
+    const beforeCity = cityCreated
+    const proposed = await runPropose({
+      titles: city.titles,
+      chunks: city.chunks,
+      forceScope: "city",
+      cityUnique: true,
+      jurisdictionLevel: "市区町村",
+    })
+    if (!proposed.ok) {
+      cityStatus =
+        proposed.error === "ai_unavailable" ? "ai_unavailable" : "ai_failed"
+    } else if (cityCreated === beforeCity) {
+      cityStatus = "empty"
+    }
+  }
+
+  const nationalRuleCount =
+    sharedHasText && packs.national.docs.length > 0 ? sharedCreated : 0
+  const prefectureRuleCount =
+    packs.national.docs.length > 0
+      ? 0
+      : sharedHasText && packs.prefecture.docs.length > 0
+        ? sharedCreated
+        : 0
+
+  const notes: ComposeExtractionNote[] = [
+    noteForPack({
+      layer: "national",
+      label: layerLabels.national,
+      pack: packs.national,
+      ruleCount: nationalRuleCount,
+      status: packs.national.docs.length > 0 ? sharedStatus : undefined,
+      extra:
+        packs.national.docs.length > 0 &&
+        packs.prefecture.docs.length > 0 &&
+        sharedCreated > 0
+          ? `国と${layerLabels.prefecture}の公式資料から、共通ルール ${sharedCreated}件を載せました。`
+          : undefined,
+    }),
+    noteForPack({
+      layer: "prefecture",
+      label: layerLabels.prefecture,
+      pack: packs.prefecture,
+      ruleCount: prefectureRuleCount,
+      status: packs.prefecture.docs.length > 0 ? sharedStatus : undefined,
+      extra:
+        packs.prefecture.docs.length > 0 && packs.national.docs.length > 0
+          ? `${layerLabels.prefecture}の資料も読み、国とまとめて共通ルールにしています。`
+          : undefined,
+    }),
+    noteForPack({
+      layer: "city",
+      label: layerLabels.city,
+      pack: packs.city,
+      ruleCount: cityCreated,
+      status: cityStatus,
+    }),
+  ]
+
+  return {
+    notes,
+    sharedCreated,
+    cityCreated,
+    sharedHasText,
+    cityHasText,
+    sourceNote: summarizeExtractionNotes(notes),
+  }
+}
+
+async function attachLeftoverGoodRules(input: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  service: any
+  jobId: string
+  domains: RuleDomain[]
+  existingRules: ExistingComposeRule[]
+  pickedIds: Set<string>
+}): Promise<number> {
+  let added = 0
+  for (const domain of input.domains) {
+    const extras = extraExistingRulesForDomain(
+      input.existingRules,
+      domainMatchInput(domain),
+      input.pickedIds
+    )
+    for (const extra of extras) {
+      if (isThinComposeGuidance(extra.guidanceText)) continue
+      const { error } = await input.service.from("rulebook_compose_items").insert({
+        job_id: input.jobId,
+        rule_id: extra.id,
+        domain_id: domain.id,
+        origin: "existing",
+        included: true,
+      })
+      if (error) {
+        console.error("[compose] leftover_item_failed", {
+          error: String(error.message ?? "").slice(0, 160),
+        })
+        continue
+      }
+      input.pickedIds.add(extra.id)
+      added += 1
+    }
+  }
+  return added
+}
+
+async function discardStaleComposeDraft(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  service: any,
+  jobId: string
+): Promise<void> {
+  const { data: items } = await service
+    .from("rulebook_compose_items")
+    .select("id, rule_id, origin")
+    .eq("job_id", jobId)
+
+  for (const item of items ?? []) {
+    if (
+      item.origin !== "template" &&
+      item.origin !== "manual" &&
+      item.origin !== "city_pdf" &&
+      item.origin !== "official"
+    ) {
+      continue
+    }
+    const { data: version } = await service
+      .from("ai_check_rule_versions")
+      .select("id")
+      .eq("rule_id", item.rule_id)
+      .eq("review_status", "pending_review")
+      .maybeSingle()
+    if (!version) continue
+    await service.from("ai_check_rule_versions").delete().eq("id", version.id)
+    const { count } = await service
+      .from("ai_check_rule_versions")
+      .select("id", { count: "exact", head: true })
+      .eq("rule_id", item.rule_id)
+    if ((count ?? 0) === 0) {
+      await service.from("ai_check_rules").delete().eq("id", item.rule_id)
+    }
+  }
+
+  await service
+    .from("rulebook_compose_jobs")
+    .update({ status: "discarded" })
+    .eq("id", jobId)
+    .eq("status", "draft")
+}
+
+async function saveExtractionNotes(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  service: any,
+  jobId: string,
+  notes: ComposeExtractionNote[]
+): Promise<void> {
+  const { error } = await service
+    .from("rulebook_compose_jobs")
+    .update({ extraction_notes: notes })
+    .eq("id", jobId)
+  if (error) {
+    console.error("[compose] extraction_notes_save_failed", {
+      error: String(error.message ?? "").slice(0, 160),
+    })
+  }
+}
+
+async function fillTemplateGaps(input: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  service: any
+  jobId: string
+  domains: RuleDomain[]
+  existingRules: ExistingComposeRule[]
+  pickedIds: Set<string>
+  auditItemId: string
+}): Promise<number> {
+  const picks = pickTemplateItemsForDomains({
+    items: HOME_VISIT_AUDIT_TEMPLATE_ITEMS,
+    domains: input.domains.map(domainMatchInput),
+  })
+  const effectiveFrom = defaultEffectiveFrom()
+  const existingTitles = input.existingRules
+    .filter((r) => !isThinComposeGuidance(r.guidanceText))
+    .map((r) => r.title)
+  let created = 0
+
+  for (const pick of picks) {
+    const title = composeItemTitle(pick.item)
+    const found = findExistingRuleForTemplate(input.existingRules, pick.item)
+    const guidance = composeItemGuidance(pick.item)
+
+    if (found && !isThinComposeGuidance(found.guidanceText)) {
+      if (input.pickedIds.has(found.id)) continue
+      const { error } = await input.service.from("rulebook_compose_items").insert({
+        job_id: input.jobId,
+        rule_id: found.id,
+        domain_id: pick.domainId,
+        origin: "existing",
+        included: true,
+      })
+      if (error) continue
+      input.pickedIds.add(found.id)
+      existingTitles.push(title)
+      continue
+    }
+
+    if (found && isThinComposeGuidance(found.guidanceText)) {
+      const nextNo = (found.latestVersionNo ?? 0) + 1
+      const { error: verError } = await input.service
+        .from("ai_check_rule_versions")
+        .insert({
+          rule_id: found.id,
+          version_no: nextNo,
+          check_logic: {
+            type: "template",
+            templateCode: pick.item.code,
+            notes: guidance,
+          },
+          guidance_text: guidance,
+          severity: defaultComposeSeverity(pick.item),
+          effective_from: effectiveFrom,
+          review_status: "pending_review",
+          change_summary: `領域テンプレの案内を見比べ文に更新（${pick.item.section}）`,
+        })
+      if (verError) continue
+      const { error: itemError } = await input.service
+        .from("rulebook_compose_items")
+        .insert({
+          job_id: input.jobId,
+          rule_id: found.id,
+          domain_id: pick.domainId,
+          origin: "template",
+          included: true,
+        })
+      if (itemError) continue
+      input.pickedIds.add(found.id)
+      existingTitles.push(title)
+      created += 1
+      continue
+    }
+
+    const code = await allocateAiCheckRuleCode(input.service, {
+      scopeKind: "shared",
+    })
     const { data: rule, error: ruleError } = await input.service
       .from("ai_check_rules")
       .insert({
-        audit_item_id: proposal.auditItemId || input.auditItemId,
+        audit_item_id: input.auditItemId,
         code,
-        title: proposal.title,
-        target_doc_types: proposal.targetDocTypes,
+        title,
+        target_doc_types: docTypesForTemplateCategory(pick.item.category),
         status: "active",
-        scope_kind: scopeKind,
-        jurisdiction_id:
-          scopeKind === "city" ? input.cityJurisdictionId : null,
-        domain_id: domainId,
+        scope_kind: "shared",
+        jurisdiction_id: null,
+        domain_id: pick.domainId,
       })
       .select("id")
       .single()
-    if (ruleError || !rule) {
-      console.error("[compose] official_rule_insert_failed", {
-        error: String(ruleError?.message ?? "").slice(0, 160),
-      })
-      continue
-    }
+    if (ruleError || !rule) continue
 
     const { error: verError } = await input.service
       .from("ai_check_rule_versions")
@@ -512,88 +983,33 @@ async function attachOfficialSourceRules(input: {
         rule_id: rule.id,
         version_no: 1,
         check_logic: {
-          type: "official",
-          notes: proposal.guidanceText,
-          evidence: {
-            sourceTitle: titles.join("／"),
-            evidenceSummary: proposal.evidenceSummary,
-            evidenceQuotes: proposal.evidenceQuotes,
-            proposedBy: "gemini",
-            regionName: cityName,
-            jurisdictionLevel: "国・都道府県・市区町村",
-            scopeKind,
-          },
+          type: "template",
+          templateCode: pick.item.code,
+          notes: guidance,
         },
-        guidance_text: proposal.guidanceText,
-        severity: proposal.severity,
+        guidance_text: guidance,
+        severity: defaultComposeSeverity(pick.item),
         effective_from: effectiveFrom,
         review_status: "pending_review",
-        change_summary: `公式資料から下書き（${titles.join("／")}）`,
+        change_summary: `領域テンプレから下書き（${pick.item.section}）`,
       })
-    if (verError) {
-      console.error("[compose] official_version_insert_failed", {
-        error: String(verError.message ?? "").slice(0, 160),
-      })
-      continue
-    }
+    if (verError) continue
 
-    const itemPayload = {
-      job_id: input.jobId,
-      rule_id: rule.id,
-      domain_id: domainId,
-      included: true,
-    }
     const { error: itemError } = await input.service
       .from("rulebook_compose_items")
-      .insert({ ...itemPayload, origin: "official" })
-    if (itemError) {
-      const fallbackOrigin = scopeKind === "city" ? "city_pdf" : "existing"
-      const { error: fallbackError } = await input.service
-        .from("rulebook_compose_items")
-        .insert({ ...itemPayload, origin: fallbackOrigin })
-      if (fallbackError) continue
-    }
-
-    input.pickedIds.add(rule.id as string)
-    existingTitles.push(proposal.title)
-    if (scopeKind === "city") cityCreated += 1
-    else sharedCreated += 1
-  }
-
-  if (sharedCreated + cityCreated === 0) {
-    return "公式資料を確認しましたが、新たに出すルールはありませんでした。標準の観点のみです。"
-  }
-  return `公式資料から国・県 ${sharedCreated}件、市固有 ${cityCreated}件を載せました。`
-}
-
-async function attachLeftoverCityRules(input: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  service: any
-  jobId: string
-  existingRules: ExistingComposeRule[]
-  pickedIds: Set<string>
-}): Promise<number> {
-  let added = 0
-  for (const extra of input.existingRules) {
-    if (extra.scopeKind !== "city") continue
-    if (input.pickedIds.has(extra.id)) continue
-    const { error } = await input.service.from("rulebook_compose_items").insert({
-      job_id: input.jobId,
-      rule_id: extra.id,
-      domain_id: extra.domainId,
-      origin: "existing",
-      included: true,
-    })
-    if (error) {
-      console.error("[compose] leftover_city_item_failed", {
-        error: String(error.message ?? "").slice(0, 160),
+      .insert({
+        job_id: input.jobId,
+        rule_id: rule.id,
+        domain_id: pick.domainId,
+        origin: "template",
+        included: true,
       })
-      continue
-    }
-    input.pickedIds.add(extra.id)
-    added += 1
+    if (itemError) continue
+    input.pickedIds.add(rule.id as string)
+    existingTitles.push(title)
+    created += 1
   }
-  return added
+  return created
 }
 
 export async function startComposeRulebookAction(input: {
@@ -650,84 +1066,38 @@ export async function startComposeRulebookAction(input: {
     ? await existingJobQuery.eq("domain_id", jobDomainId)
     : await existingJobQuery.is("domain_id", null)
 
-  const openId = (openJobs?.[0] as { id?: string } | undefined)?.id
-  let jobId = openId ?? null
-  if (jobId) {
-    const { data: openItems } = await op.service
-      .from("rulebook_compose_items")
-      .select("id, rule_id, origin, ai_check_rules ( scope_kind )")
-      .eq("job_id", jobId)
-    const itemRows = (openItems ?? []) as Array<{
-      rule_id: string
-      origin: string
-      ai_check_rules:
-        | { scope_kind?: string | null }
-        | Array<{ scope_kind?: string | null }>
-        | null
-    }>
-    if (itemRows.length > 0) {
-      const hasOfficial = itemRows.some(
-        (row) => row.origin === "official" || row.origin === "city_pdf"
-      )
-      if (hasOfficial) {
-        return { ok: true, data: { jobId, sourceNote: null } }
-      }
-      const cityName = String(city.municipality_name || city.name || "")
-      const phase1 = PHASE1_CITIES.find(
-        (c) => c.name === cityName || c.code === String(city.code ?? "")
-      )
-      const existingRules = await loadScopedRules(op.service, jurisdictionId)
-      const pickedIds = new Set(itemRows.map((r) => r.rule_id))
-      await attachLeftoverCityRules({
-        service: op.service,
-        jobId,
-        existingRules,
-        pickedIds,
-      })
-      const auditRes = await ensureAuditItemOptions(op.service)
-      const sourceNote = await attachOfficialSourceRules({
-        service: op.service,
-        jobId,
-        cityName,
-        prefectureName: phase1?.prefectureName ?? "神奈川県",
-        cityJurisdictionId: jurisdictionId,
-        citySlug: phase1?.slug,
-        serviceLabel: serviceDef.label,
-        domains: selected.domains,
-        existingRules,
-        pickedIds,
-        auditItemId: auditRes.ok ? auditRes.data[0]?.id ?? "" : "",
-      })
-      revalidateCompose(input.serviceSlug)
-      return { ok: true, data: { jobId, sourceNote } }
-    }
-  }
-
-  if (!jobId) {
-    const { data: job, error: jobError } = await op.service
+  const openId = (openJobs?.[0] as { id?: string } | undefined)?.id ?? null
+  if (openId) {
+    const { data: noteRow } = await op.service
       .from("rulebook_compose_jobs")
-      .insert({
-        service_type: serviceDef.serviceType,
-        domain_id: jobDomainId,
-        domain_ids: domainIds,
-        jurisdiction_id: jurisdictionId,
-        status: "draft",
-        created_by: op.userId,
-      })
-      .select("id")
-      .single()
-
-    if (jobError || !job) {
-      return { ok: false, error: toUserErrorMessage(jobError) }
+      .select("extraction_notes")
+      .eq("id", openId)
+      .maybeSingle()
+    const existingNotes = parseExtractionNotes(
+      (noteRow as { extraction_notes?: unknown } | null)?.extraction_notes
+    )
+    if (existingNotes.length > 0) {
+      return { ok: true, data: { jobId: openId, sourceNote: null } }
     }
-    jobId = job.id as string
+    await discardStaleComposeDraft(op.service, openId)
   }
 
-  if (!jobId) {
-    return { ok: false, error: "下書きを開始できませんでした。" }
-  }
+  const { data: job, error: jobError } = await op.service
+    .from("rulebook_compose_jobs")
+    .insert({
+      service_type: serviceDef.serviceType,
+      domain_id: jobDomainId,
+      domain_ids: domainIds,
+      jurisdiction_id: jurisdictionId,
+      status: "draft",
+      created_by: op.userId,
+    })
+    .select("id")
+    .single()
 
-  const job = { id: jobId }
+  if (jobError || !job) {
+    return { ok: false, error: toUserErrorMessage(jobError) }
+  }
 
   const auditRes = await ensureAuditItemOptions(op.service)
   if (!auditRes.ok || auditRes.data.length === 0) {
@@ -739,131 +1109,16 @@ export async function startComposeRulebookAction(input: {
     }
   }
   const auditItemId = auditRes.data[0].id
-
   const existingRules = await loadScopedRules(op.service, jurisdictionId)
-  const picks = pickTemplateItemsForDomains({
-    items: HOME_VISIT_AUDIT_TEMPLATE_ITEMS,
-    domains: selected.domains.map(domainMatchInput),
-  })
-
   const pickedIds = new Set<string>()
-  const effectiveFrom = defaultEffectiveFrom()
-
-  for (const pick of picks) {
-    const found = findExistingRuleForTemplate(existingRules, pick.item)
-    if (found) {
-      pickedIds.add(found.id)
-      const { error: existingItemError } = await op.service
-        .from("rulebook_compose_items")
-        .insert({
-          job_id: job.id,
-          rule_id: found.id,
-          domain_id: pick.domainId,
-          origin: "existing",
-          included: true,
-        })
-      if (existingItemError) {
-        return { ok: false, error: toUserErrorMessage(existingItemError) }
-      }
-      if (!found.domainId) {
-        await op.service
-          .from("ai_check_rules")
-          .update({ domain_id: pick.domainId })
-          .eq("id", found.id)
-          .is("domain_id", null)
-      }
-      continue
-    }
-
-    const title = composeItemTitle(pick.item)
-    const code = await allocateAiCheckRuleCode(op.service, {
-      scopeKind: "shared",
-    })
-    const { data: rule, error: ruleError } = await op.service
-      .from("ai_check_rules")
-      .insert({
-        audit_item_id: auditItemId,
-        code,
-        title,
-        target_doc_types: docTypesForTemplateCategory(pick.item.category),
-        status: "active",
-        scope_kind: "shared",
-        jurisdiction_id: null,
-        domain_id: pick.domainId,
-      })
-      .select("id")
-      .single()
-
-    if (ruleError || !rule) {
-      return { ok: false, error: toUserErrorMessage(ruleError) }
-    }
-
-    const { error: verError } = await op.service
-      .from("ai_check_rule_versions")
-      .insert({
-        rule_id: rule.id,
-        version_no: 1,
-        check_logic: {
-          type: "template",
-          templateCode: pick.item.code,
-          notes: composeItemGuidance(pick.item),
-        },
-        guidance_text: composeItemGuidance(pick.item),
-        severity: defaultComposeSeverity(pick.item),
-        effective_from: effectiveFrom,
-        review_status: "pending_review",
-        change_summary: `領域テンプレから下書き（${pick.item.section}）`,
-      })
-
-    if (verError) {
-      return { ok: false, error: toUserErrorMessage(verError) }
-    }
-
-    pickedIds.add(rule.id as string)
-    const { error: templateItemError } = await op.service
-      .from("rulebook_compose_items")
-      .insert({
-        job_id: job.id,
-        rule_id: rule.id,
-        domain_id: pick.domainId,
-        origin: "template",
-        included: true,
-      })
-    if (templateItemError) {
-      return { ok: false, error: toUserErrorMessage(templateItemError) }
-    }
-  }
-
-  for (const domain of selected.domains) {
-    const extras = extraExistingRulesForDomain(
-      existingRules,
-      domainMatchInput(domain),
-      pickedIds
-    )
-    for (const extra of extras) {
-      pickedIds.add(extra.id)
-      const { error: extraItemError } = await op.service
-        .from("rulebook_compose_items")
-        .insert({
-          job_id: job.id,
-          rule_id: extra.id,
-          domain_id: domain.id,
-          origin: "existing",
-          included: true,
-        })
-      if (extraItemError) {
-        return { ok: false, error: toUserErrorMessage(extraItemError) }
-      }
-    }
-  }
-
   const cityName = String(city.municipality_name || city.name || "")
   const phase1 = PHASE1_CITIES.find(
     (c) => c.name === cityName || c.code === String(city.code ?? "")
   )
-  const sourceNote = await attachOfficialSourceRules({
+
+  const extracted = await attachOfficialSourceRules({
     service: op.service,
-    jobId: job.id,
+    jobId: job.id as string,
     cityName,
     prefectureName: phase1?.prefectureName ?? "神奈川県",
     cityJurisdictionId: jurisdictionId,
@@ -873,7 +1128,40 @@ export async function startComposeRulebookAction(input: {
     existingRules,
     pickedIds,
     auditItemId,
+    auditItems: auditRes.data,
   })
+
+  const notes = [...extracted.notes]
+  if (!extracted.sharedHasText) {
+    await fillTemplateGaps({
+      service: op.service,
+      jobId: job.id as string,
+      domains: selected.domains,
+      existingRules,
+      pickedIds,
+      auditItemId,
+    })
+    for (const note of notes) {
+      if (
+        (note.layer === "national" || note.layer === "prefecture") &&
+        (note.status === "no_sources" || note.status === "no_text")
+      ) {
+        note.status = "gap_filled"
+        note.message = `${note.message} 書類と見比べる標準の観点で穴埋めしました。`
+      }
+    }
+  }
+
+  await attachLeftoverGoodRules({
+    service: op.service,
+    jobId: job.id as string,
+    domains: selected.domains,
+    existingRules,
+    pickedIds,
+  })
+
+  await saveExtractionNotes(op.service, job.id as string, notes)
+  const sourceNote = summarizeExtractionNotes(notes)
 
   revalidateCompose(input.serviceSlug)
   return { ok: true, data: { jobId: job.id as string, sourceNote } }
@@ -1003,10 +1291,7 @@ export async function getComposeJobAction(input: {
     (i) => i.version?.review_status === "pending_review"
   ).length
   const cityCount = included.filter(
-    (i) =>
-      i.origin === "official" ||
-      i.origin === "city_pdf" ||
-      i.rule?.scope_kind === "city"
+    (i) => i.origin === "city_pdf" || i.rule?.scope_kind === "city"
   ).length
   const sharedCount = included.length - cityCount
 
@@ -1024,6 +1309,7 @@ export async function getComposeJobAction(input: {
       pendingCount,
       cityCount,
       sharedCount,
+      extractionNotes: parseExtractionNotes(job.extraction_notes),
     },
   }
 }
@@ -1242,6 +1528,24 @@ export async function confirmComposeJobAction(input: {
       .eq("id", item.version.id)
       .eq("review_status", "pending_review")
     if (error) return { ok: false, error: toUserErrorMessage(error) }
+  }
+
+  const includedIds = new Set(
+    loaded.data.items.filter((i) => i.included).map((i) => i.rule_id)
+  )
+  const existingRules = await loadScopedRules(
+    op.service,
+    loaded.data.job.jurisdiction_id
+  )
+  for (const rule of existingRules) {
+    if (rule.scopeKind === "city") continue
+    if (includedIds.has(rule.id)) continue
+    if (!isThinComposeGuidance(rule.guidanceText)) continue
+    await op.service
+      .from("ai_check_rules")
+      .update({ status: "retired" })
+      .eq("id", rule.id)
+      .eq("status", "active")
   }
 
   const { error } = await op.service

@@ -91,6 +91,9 @@ export function ComposeRulebookForm({ service }: Props) {
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
           {RULES_UI.composeRulebook}
         </h1>
+        <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+          領域と自治体を選ぶと、国・県・市の公式資料から指摘されやすい観点を下書きします。了承（確定）するまでチェックには使いません。
+        </p>
       </div>
 
       {error ? (

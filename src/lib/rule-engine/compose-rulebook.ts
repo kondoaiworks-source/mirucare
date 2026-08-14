@@ -2,13 +2,14 @@
  * サービス × 領域 × 自治体 からルールブック下書きを組み立てる純ロジック。
  */
 
-import type { DocType, FindingSeverity } from "@/types/database"
+import type { AuditItemCategory, DocType, FindingSeverity } from "@/types/database"
 import {
   ruleMatchesDomain,
   templateItemMatchesDomain,
   type RuleDomainMatchInput,
 } from "@/lib/rule-engine/domains"
 import type { HomeVisitAuditTemplateItem } from "@/lib/rule-engine/home-visit-audit-template"
+import { PHASE1_AI_RULE_SEEDS } from "@/lib/phase1-ai-rules-seed"
 
 export type ComposeOrigin = "existing" | "template" | "manual" | "city_pdf" | "official"
 
@@ -24,6 +25,30 @@ export type ExistingComposeRule = {
   domainId: string | null
   templateCode?: string | null
   scopeKind?: "shared" | "city"
+  guidanceText?: string | null
+  reviewStatus?: string | null
+  latestVersionNo?: number
+}
+
+export type ComposeExtractionLayer = "national" | "prefecture" | "city"
+
+export type ComposeExtractionStatus =
+  | "extracted"
+  | "no_sources"
+  | "no_text"
+  | "ai_unavailable"
+  | "ai_failed"
+  | "empty"
+  | "gap_filled"
+
+export type ComposeExtractionNote = {
+  layer: ComposeExtractionLayer
+  label: string
+  status: ComposeExtractionStatus
+  sourceCount: number
+  textCount: number
+  ruleCount: number
+  message: string
 }
 
 export function pickTemplateItemsForDomains(input: {
@@ -82,8 +107,104 @@ export function composeItemTitle(item: HomeVisitAuditTemplateItem): string {
   return `${item.section}／${item.title}`
 }
 
+const THIN_GUIDANCE_MARKERS = [
+  "監査項目（最大公約数）",
+  "の観点です。関連書類・記録をご確認ください",
+]
+
+const COMPARISON_BY_CODE: Record<string, string> = {
+  HC_GOV_MANAGER_PLACEMENT:
+    "勤務表・雇用契約・資格証で、管理者が配置されているか、兼務で常勤換算が足りない可能性がないかご確認ください。指定基準の管理者と勤務実態がずれていないかもご確認ください。",
+  HC_GOV_SERVICE_RESPONSIBLE_PERSON:
+    "勤務表・資格証で、サービス提供責任者の配置人数と資格が基準を下回っていないか、兼務で実態とずれていないかご確認ください。",
+  HC_GOV_DESIGNATION_RENEWAL:
+    "指定通知・更新申請の控えで、指定の有効期限が切れていないか、更新後の内容が運営規程と食い違っていないかご確認ください。",
+  HC_GOV_CHANGE_NOTICE:
+    "変更届の控えと運営規程・勤務表で、届出が必要な変更が未提出のままになっていないかご確認ください。",
+  HC_GOV_EMPLOYMENT_CONTRACT:
+    "雇用契約書と勤務表で、契約上の勤務と実態の配置が食い違っていないか、未契約の従業者がいないかご確認ください。",
+  HC_GOV_QUALIFICATION_CERT:
+    "資格証の写しと勤務表で、配置に必要な資格が欠けていないか、有効期限切れの可能性がないかご確認ください。",
+  HC_GOV_TRAINING_RECORD:
+    "研修実施記録と年間計画で、法定研修の実施漏れや、受講者と勤務表上の職員に食い違いがないかご確認ください。",
+  HC_CONTRACT_SERVICE_CONTRACT:
+    "契約書と重要事項説明書で、契約日・署名・同意欄が欠けていないか、サービス内容が計画と食い違っていないかご確認ください。",
+  HC_CONTRACT_IMPORTANT_MATTERS:
+    "重要事項説明書と契約書で、説明日・署名・交付の記録が欠けていないか、料金や苦情窓口が最新と食い違っていないかご確認ください。",
+  HC_CONTRACT_PERSONAL_INFO_CONSENT:
+    "個人情報同意書と契約関係書類で、同意の日付・署名が欠けていないかご確認ください。",
+  HC_PLAN_USER_CONSENT:
+    "訪問介護計画の同意欄と交付記録で、利用者（または家族）の同意日が欠けていないか、計画変更後に再同意がない可能性をご確認ください。",
+}
+
+function categoryComparisonGuidance(
+  item: HomeVisitAuditTemplateItem
+): string {
+  const topic = `「${item.section}／${item.title}」`
+  const byCategory: Record<AuditItemCategory, string> = {
+    人員: `勤務表・雇用契約・資格証で、${topic}が指定基準とずれていないか、未記載や兼務で常勤換算が足りない可能性がないかご確認ください。`,
+    契約: `契約書・重要事項説明書で、${topic}の日付・署名・同意が欠けていないか、最新版と食い違っていないかご確認ください。`,
+    計画: `ケアプランと訪問介護計画で、${topic}に食い違いや未記載がないかご確認ください。`,
+    記録: `サービス提供記録と計画・勤務表で、${topic}が一致しているか、未記載がないかご確認ください。`,
+    加算: `加算の算定根拠資料と提供記録・勤務表で、${topic}の要件を満たしているか、根拠が薄い可能性がないかご確認ください。`,
+    請求: `請求データと提供記録で、${topic}に件数・日付のずれがないかご確認ください。`,
+    その他: `運営規程・委員会記録・研修記録で、${topic}の実施・見直しが確認できるか、記録漏れがないかご確認ください。`,
+  }
+  return byCategory[item.category]
+}
+
+/** 項目名のメモになっており、書類との見比べに使えない案内文 */
+export function isThinComposeGuidance(text: string | null | undefined): boolean {
+  const t = (text ?? "").trim()
+  if (!t) return true
+  return THIN_GUIDANCE_MARKERS.some((m) => t.includes(m))
+}
+
 export function composeItemGuidance(item: HomeVisitAuditTemplateItem): string {
-  return item.description
+  const byCode = COMPARISON_BY_CODE[item.code]
+  if (byCode) return byCode
+  const seed = PHASE1_AI_RULE_SEEDS.find((s) => s.code === item.code)
+  if (seed?.guidanceText) return seed.guidanceText
+  return categoryComparisonGuidance(item)
+}
+
+export function parseExtractionNotes(raw: unknown): ComposeExtractionNote[] {
+  if (!Array.isArray(raw)) return []
+  const layers: ComposeExtractionLayer[] = ["national", "prefecture", "city"]
+  return raw.flatMap((row) => {
+    if (!row || typeof row !== "object") return []
+    const r = row as Record<string, unknown>
+    const layer = layers.find((l) => l === r.layer)
+    if (!layer) return []
+    return [
+      {
+        layer,
+        label: String(r.label ?? ""),
+        status: (r.status as ComposeExtractionStatus) ?? "empty",
+        sourceCount: Number(r.sourceCount) || 0,
+        textCount: Number(r.textCount) || 0,
+        ruleCount: Number(r.ruleCount) || 0,
+        message: String(r.message ?? ""),
+      },
+    ]
+  })
+}
+
+export function summarizeExtractionNotes(
+  notes: ComposeExtractionNote[]
+): string {
+  if (notes.length === 0) return ""
+  const extracted = notes.filter((n) => n.ruleCount > 0)
+  if (extracted.length > 0) {
+    const parts = extracted.map((n) => `${n.label} ${n.ruleCount}件`)
+    const problems = notes.filter(
+      (n) => n.ruleCount === 0 && n.status !== "no_sources"
+    )
+    const head = `公式資料から${parts.join("、")}を載せました。`
+    if (problems.length === 0) return head
+    return `${head} ${problems.map((n) => n.message).join(" ")}`
+  }
+  return notes.map((n) => n.message).join(" ")
 }
 
 export function defaultComposeSeverity(

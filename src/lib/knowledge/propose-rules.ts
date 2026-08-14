@@ -11,7 +11,15 @@ import type { KnowledgeChangeItem } from "@/lib/knowledge/diff-draft"
 import type { DocType, FindingSeverity } from "@/types/database"
 
 const GEMINI_INPUT_MAX_CHARS = 80_000
-const MAX_PROPOSALS = 12
+const DEFAULT_MAX_PROPOSALS = 12
+const COMPOSE_MAX_PROPOSALS = 20
+
+const GUIDANCE_SHAPE = `案内文（guidance_text）は1〜3文で、次を必ず含める。
+- どの書類を見るか（勤務表、提供記録、訪問介護計画、契約書、請求データなど）
+- 何と何を見比べるか（配置と実施、計画と記録、日付と署名など）
+- 抜け・ずれの典型（未記載、食い違い、期限切れ）
+「〜の可能性があります」「〜をご確認ください」形式。合否の断定は禁止。
+「○○の観点です。関連書類をご確認ください」のような項目名のメモは禁止。`
 
 export type AuditItemOption = {
   id: string
@@ -148,7 +156,7 @@ function buildProposeFromDiffPrompt(input: {
 - 断定・合否判定は禁止。案内文は「〜の可能性があります」「〜をご確認ください」形式
 - URLや原文をそのまま本番基準にせず、人が確認できる提案にする
 - 整合性だけでなく、記載方法・記載漏れ・自治体固有の注意点も含めてよい
-- 提案は最大${MAX_PROPOSALS}件。重要度の高いもの優先
+- 提案は最大${DEFAULT_MAX_PROPOSALS}件。重要度の高いもの優先
 - 根拠（どの変更・どの引用か）を必ず書く
 
 対象資料: ${input.documentTitle}
@@ -192,7 +200,10 @@ function buildProposeFromSourcePrompt(input: {
   layered?: boolean
   serviceLabel?: string
   domainLabels?: string[]
+  forceScope?: "shared" | "city"
+  maxProposals?: number
 }): string {
+  const maxProposals = input.maxProposals ?? DEFAULT_MAX_PROPOSALS
   const auditList = input.auditItems
     .slice(0, 40)
     .map((a) => `- ${a.code}: ${a.title}`)
@@ -210,36 +221,36 @@ function buildProposeFromSourcePrompt(input: {
 - 市の資料に具体的な書き方があるものは出す（国の話と似ていても、市の資料に書いてあれば出す）
 - ルール名には市名を入れる（例：${input.regionName ?? "市"}の独自様式）
 - 国・県の一般論だけを繰り返す項目は出さない
-- 1件以上出せる場合は空配列にしない`
+- 空配列にしない。資料から実地指導で見られる観点をできるだけ出す（最大${maxProposals}件）`
     : ""
 
   const layeredPolicy = input.layered
     ? `
-本文は国・都道府県・市区町村の公式資料を層ごとに分けています。
+本文は国・都道府県の公式資料です（市の資料は別途読みます）。
 対象サービス: ${input.serviceLabel ?? "訪問介護"}
 対象領域: ${domainLine}
-- 国・県の資料からは、このサービス・領域で実地指導（運営指導）で見落としやすいチェック観点を出す（scope は "shared"）
-- 市の資料からは、市の様式・届出・独自加算・独自期限・提出先など市固有を出す（scope は "city"）。ルール名に市名を入れる
-- 断定・合否は禁止。案内文は「〜の可能性があります」「〜をご確認ください」
-- 国の一般論の繰り返しだけは出さない。資料に具体があるものを優先
-- shared と city を混ぜてよい。最大${MAX_PROPOSALS}件。空配列にしない`
+- このサービス・領域で実地指導（運営指導）で指摘されやすい抜け・矛盾を出す
+- scope は必ず "shared"（全市共通）
+- 資料に具体（様式、記載欄、期限、人数、頻度）があるものを優先
+- 空配列にしない。最大${maxProposals}件`
     : ""
 
-  const schemaExtra = input.layered
+  const forceScopeLine = input.forceScope
     ? `
-各提案に "scope": "shared" | "city" を付ける。`
+各提案の "scope" は必ず "${input.forceScope}"。`
     : ""
 
   return `あなたは介護保険の実地指導（運営指導）向けWチェック支援のルール設計者です。
 根拠資料の本文から、書類チェック用の「判定ルール案」をJSONのみで提案してください。
+人は案内文を読んで「この物差しで足りるか」を判断します。チェックAIも同じ文で書類を見比べます。
 
 重要方針:
-- 断定・合否判定は禁止。案内文は「〜の可能性があります」「〜をご確認ください」形式
+- ${GUIDANCE_SHAPE}
 - 人が了承するまで本番に載せない前提の「提案」
 - 記載方法・記載漏れ・同意／署名／期限／加算・整合性など、実務で見落としやすい観点を優先
-- 提案は最大${MAX_PROPOSALS}件
+- 提案は最大${maxProposals}件。重要度の高いものから
 - 根拠（本文のどの趣旨か）を必ず書く。引用は本文に実在しそうな短い句に限る
-${layeredPolicy}${cityPolicy}${schemaExtra}
+${layeredPolicy}${cityPolicy}${forceScopeLine}
 
 対象資料: ${input.documentTitle}
 管轄: ${input.jurisdictionLevel ?? "不明"} / ${input.regionName ?? "—"}
@@ -250,14 +261,13 @@ ${clip(input.sourceText)}
 内部分類（任意）:
 ${auditList || "（なし）"}
 
-必須スキーマは差分提案と同じ（proposals配列）。${
-    input.layered ? "加えて各要素に scope を付ける。" : ""
-  }`
+必須スキーマは差分提案と同じ（proposals配列）。各要素に scope を付ける。`
 }
 
 function parseProposals(
   text: string,
-  auditItems: AuditItemOption[]
+  auditItems: AuditItemOption[],
+  opts?: { forceScope?: "shared" | "city"; maxProposals?: number }
 ): ProposedCheckRule[] | null {
   try {
     const parsed = JSON.parse(text) as {
@@ -268,7 +278,8 @@ function parseProposals(
     const out: ProposedCheckRule[] = []
     const usedCodes = new Set<string>()
 
-    for (let i = 0; i < parsed.proposals.length && out.length < MAX_PROPOSALS; i++) {
+    const maxProposals = opts?.maxProposals ?? DEFAULT_MAX_PROPOSALS
+    for (let i = 0; i < parsed.proposals.length && out.length < maxProposals; i++) {
       const p = parsed.proposals[i]
       const title = String(p.title ?? "").trim()
       const guidance = String(p.guidance_text ?? "").trim()
@@ -307,7 +318,8 @@ function parseProposals(
         changeSummary: String(p.change_summary ?? "")
           .trim()
           .slice(0, 500),
-        scopeKind: normalizeScopeKind(p.scope ?? p.scope_kind),
+        scopeKind:
+          opts?.forceScope ?? normalizeScopeKind(p.scope ?? p.scope_kind),
       })
     }
 
@@ -363,6 +375,9 @@ export async function proposeRulesFromSourceText(input: {
   layered?: boolean
   serviceLabel?: string
   domainLabels?: string[]
+  forceScope?: "shared" | "city"
+  maxProposals?: number
+  timeoutMs?: number
 }): Promise<ProposeRulesResult> {
   if (!input.sourceText.trim()) {
     return { ok: false, error: "提案のもとになる本文がありません。" }
@@ -375,20 +390,27 @@ export async function proposeRulesFromSourceText(input: {
     }
   }
 
+  const maxProposals = input.maxProposals ?? DEFAULT_MAX_PROPOSALS
   const gemini = await generateGeminiJson(buildProposeFromSourcePrompt(input), {
     retry: input.skipRetry ? false : undefined,
+    timeoutMs: input.timeoutMs,
   })
   if (!gemini.ok) {
     return { ok: false, error: gemini.error }
   }
 
-  const proposals = parseProposals(gemini.text, input.auditItems)
+  const proposals = parseProposals(gemini.text, input.auditItems, {
+    forceScope: input.forceScope,
+    maxProposals,
+  })
   if (!proposals) {
     return { ok: false, error: "AI応答の解析に失敗しました。" }
   }
 
   return { ok: true, proposals, model: gemini.model }
 }
+
+export { COMPOSE_MAX_PROPOSALS }
 
 /** 運営向け change_summary に根拠をまとめる */
 export function formatProposalChangeSummary(
