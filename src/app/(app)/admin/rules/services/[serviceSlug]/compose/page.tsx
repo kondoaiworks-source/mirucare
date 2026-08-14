@@ -9,6 +9,9 @@ export const maxDuration = 180
 
 type PageProps = {
   params: Promise<{ serviceSlug: string }> | { serviceSlug: string }
+  searchParams:
+    | Promise<{ city?: string | string[]; reason?: string | string[] }>
+    | { city?: string | string[]; reason?: string | string[] }
 }
 
 export async function generateMetadata({
@@ -23,9 +26,25 @@ export async function generateMetadata({
   }
 }
 
-export default async function ComposeRulebookPage({ params }: PageProps) {
+export default async function ComposeRulebookPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { serviceSlug } = await Promise.resolve(params)
+  const query = await Promise.resolve(searchParams)
   const service = getRuleServiceBySlug(serviceSlug)
   if (!service) notFound()
-  return <ComposeRulebookForm service={service} />
+
+  const cityRaw = query.city
+  const reasonRaw = query.reason
+  const initialCitySlug = Array.isArray(cityRaw) ? cityRaw[0] : cityRaw
+  const reason = Array.isArray(reasonRaw) ? reasonRaw[0] : reasonRaw
+
+  return (
+    <ComposeRulebookForm
+      service={service}
+      initialCitySlug={initialCitySlug ?? null}
+      reason={reason ?? null}
+    />
+  )
 }

@@ -1611,7 +1611,10 @@ export async function listRuleNotificationsAction(): Promise<
   ActionResult<{
     drafts: Array<
       KnowledgeDocumentChangeDraft & {
-        knowledge_documents: Pick<KnowledgeDocument, "id" | "title"> | null
+        knowledge_documents: Pick<
+          KnowledgeDocument,
+          "id" | "title" | "source_url" | "jurisdiction_level" | "region_name"
+        > | null
       }
     >
   }>
@@ -1624,7 +1627,7 @@ export async function listRuleNotificationsAction(): Promise<
     .select(
       `
       *,
-      knowledge_documents ( id, title )
+      knowledge_documents ( id, title, source_url, jurisdiction_level, region_name )
     `
     )
     .order("created_at", { ascending: false })
@@ -1638,7 +1641,10 @@ export async function listRuleNotificationsAction(): Promise<
     return {
       ...(row as KnowledgeDocumentChangeDraft),
       knowledge_documents: (Array.isArray(doc) ? doc[0] : doc) as
-        | Pick<KnowledgeDocument, "id" | "title">
+        | Pick<
+            KnowledgeDocument,
+            "id" | "title" | "source_url" | "jurisdiction_level" | "region_name"
+          >
         | null,
     }
   })
@@ -1661,6 +1667,7 @@ export async function listRuleJobsAction(): Promise<
         | "status"
         | "jurisdiction_level"
         | "region_name"
+        | "source_url"
       >
     >
     alerts: KnowledgeSyncAlert[]
@@ -1673,7 +1680,7 @@ export async function listRuleJobsAction(): Promise<
     op.service
       .from("knowledge_documents")
       .select(
-        "id, title, watch_kind, last_sync_status, last_checked_at, last_ok_at, last_error, status, jurisdiction_level, region_name"
+        "id, title, watch_kind, last_sync_status, last_checked_at, last_ok_at, last_error, status, jurisdiction_level, region_name, source_url"
       )
       .eq("status", "active")
       .order("last_checked_at", { ascending: false })
@@ -1705,6 +1712,7 @@ export async function listRuleJobsAction(): Promise<
           | "status"
           | "jurisdiction_level"
           | "region_name"
+          | "source_url"
         >
       >,
       alerts: (alerts.data ?? []) as KnowledgeSyncAlert[],

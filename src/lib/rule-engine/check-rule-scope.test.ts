@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   checkRulesManagePath,
   checkRulesManagePathFromDocument,
+  composeRulebookPathFromDocument,
   documentMatchesRuleScope,
   formatAllocatedRuleCode,
   isRuleInMunicipalityCheckScope,
@@ -40,6 +41,23 @@ describe("check-rule-scope", () => {
     expect(checkRulesManagePath(yokohama)).toBe(
       "/admin/rules/services/homecare/book?city=yokohama"
     )
+  })
+
+  it("routes a changed document to ルールブックを作る", () => {
+    expect(
+      composeRulebookPathFromDocument({
+        jurisdictionLevel: "市区町村",
+        regionName: "横浜市",
+      })
+    ).toBe(
+      "/admin/rules/services/homecare/compose?city=yokohama&reason=source-changed"
+    )
+    expect(
+      composeRulebookPathFromDocument({
+        jurisdictionLevel: "国",
+        regionName: null,
+      })
+    ).toBe("/admin/rules/services/homecare/compose?reason=source-changed")
   })
 
   it("routes a document to the matching rulebook view", () => {

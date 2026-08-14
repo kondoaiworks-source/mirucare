@@ -71,7 +71,7 @@ export function primarySourceUrl(row: {
 export const SOURCE_URL_MONITORING_ALERT_TITLE = "自動監視について"
 
 export const SOURCE_URL_MONITORING_ALERT_BODY =
-  "公開情報を登録すると公開情報監視へ自動で紐付きます。ただし公開情報リンク（HTML・一覧ページ）だけの登録だと、台帳には載っても「以降の変更を自動監視」までは行かないことがあります。更新アラートを受け取るには、公開情報PDF（PDFなどの直リンク）を入れてください。"
+  "公式PDFの直リンクを置くと、監視状況に載ります。一覧ページだけでは本文も更新検知も弱いことがあります。変わったら人が原文を確認し、ルールブックを作るから作り直してください。自動では本番の物差しを書き換えません。"
 
 /** 直接ファイルURL欄の短い補足 */
 export const SOURCE_URL_DIRECT_FILE_HINT =

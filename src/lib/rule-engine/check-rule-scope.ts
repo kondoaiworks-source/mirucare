@@ -3,7 +3,10 @@
  * 横浜のチェック ＝ 国・県で承認した共通ルール ＋ 横浜市で承認したルール
  */
 
-import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
+import {
+  citySlugFromRegionName,
+  PHASE1_CITIES,
+} from "@/lib/rule-engine/phase1-cities"
 import { servicePath } from "@/lib/rule-engine/services"
 
 export type CheckRuleScopeKind = "shared" | "city"
@@ -41,6 +44,40 @@ export function viewRulebookPath(
   const slug = citySlug?.trim()
   if (!slug) return base
   return `${base}?city=${encodeURIComponent(slug)}`
+}
+
+export type ComposeRulebookReason = "source-changed"
+
+export function composeRulebookPath(
+  serviceSlug: string,
+  citySlug?: string | null,
+  opts?: { reason?: ComposeRulebookReason }
+): string {
+  const base = servicePath(serviceSlug, "compose")
+  const params = new URLSearchParams()
+  const slug = citySlug?.trim()
+  if (slug) params.set("city", slug)
+  if (opts?.reason) params.set("reason", opts.reason)
+  const query = params.toString()
+  return query ? `${base}?${query}` : base
+}
+
+/**
+ * 監視で変わった資料から、ルールブックを作り直す画面へ。
+ * 市の資料ならその市を選ぶ。国・県は自治体を人が選ぶ。
+ */
+export function composeRulebookPathFromDocument(input: {
+  serviceSlug?: string
+  jurisdictionLevel?: string | null
+  regionName?: string | null
+}): string {
+  const serviceSlug = input.serviceSlug?.trim() || "homecare"
+  const level = input.jurisdictionLevel?.trim() ?? ""
+  const isCity = level === "市区町村" || level === "municipality"
+  const citySlug = isCity ? citySlugFromRegionName(input.regionName) : null
+  return composeRulebookPath(serviceSlug, citySlug, {
+    reason: "source-changed",
+  })
 }
 
 export function checkRulesManagePath(context: CheckRuleManageContext): string {

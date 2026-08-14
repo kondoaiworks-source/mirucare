@@ -12,14 +12,27 @@ export type LinkageMonitorEvent = {
   alertId?: string
   draftId?: string
   detail: string
+  sourceUrl?: string | null
+  jurisdictionLevel?: string | null
+  regionName?: string | null
 }
 
 export type PendingDraftForMonitor = {
   id: string
   created_at: string
   ai_summary: string | null
-  knowledge_documents: { id: string; title: string } | null
+  knowledge_documents: {
+    id: string
+    title: string
+    source_url?: string | null
+    jurisdiction_level?: string | null
+    region_name?: string | null
+  } | null
 }
+
+/** 監視状況から作り直すときの確認記録（原文確認の記録として残す） */
+export const MONITOR_REMAKE_REVIEW_REASON =
+  "監視状況で公式PDFの更新を確認し、ルールブックを作り直します。"
 
 function normalizeJoined<T>(value: T | T[] | null | undefined): T | null {
   if (value == null) return null
@@ -40,7 +53,11 @@ export function buildLinkageMonitorEvents(input: {
       | "last_checked_at"
       | "last_error"
       | "status"
-    >
+    > & {
+      source_url?: string | null
+      jurisdiction_level?: string | null
+      region_name?: string | null
+    }
   >
   alerts: KnowledgeSyncAlert[]
   drafts: PendingDraftForMonitor[]
@@ -50,6 +67,21 @@ export function buildLinkageMonitorEvents(input: {
 
   const rank = (r: LinkageMonitorResult) =>
     r === "ng" ? 3 : r === "diff" ? 2 : 1
+
+  function mergeMeta(
+    primary: LinkageMonitorEvent,
+    secondary: LinkageMonitorEvent
+  ): LinkageMonitorEvent {
+    return {
+      ...primary,
+      draftId: primary.draftId ?? secondary.draftId,
+      alertId: primary.alertId ?? secondary.alertId,
+      sourceUrl: primary.sourceUrl ?? secondary.sourceUrl,
+      jurisdictionLevel:
+        primary.jurisdictionLevel ?? secondary.jurisdictionLevel,
+      regionName: primary.regionName ?? secondary.regionName,
+    }
+  }
 
   function upsert(event: LinkageMonitorEvent) {
     if (!event.documentId) {
@@ -66,22 +98,15 @@ export function buildLinkageMonitorEvents(input: {
       rank(event.result) === rank(prev.result) &&
       event.checkedAt > prev.checkedAt
     if (betterRank || newer) {
-      byDoc.set(event.documentId, event)
+      byDoc.set(event.documentId, mergeMeta(event, prev))
+    } else {
+      byDoc.set(event.documentId, mergeMeta(prev, event))
     }
   }
 
   for (const a of input.alerts) {
     if (a.status !== "open") continue
-    const doc = normalizeJoined(
-      (
-        a as KnowledgeSyncAlert & {
-          knowledge_documents?:
-            | { id: string; title: string }
-            | { id: string; title: string }[]
-            | null
-        }
-      ).knowledge_documents
-    )
+    const doc = normalizeJoined(a.knowledge_documents)
     upsert({
       id: `alert:${a.id}`,
       checkedAt: a.created_at,
@@ -90,6 +115,8 @@ export function buildLinkageMonitorEvents(input: {
       documentId: a.knowledge_document_id ?? doc?.id ?? null,
       alertId: a.id,
       detail: a.message,
+      jurisdictionLevel: doc?.jurisdiction_level,
+      regionName: doc?.region_name,
     })
   }
 
@@ -104,7 +131,10 @@ export function buildLinkageMonitorEvents(input: {
       draftId: d.id,
       detail:
         d.ai_summary?.trim() ||
-        "原文に差分があります。詳細を確認してください。",
+        "公式PDFの内容が変わった可能性があります。原文を確認し、ルールブックを作り直してください。",
+      sourceUrl: doc?.source_url,
+      jurisdictionLevel: doc?.jurisdiction_level,
+      regionName: doc?.region_name,
     })
   }
 
@@ -124,6 +154,9 @@ export function buildLinkageMonitorEvents(input: {
         result: "ng",
         documentId: doc.id,
         detail: doc.last_error?.trim() || "自動監視で問題の可能性があります。",
+        sourceUrl: doc.source_url,
+        jurisdictionLevel: doc.jurisdiction_level,
+        regionName: doc.region_name,
       })
       continue
     }
@@ -134,7 +167,11 @@ export function buildLinkageMonitorEvents(input: {
         title: doc.title,
         result: "diff",
         documentId: doc.id,
-        detail: "更新を検知しました。差分の確認・台帳反映をご確認ください。",
+        detail:
+          "公式PDFの更新を検知しました。原文を確認し、ルールブックを作り直してください。確定するまでチェックには使いません。",
+        sourceUrl: doc.source_url,
+        jurisdictionLevel: doc.jurisdiction_level,
+        regionName: doc.region_name,
       })
       continue
     }
@@ -146,13 +183,29 @@ export function buildLinkageMonitorEvents(input: {
         result: "ok",
         documentId: doc.id,
         detail: "変更はありませんでした。",
+        sourceUrl: doc.source_url,
+        jurisdictionLevel: doc.jurisdiction_level,
+        regionName: doc.region_name,
       })
     }
   }
 
-  return [...Array.from(byDoc.values()), ...orphan].sort((a, b) =>
-    a.checkedAt < b.checkedAt ? 1 : a.checkedAt > b.checkedAt ? -1 : 0
-  )
+  return [...Array.from(byDoc.values()), ...orphan]
+    .sort((a, b) =>
+      a.checkedAt < b.checkedAt ? 1 : a.checkedAt > b.checkedAt ? -1 : 0
+    )
+    .map((event) => {
+      if (!event.documentId) return event
+      const doc = input.documents.find((d) => d.id === event.documentId)
+      if (!doc) return event
+      return {
+        ...event,
+        sourceUrl: event.sourceUrl ?? doc.source_url,
+        jurisdictionLevel:
+          event.jurisdictionLevel ?? doc.jurisdiction_level,
+        regionName: event.regionName ?? doc.region_name,
+      }
+    })
 }
 
 export function linkageResultLabel(result: LinkageMonitorResult): string {

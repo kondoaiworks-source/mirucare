@@ -2,6 +2,10 @@ import type {
   CityRulebookData,
   CityRulebookSource,
 } from "@/app/actions/city-rulebook"
+import {
+  citySlugFromRegionName,
+  sourceLayerFromJurisdictionLevel,
+} from "@/lib/rule-engine/phase1-cities"
 
 export type RulebookSourceLink = {
   key: string
@@ -96,4 +100,18 @@ export function sourceListPath(
   if (opts?.needsText) params.set("needs", "text")
   const query = params.toString()
   return query ? `${base}?${query}` : base
+}
+
+/** 監視エラー時など、資料の管轄から資料先へ */
+export function sourceListPathFromDocument(input: {
+  serviceSlug?: string
+  jurisdictionLevel?: string | null
+  regionName?: string | null
+}): string {
+  const serviceSlug = input.serviceSlug?.trim() || "homecare"
+  const layer = sourceLayerFromJurisdictionLevel(input.jurisdictionLevel)
+  const citySlug = citySlugFromRegionName(input.regionName)
+  return sourceListPath(serviceSlug, citySlug, {
+    layer: layer ?? undefined,
+  })
 }

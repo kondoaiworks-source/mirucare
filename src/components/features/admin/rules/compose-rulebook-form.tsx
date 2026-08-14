@@ -28,9 +28,15 @@ import { cn } from "@/lib/utils"
 
 type Props = {
   service: RuleServiceDef
+  initialCitySlug?: string | null
+  reason?: string | null
 }
 
-export function ComposeRulebookForm({ service }: Props) {
+export function ComposeRulebookForm({
+  service,
+  initialCitySlug,
+  reason,
+}: Props) {
   const router = useRouter()
   const [domains, setDomains] = useState<RuleDomain[]>([])
   const [municipalities, setMunicipalities] = useState<
@@ -52,11 +58,17 @@ export function ComposeRulebookForm({ service }: Props) {
       }
       setDomains(result.data.domains)
       setMunicipalities(result.data.municipalities)
-      if (result.data.municipalities[0]) {
+      const fromQuery = initialCitySlug?.trim()
+      const matched = fromQuery
+        ? result.data.municipalities.find((m) => m.slug === fromQuery)
+        : undefined
+      if (matched) {
+        setJurisdictionId(matched.id)
+      } else if (reason !== "source-changed" && result.data.municipalities[0]) {
         setJurisdictionId(result.data.municipalities[0].id)
       }
     })()
-  }, [service.slug])
+  }, [service.slug, initialCitySlug, reason])
 
   function onGenerate() {
     startTransition(async () => {
@@ -92,9 +104,21 @@ export function ComposeRulebookForm({ service }: Props) {
           {RULES_UI.composeRulebook}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          領域と自治体を選ぶと、国・県・市の公式資料から指摘されやすい観点を下書きします。了承（確定）するまでチェックには使いません。
+          領域と自治体を選ぶと、資料先の公式PDFから指摘されやすい観点を下書きします。了承（確定）するまでチェックには使いません。
         </p>
       </div>
+
+      {reason === "source-changed" ? (
+        <Alert className="rounded-xl border-accent/40 bg-accent/5">
+          <AlertTriangle className="text-accent" />
+          <AlertTitle className="text-base text-primary-dark">
+            公式資料が変わった可能性があります
+          </AlertTitle>
+          <AlertDescription className="text-base leading-relaxed">
+            原文を確認したうえで、この自治体の下書きを作り直してください。国・県の資料なら、他の自治体も必要に応じて繰り返してください。確定するまでチェックには使いません。
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">

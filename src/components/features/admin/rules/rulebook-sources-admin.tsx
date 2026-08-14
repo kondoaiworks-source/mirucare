@@ -128,7 +128,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
           {RULES_UI.sourceList}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          ルールブックを作るときに読む、国・県・市の公式資料です。本文が無いときは、人がリンク先を確認して直します。
+          ルールブックを作るときに読む、国・県・市の公式PDFです。直リンクを置くと監視状況に載ります。本文が無いときは、人がリンク先を確認して直します。
         </p>
       </div>
 

@@ -4,6 +4,7 @@ import {
   collectRulebookSourceLinks,
   groupRulebookSourceLinks,
   sourceListPath,
+  sourceListPathFromDocument,
 } from "@/lib/rule-engine/rulebook-source-links"
 
 describe("rulebook-source-links", () => {
@@ -68,5 +69,19 @@ describe("rulebook-source-links", () => {
     ).toBe(
       "/admin/rules/services/homecare/sources?city=yokohama&layer=prefecture&needs=text"
     )
+    expect(
+      sourceListPathFromDocument({
+        jurisdictionLevel: "市区町村",
+        regionName: "川崎市",
+      })
+    ).toBe(
+      "/admin/rules/services/homecare/sources?city=kawasaki&layer=city"
+    )
+    expect(
+      sourceListPathFromDocument({
+        jurisdictionLevel: "国",
+        regionName: null,
+      })
+    ).toBe("/admin/rules/services/homecare/sources?layer=national")
   })
 })

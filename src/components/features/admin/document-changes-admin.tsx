@@ -30,9 +30,8 @@ import {
   rejectChangeDraftAction,
   type PendingChangeDraftRow,
 } from "@/app/actions/knowledge-change-drafts"
-import { proposeAiCheckRulesFromDraftAction } from "@/app/actions/propose-check-rules"
+import { composeRulebookPathFromDocument } from "@/lib/rule-engine/check-rule-scope"
 import type { KnowledgeChangeItem } from "@/lib/knowledge/diff-draft"
-import { checkRulesManagePathFromDocument } from "@/lib/rule-engine/check-rule-scope"
 import { getPhase1CityBySlug } from "@/lib/rule-engine/phase1-cities"
 
 function asChanges(raw: unknown): KnowledgeChangeItem[] {
@@ -145,9 +144,9 @@ export function DocumentChangesAdmin() {
         toast.error(result.error ?? "承認に失敗しました。")
         return
       }
-      toast.success("台帳に反映しました", {
+      toast.success("原文の更新を確認しました", {
         description:
-          "続けて「判定ルール案を生成する」と、差分からチェック用ルール案がルール管理に載ります。",
+          "続けて「ルールブックを作り直す」から下書きを作り、確定してください。確定するまでチェックには使いません。",
         duration: 10000,
       })
       setReasons((prev) => {
@@ -159,39 +158,10 @@ export function DocumentChangesAdmin() {
     })
   }
 
-  function rulesHrefForDraft(draft: PendingChangeDraftRow): string {
-    return checkRulesManagePathFromDocument({
+  function composeHrefForDraft(draft: PendingChangeDraftRow): string {
+    return composeRulebookPathFromDocument({
       jurisdictionLevel: draft.knowledge_documents?.jurisdiction_level,
       regionName: draft.knowledge_documents?.region_name,
-    })
-  }
-
-  function onProposeRules(draft: PendingChangeDraftRow) {
-    startTransition(async () => {
-      const result = await proposeAiCheckRulesFromDraftAction({
-        draftId: draft.id,
-      })
-      if (!result.ok) {
-        toast.error(result.error ?? "判定ルール案の生成に失敗しました。")
-        return
-      }
-      if (result.data?.empty) {
-        toast.message("AIは判定ルール案を出しませんでした。原文をご確認ください。")
-        return
-      }
-      toast.success(
-        `判定ルール案を ${result.data?.createdCount ?? 0}件、ルール管理に載せました。`,
-        {
-          description: "了承するまで書類チェックには使われません。",
-          action: {
-            label: "ルール管理を開く",
-            onClick: () => {
-              window.location.href = rulesHrefForDraft(draft)
-            },
-          },
-          duration: 12000,
-        }
-      )
     })
   }
 
@@ -224,10 +194,9 @@ export function DocumentChangesAdmin() {
             マニュアル変更の承認
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
-            監視で検知した変更を確認し、問題なければ<strong>公開情報監視</strong>
-            へ反映します。チェック用の判定ルールは、差分から
-            <strong>判定ルール案を生成</strong>
-            し、ルール管理で了承してから使います。
+            監視で検知した変更を確認します。問題なければ承認し、
+            <strong>ルールブックを作る</strong>
+            から下書きを作り直してください。確定するまでチェックには使いません。
           </p>
           {cityFromQuery ? (
             <p className="text-base font-medium text-primary">
@@ -280,16 +249,16 @@ export function DocumentChangesAdmin() {
 
       <Alert className="rounded-xl border-primary/20 bg-primary/[0.03]">
         <CheckCircle2 className="text-primary" />
-        <AlertTitle>辞書反映は2段階です</AlertTitle>
+        <AlertTitle>原文の確認と、ルールブックの作り直しは別です</AlertTitle>
         <AlertDescription className="space-y-2 text-base leading-relaxed">
           <p>
-            ①この画面の承認＝公開情報監視の<strong>版履歴</strong>への反映。
-            ②チェック用の判定ルールは「判定ルール案を生成する」→
-            <strong>ルール管理</strong>
-            で了承して初めて使われます（自動では載りません）。
+            ①この画面の承認＝公式PDFの更新を確認した記録です。
+            ②物差しの更新は「ルールブックを作り直す」→了承（確定）するまでチェックには使いません。自動では本番を書き換えません。
           </p>
           <Button asChild variant="outline" className="min-h-11">
-            <Link href="/admin/rules/setup">ルール管理を開く</Link>
+            <Link href="/admin/rules/services/homecare/compose">
+              ルールブックを作る
+            </Link>
           </Button>
         </AlertDescription>
       </Alert>
@@ -521,26 +490,9 @@ export function DocumentChangesAdmin() {
                       <XCircle className="size-4" aria-hidden />
                       差し戻す
                     </Button>
-                    <Button
-                      type="button"
-                      size="lg"
-                      variant="secondary"
-                      className="min-h-11"
-                      disabled={pending}
-                      onClick={() => onProposeRules(draft)}
-                    >
-                      判定ルール案を生成する
-                    </Button>
-                    <Button asChild size="lg" variant="ghost" className="min-h-11">
-                      <Link href={rulesHrefForDraft(draft)}>
-                        ルール管理を開く
-                      </Link>
-                    </Button>
-                    <Button asChild size="lg" variant="ghost" className="min-h-11">
-                      <Link
-                        href={`/admin/rules/ai-rules?fromDraft=${draft.id}`}
-                      >
-                        手入力で改訂案を作る
+                    <Button asChild size="lg" variant="secondary" className="min-h-11">
+                      <Link href={composeHrefForDraft(draft)}>
+                        ルールブックを作り直す
                       </Link>
                     </Button>
                   </div>

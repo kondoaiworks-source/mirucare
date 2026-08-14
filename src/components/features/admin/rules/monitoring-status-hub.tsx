@@ -1,13 +1,16 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   AlertTriangle,
   CheckCircle2,
   CircleAlert,
   RefreshCw,
 } from "lucide-react"
+import { toast } from "@/components/ui/sonner"
+import { approveChangeDraftAction } from "@/app/actions/knowledge-change-drafts"
 import { listRuleJobsAction, listRuleNotificationsAction } from "@/app/actions/rule-engine"
 import { AdminEqualCard } from "@/components/features/admin/rules/admin-equal-card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -22,8 +25,12 @@ import {
 } from "@/components/ui/card"
 import {
   buildLinkageMonitorEvents,
+  MONITOR_REMAKE_REVIEW_REASON,
   type LinkageMonitorEvent,
 } from "@/lib/rule-engine/linkage-monitoring"
+import { composeRulebookPathFromDocument } from "@/lib/rule-engine/check-rule-scope"
+import { sourceListPath, sourceListPathFromDocument } from "@/lib/rule-engine/rulebook-source-links"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import type { KnowledgeDocument, KnowledgeSyncAlert } from "@/types/database"
 import { cn } from "@/lib/utils"
 
@@ -39,6 +46,7 @@ type DocRow = Pick<
   | "status"
   | "jurisdiction_level"
   | "region_name"
+  | "source_url"
 >
 
 const LAYER_ORDER = ["national", "prefecture", "municipality", "other"] as const
@@ -94,12 +102,20 @@ export function MonitoringStatusHub() {
       id: string
       created_at: string
       ai_summary: string | null
-      knowledge_documents: { id: string; title: string } | null
+      knowledge_documents: {
+        id: string
+        title: string
+        source_url?: string | null
+        jurisdiction_level?: string | null
+        region_name?: string | null
+      } | null
     }>
   >([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+  const router = useRouter()
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -129,6 +145,10 @@ export function MonitoringStatusHub() {
                 ? {
                     id: d.knowledge_documents.id,
                     title: d.knowledge_documents.title,
+                    source_url: d.knowledge_documents.source_url,
+                    jurisdiction_level:
+                      d.knowledge_documents.jurisdiction_level,
+                    region_name: d.knowledge_documents.region_name,
                   }
                 : null,
             }))
@@ -182,6 +202,51 @@ export function MonitoringStatusHub() {
   const selected =
     events.find((e) => e.id === selectedId) ?? null
 
+  function eventContext(event: LinkageMonitorEvent) {
+    const doc = documents.find((d) => d.id === event.documentId)
+    return {
+      sourceUrl: event.sourceUrl || doc?.source_url || null,
+      jurisdictionLevel:
+        event.jurisdictionLevel || doc?.jurisdiction_level || null,
+      regionName: event.regionName || doc?.region_name || null,
+    }
+  }
+
+  function remakeHref(event: LinkageMonitorEvent) {
+    const ctx = eventContext(event)
+    return composeRulebookPathFromDocument({
+      jurisdictionLevel: ctx.jurisdictionLevel,
+      regionName: ctx.regionName,
+    })
+  }
+
+  function sourcesHref(event: LinkageMonitorEvent) {
+    const ctx = eventContext(event)
+    return sourceListPathFromDocument({
+      jurisdictionLevel: ctx.jurisdictionLevel,
+      regionName: ctx.regionName,
+    })
+  }
+
+  function onConfirmAndRemake(event: LinkageMonitorEvent) {
+    const href = remakeHref(event)
+    startTransition(async () => {
+      if (event.draftId) {
+        const result = await approveChangeDraftAction({
+          draftId: event.draftId,
+          reviewReason: MONITOR_REMAKE_REVIEW_REASON,
+        })
+        if (!result.ok) {
+          toast.error(result.error ?? "差分の確認記録を残せませんでした。")
+          return
+        }
+      }
+      router.push(href)
+    })
+  }
+
+  const selectedCtx = selected ? eventContext(selected) : null
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -190,7 +255,7 @@ export function MonitoringStatusHub() {
             監視状況
           </h1>
           <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            国・自治体ごとの監視結果を確認します。
+            資料先に置いた公式PDFの更新結果です。変わったら原文を確認し、ルールブックを作り直してください。確定するまでチェックには使いません。
           </p>
         </div>
         <Button
@@ -267,7 +332,7 @@ export function MonitoringStatusHub() {
               監視リスト
             </h2>
             <p className="mt-1 text-base text-muted-foreground">
-              エラー印を押すと詳細を表示します。
+              差分あり・エラーを押すと、次の作業が出ます。
             </p>
           </div>
 
@@ -343,12 +408,14 @@ export function MonitoringStatusHub() {
               <CardHeader>
                 <CardTitle className="text-lg">監視対象がありません</CardTitle>
                 <CardDescription className="text-base">
-                  利用設定で根拠URL（PDF直リンク）を登録してください。
+                  資料先で、国・県・市の公式PDF直リンクを登録してください。
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button asChild className="min-h-11">
-                  <Link href="/admin/rules/setup">利用設定を開く</Link>
+                  <Link href={sourceListPath("homecare")}>
+                    {RULES_UI.sourceList}を開く
+                  </Link>
                 </Button>
               </CardContent>
             </Card>
@@ -365,7 +432,7 @@ export function MonitoringStatusHub() {
                 詳細
               </CardTitle>
               <CardDescription className="text-base">
-                エラー印を押すと内容が出ます。
+                一覧を押すと、原文の確認と作り直しが出ます。
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -389,39 +456,34 @@ export function MonitoringStatusHub() {
                     {selected.detail}
                   </p>
                   <div className="flex flex-col gap-2">
-                    {selected.result === "diff" ? (
-                      <Button asChild className="min-h-11">
-                        <Link
-                          href={
-                            selected.draftId
-                              ? `/admin/document-changes#draft-${selected.draftId}`
-                              : "/admin/document-changes"
-                          }
+                    {selectedCtx?.sourceUrl ? (
+                      <Button asChild variant="outline" className="min-h-11">
+                        <a
+                          href={selectedCtx.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
-                          差分を確認する
+                          原文を開く
+                        </a>
+                      </Button>
+                    ) : null}
+                    {selected.result === "diff" ? (
+                      <Button
+                        type="button"
+                        className="min-h-11"
+                        disabled={pending}
+                        onClick={() => onConfirmAndRemake(selected)}
+                      >
+                        確認してルールブックを作り直す
+                      </Button>
+                    ) : null}
+                    {selected.result === "ng" ? (
+                      <Button asChild className="min-h-11">
+                        <Link href={sourcesHref(selected)}>
+                          資料先でリンクを直す
                         </Link>
                       </Button>
                     ) : null}
-                    {selected.documentId ? (
-                      <Button asChild variant="outline" className="min-h-11">
-                        <Link
-                          href={`/admin/rules/documents?doc=${selected.documentId}`}
-                        >
-                          公開情報監視で開く
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button asChild variant="outline" className="min-h-11">
-                        <Link href="/admin/rules/documents">
-                          公開情報監視を開く
-                        </Link>
-                      </Button>
-                    )}
-                    <Button asChild variant="outline" className="min-h-11">
-                      <Link href="/admin/rules/notifications">
-                        台帳管理を開く
-                      </Link>
-                    </Button>
                   </div>
                 </>
               ) : (

@@ -83,4 +83,36 @@ describe("buildLinkageMonitorEvents", () => {
     expect(events[0]?.draftId).toBe("dr1")
     expect(linkageResultLabel("diff")).toBe("差分あり")
   })
+
+  it("keeps draftId when the same document also has a newer sync", () => {
+    const events = buildLinkageMonitorEvents({
+      documents: [
+        {
+          id: "d9",
+          title: "県マニュアル",
+          last_sync_status: "ok",
+          last_checked_at: "2026-07-12T00:00:00.000Z",
+          last_error: null,
+          status: "active",
+          source_url: "https://example.com/pref.pdf",
+          jurisdiction_level: "都道府県",
+          region_name: "神奈川県",
+        },
+      ],
+      alerts: [],
+      drafts: [
+        {
+          id: "dr1",
+          created_at: "2026-07-11T00:00:00.000Z",
+          ai_summary: "第3章が更新",
+          knowledge_documents: { id: "d9", title: "県マニュアル" },
+        },
+      ],
+    })
+    expect(events).toHaveLength(1)
+    expect(events[0]?.result).toBe("diff")
+    expect(events[0]?.draftId).toBe("dr1")
+    expect(events[0]?.sourceUrl).toBe("https://example.com/pref.pdf")
+    expect(events[0]?.jurisdictionLevel).toBe("都道府県")
+  })
 })
