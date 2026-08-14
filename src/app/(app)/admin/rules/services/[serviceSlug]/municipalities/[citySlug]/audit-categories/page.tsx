@@ -1,10 +1,11 @@
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
-import { AuditCategoriesAdmin } from "@/components/features/admin/rules/audit-categories-admin"
+import { redirect } from "next/navigation"
+import { viewRulebookPath } from "@/lib/rule-engine/check-rule-scope"
 import { getPhase1CityBySlug } from "@/lib/rule-engine/phase1-cities"
 import { getRuleServiceBySlug } from "@/lib/rule-engine/services"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
-export const dynamic = "force-dynamic"
+export const metadata: Metadata = { title: RULES_UI.viewRulebook }
 
 type PageProps = {
   params:
@@ -12,21 +13,13 @@ type PageProps = {
     | { serviceSlug: string; citySlug: string }
 }
 
-export async function generateMetadata({
+/** 旧・カテゴリ進み具合 → ルールブックを見る */
+export default async function AuditCategoriesRedirectPage({
   params,
-}: PageProps): Promise<Metadata> {
-  const { citySlug } = await Promise.resolve(params)
-  const city = getPhase1CityBySlug(citySlug)
-  return {
-    title: city ? `${city.name}｜カテゴリの進み具合` : "カテゴリの進み具合",
-  }
-}
-
-export default async function AuditCategoriesPage({ params }: PageProps) {
+}: PageProps) {
   const { serviceSlug, citySlug } = await Promise.resolve(params)
   const service = getRuleServiceBySlug(serviceSlug)
   const city = getPhase1CityBySlug(citySlug)
-  if (!service || !city) notFound()
-
-  return <AuditCategoriesAdmin service={service} city={city} />
+  if (!service || !city) redirect("/admin/rules/setup")
+  redirect(viewRulebookPath(service.slug, city.slug))
 }

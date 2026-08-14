@@ -65,6 +65,7 @@ export type CityRulebookCheckRule = {
   effectiveFrom: string
   changeSummary: string | null
   scopeKind: "city" | "shared" | "other_city" | "unscoped"
+  domainId: string | null
   /** 監査項目のジャンル（契約・計画・記録など） */
   category: AuditItemCategory | null
   auditItemTitle: string | null
@@ -506,6 +507,7 @@ async function loadCityCheckRules(
         status,
         scope_kind,
         jurisdiction_id,
+        domain_id,
         audit_items ( id, title, code, category )
       ),
       knowledge_document_change_drafts (
@@ -545,6 +547,7 @@ async function loadCityCheckRules(
       status: string
       scope_kind?: string | null
       jurisdiction_id?: string | null
+      domain_id?: string | null
       audit_items:
         | {
             id: string
@@ -632,6 +635,7 @@ async function loadCityCheckRules(
       effectiveFrom: String(row.effective_from ?? asOf),
       changeSummary: (row.change_summary as string | null) ?? null,
       scopeKind: scopeKind as RuleScopeKind,
+      domainId: (rule.domain_id as string | null) ?? null,
       category: auditItem?.category ?? null,
       auditItemTitle: auditItem?.title ?? null,
       sourceDocumentId: doc?.id ?? null,

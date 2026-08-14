@@ -86,7 +86,12 @@ export function MunicipalitiesAdmin({ embedded = false }: Props = {}) {
       {!embedded ? (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <AdminBreadcrumb items={[{ label: RULES_UI.municipalityMaster }]} />
+            <AdminBreadcrumb
+              items={[
+                { label: RULES_UI.setup, href: "/admin/rules/setup" },
+                { label: RULES_UI.municipalityMaster },
+              ]}
+            />
             <h1 className="mt-2 text-2xl font-bold text-primary-dark">
               {RULES_UI.municipalityMaster}
             </h1>

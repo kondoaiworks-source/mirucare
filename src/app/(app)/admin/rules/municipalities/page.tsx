@@ -1,9 +1,32 @@
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
+import { MunicipalitiesAdmin } from "@/components/features/admin/rules/municipalities-admin"
+import { OfferingsAdmin } from "@/components/features/admin/rules/offerings-admin"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
-export const metadata: Metadata = { title: "自治体管理" }
+export const dynamic = "force-dynamic"
 
-/** 旧自治体マスタ → 訪問介護の市区町村ルール設定 */
-export default function Page() {
-  redirect("/admin/rules/services/homecare/municipalities")
+export const metadata: Metadata = { title: RULES_UI.municipalityMaster }
+
+export default function MunicipalitiesMasterPage() {
+  return (
+    <div className="space-y-6">
+      <MunicipalitiesAdmin />
+      <section
+        className="rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
+        aria-labelledby="registered-municipalities-heading"
+      >
+        <h2
+          id="registered-municipalities-heading"
+          className="mb-4 text-lg font-semibold text-primary-dark"
+        >
+          {RULES_UI.registeredMunicipalities}
+        </h2>
+        <OfferingsAdmin
+          fixedServiceType="訪問介護"
+          serviceSlug="homecare"
+          title=""
+        />
+      </section>
+    </div>
+  )
 }

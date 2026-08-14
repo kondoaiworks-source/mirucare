@@ -94,7 +94,11 @@ export function ComposeRulebookReview({ service, initial }: Props) {
         return
       }
       toast.success("ルールブックを確定しました。チェックに使えます。")
-      router.push(servicePath(service.slug))
+      router.push(
+        data.citySlug
+          ? `${servicePath(service.slug, "book")}?city=${encodeURIComponent(data.citySlug)}`
+          : servicePath(service.slug, "book")
+      )
     })
   }
 

@@ -1,13 +1,13 @@
 "use client"
 
-import { Layers, PauseCircle, PlayCircle, Shapes } from "lucide-react"
+import { Layers, PauseCircle, PlayCircle, Shapes, Building2 } from "lucide-react"
 import { AdminEqualCard } from "@/components/features/admin/rules/admin-equal-card"
 import { Badge } from "@/components/ui/badge"
 import { RULE_SERVICES, servicePath } from "@/lib/rule-engine/services"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 /**
- * 利用設定：サービス設定と領域マスタ。
+ * 利用設定：サービス設定と領域マスタ・自治体マスタ。
  * @see docs/ルールブック構想.md
  */
 export function UsageSettingsHub() {
@@ -58,13 +58,13 @@ export function UsageSettingsHub() {
 
       <section
         className="rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
-        aria-labelledby="domain-master-heading"
+        aria-labelledby="masters-heading"
       >
         <h2
-          id="domain-master-heading"
+          id="masters-heading"
           className="text-xl font-bold text-primary-dark"
         >
-          {RULES_UI.domainMaster}
+          マスタ
         </h2>
         <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <li>
@@ -72,6 +72,13 @@ export function UsageSettingsHub() {
               href="/admin/rules/domains"
               title={RULES_UI.domainMaster}
               icon={Shapes}
+            />
+          </li>
+          <li>
+            <AdminEqualCard
+              href="/admin/rules/municipalities"
+              title={RULES_UI.municipalityMaster}
+              icon={Building2}
             />
           </li>
         </ul>

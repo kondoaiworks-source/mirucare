@@ -33,20 +33,18 @@ export function ruleCodePrefix(context: CheckRuleManageContext): string {
   return slug.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase() || "CITY"
 }
 
+export function viewRulebookPath(
+  serviceSlug: string,
+  citySlug?: string | null
+): string {
+  const base = servicePath(serviceSlug, "book")
+  const slug = citySlug?.trim()
+  if (!slug) return base
+  return `${base}?city=${encodeURIComponent(slug)}`
+}
+
 export function checkRulesManagePath(context: CheckRuleManageContext): string {
-  if (context.scopeKind === "shared") {
-    return servicePath(context.serviceSlug, "national-prefecture", "rules")
-  }
-  const citySlug = context.citySlug?.trim()
-  if (!citySlug) {
-    return servicePath(context.serviceSlug, "municipalities")
-  }
-  return servicePath(
-    context.serviceSlug,
-    "municipalities",
-    citySlug,
-    "rules"
-  )
+  return viewRulebookPath(context.serviceSlug, context.citySlug)
 }
 
 export function checkRulesManualPath(context: CheckRuleManageContext): string {
@@ -54,14 +52,7 @@ export function checkRulesManualPath(context: CheckRuleManageContext): string {
 }
 
 export function checkRulesParentPath(context: CheckRuleManageContext): string {
-  if (context.scopeKind === "shared") {
-    return servicePath(context.serviceSlug, "national-prefecture")
-  }
-  const citySlug = context.citySlug?.trim()
-  if (!citySlug) {
-    return servicePath(context.serviceSlug, "municipalities")
-  }
-  return servicePath(context.serviceSlug, "municipalities", citySlug)
+  return servicePath(context.serviceSlug)
 }
 
 /**
@@ -77,7 +68,7 @@ export function checkRulesManagePathFromDocument(input: {
   const region = input.regionName?.trim() ?? ""
 
   if (level === "国" || level === "national" || level === "都道府県" || level === "prefecture") {
-    return servicePath(serviceSlug, "national-prefecture", "rules")
+    return viewRulebookPath(serviceSlug)
   }
 
   if (level === "市区町村" || level === "municipality") {
@@ -85,7 +76,7 @@ export function checkRulesManagePathFromDocument(input: {
       (c) => region === c.name || region.includes(c.name)
     )
     if (city) {
-      return servicePath(serviceSlug, "municipalities", city.slug, "rules")
+      return viewRulebookPath(serviceSlug, city.slug)
     }
   }
 

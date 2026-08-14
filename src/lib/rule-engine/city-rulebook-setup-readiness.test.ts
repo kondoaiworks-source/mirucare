@@ -40,6 +40,7 @@ describe("buildCityRulebookSetupReadiness", () => {
       effectiveFrom: "2026-01-01",
       changeSummary: null,
       scopeKind: "shared" as const,
+      domainId: null,
       category: "計画" as const,
       auditItemTitle: exp.title,
       sourceDocumentId: "doc-1",

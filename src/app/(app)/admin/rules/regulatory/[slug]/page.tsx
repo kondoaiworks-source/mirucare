@@ -18,11 +18,11 @@ export async function generateMetadata({
   }
 }
 
-/** 旧市ルールブック → 新階層の市設定 */
+/** 旧市ルールブック → ルールブックを見る */
 export default async function CityRulebookPage({ params }: PageProps) {
   const { slug } = await Promise.resolve(params)
   if (!getPhase1CityBySlug(slug)) {
     notFound()
   }
-  redirect(`/admin/rules/services/homecare/municipalities/${slug}`)
+  redirect(`/admin/rules/services/homecare/book?city=${slug}`)
 }

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { servicePath } from "@/lib/rule-engine/services"
+import { viewRulebookPath } from "@/lib/rule-engine/check-rule-scope"
 import { Loader2, Pencil } from "lucide-react"
 
 type Props = {
@@ -34,7 +34,7 @@ type Props = {
 export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
   const router = useRouter()
   const manageHref = fromCitySlug
-    ? servicePath("homecare", "municipalities", fromCitySlug, "rules")
+    ? viewRulebookPath("homecare", fromCitySlug)
     : "/admin/rules/setup"
   const [pending, startTransition] = useTransition()
   const [loading, setLoading] = useState(true)

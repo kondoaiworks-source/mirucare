@@ -33,28 +33,28 @@ describe("check-rule-scope", () => {
     expect(ruleCodePrefix(yokohama)).toBe("YOKOHAMA")
   })
 
-  it("places manage screens under 国・県 or the city, not a city-wide page", () => {
+  it("places manage screens on ルールブックを見る", () => {
     expect(checkRulesManagePath(shared)).toBe(
-      "/admin/rules/services/homecare/national-prefecture/rules"
+      "/admin/rules/services/homecare/book"
     )
     expect(checkRulesManagePath(yokohama)).toBe(
-      "/admin/rules/services/homecare/municipalities/yokohama/rules"
+      "/admin/rules/services/homecare/book?city=yokohama"
     )
   })
 
-  it("routes a document to the matching manage screen", () => {
+  it("routes a document to the matching rulebook view", () => {
     expect(
       checkRulesManagePathFromDocument({
         jurisdictionLevel: "国",
         regionName: null,
       })
-    ).toBe("/admin/rules/services/homecare/national-prefecture/rules")
+    ).toBe("/admin/rules/services/homecare/book")
     expect(
       checkRulesManagePathFromDocument({
         jurisdictionLevel: "市区町村",
         regionName: "横浜市",
       })
-    ).toBe("/admin/rules/services/homecare/municipalities/yokohama/rules")
+    ).toBe("/admin/rules/services/homecare/book?city=yokohama")
   })
 
   it("filters propose documents to the current screen", () => {

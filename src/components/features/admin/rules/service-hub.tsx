@@ -1,4 +1,4 @@
-import { BookOpen, Building2, Landmark } from "lucide-react"
+import { BookOpen, Eye } from "lucide-react"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { AdminEqualCard } from "@/components/features/admin/rules/admin-equal-card"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +11,7 @@ type Props = {
 }
 
 /**
- * サービス配下のハブ。ルールブック作成／国・県／自治体。
+ * サービス配下のハブ。ルールブックを作る／見る。
  */
 export function ServiceHub({ service }: Props) {
   const menus = [
@@ -22,16 +22,10 @@ export function ServiceHub({ service }: Props) {
       icon: BookOpen,
     },
     {
-      id: "national-prefecture",
-      title: RULES_UI.nationalPrefectureSettings,
-      href: servicePath(service.slug, "national-prefecture"),
-      icon: Landmark,
-    },
-    {
-      id: "municipalities",
-      title: RULES_UI.municipalitySettings,
-      href: servicePath(service.slug, "municipalities"),
-      icon: Building2,
+      id: "book",
+      title: RULES_UI.viewRulebook,
+      href: servicePath(service.slug, "book"),
+      icon: Eye,
     },
   ] as const
 

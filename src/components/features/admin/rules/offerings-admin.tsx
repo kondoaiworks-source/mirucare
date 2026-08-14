@@ -8,7 +8,7 @@ import {
   setRulebookOfferingPublishedAction,
 } from "@/app/actions/rulebook-offerings"
 import type { RulebookOfferingRow } from "@/lib/rule-engine/offerings"
-import { servicePath } from "@/lib/rule-engine/services"
+import { viewRulebookPath } from "@/lib/rule-engine/check-rule-scope"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import type { ServiceType } from "@/types/database"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -269,12 +269,8 @@ export function OfferingsAdmin({
                         <Link
                           href={
                             serviceSlug
-                              ? servicePath(
-                                  serviceSlug,
-                                  "municipalities",
-                                  row.slug
-                                )
-                              : `/admin/rules/regulatory/${row.slug}`
+                              ? viewRulebookPath(serviceSlug, row.slug)
+                              : `/admin/rules/services/homecare/book?city=${row.slug}`
                           }
                         >
                           設定

@@ -1,11 +1,9 @@
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
-import { getCityRulebookAction } from "@/app/actions/city-rulebook"
-import { MunicipalityCityHub } from "@/components/features/admin/rules/municipality-city-hub"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { redirect } from "next/navigation"
+import { viewRulebookPath } from "@/lib/rule-engine/check-rule-scope"
 import { getPhase1CityBySlug } from "@/lib/rule-engine/phase1-cities"
 import { getRuleServiceBySlug } from "@/lib/rule-engine/services"
-import { AlertCircle } from "lucide-react"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 export const dynamic = "force-dynamic"
 
@@ -20,27 +18,16 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { citySlug } = await Promise.resolve(params)
   const city = getPhase1CityBySlug(citySlug)
-  return { title: city ? city.name : "市区町村" }
+  return { title: city ? `${city.name}｜${RULES_UI.viewRulebook}` : RULES_UI.viewRulebook }
 }
 
-export default async function MunicipalityCityPage({ params }: PageProps) {
+/** 旧・市ハブ → ルールブックを見る */
+export default async function MunicipalityCityRedirectPage({
+  params,
+}: PageProps) {
   const { serviceSlug, citySlug } = await Promise.resolve(params)
   const service = getRuleServiceBySlug(serviceSlug)
   const city = getPhase1CityBySlug(citySlug)
-  if (!service || !city) notFound()
-
-  const result = await getCityRulebookAction(citySlug)
-  if (!result.ok || !result.data) {
-    return (
-      <Alert variant="destructive" className="rounded-xl">
-        <AlertCircle />
-        <AlertTitle>市の設定を開けませんでした</AlertTitle>
-        <AlertDescription>
-          {result.error ?? "しばらくしてから再度お試しください。"}
-        </AlertDescription>
-      </Alert>
-    )
-  }
-
-  return <MunicipalityCityHub service={service} data={result.data} />
+  if (!service || !city) redirect("/admin/rules/setup")
+  redirect(viewRulebookPath(service.slug, city.slug))
 }

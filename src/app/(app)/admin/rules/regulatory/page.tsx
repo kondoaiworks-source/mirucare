@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "ルールブック管理",
 }
 
-/** 旧ハブ → 訪問介護の市区町村ルール設定 */
+/** 旧ハブ → 訪問介護 */
 export default function RegulatoryHubPage() {
-  redirect("/admin/rules/services/homecare/municipalities")
+  redirect("/admin/rules/services/homecare")
 }

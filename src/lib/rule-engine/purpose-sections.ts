@@ -46,8 +46,8 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     purpose: "サービス・領域・自治体を選び、ルールブックを確定します。",
     steps: [
       "サービスと領域と自治体を選ぶ",
-      "下書きのルールブックを直す",
-      "確定する",
+      "下書きを直して確定する",
+      "ルールブックを見る",
     ],
     links: [
       {
@@ -81,7 +81,7 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     navDescription: "登録済みルールの確認",
     icon: Bot,
     purpose: "登録済みルールの確認用です。",
-    steps: ["判定ルール管理で承認する"],
+    steps: ["ルールブックを見て確定済みを確認する"],
     links: [
       {
         href: "/admin/rules/services/homecare",
