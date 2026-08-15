@@ -4,6 +4,11 @@
  * CSV・テキスト: UTF-8 / 画像: テキストなし（ビジョンへ委譲）
  */
 
+import {
+  loadPdfParse,
+  pdfParseLoadOptions,
+} from "@/lib/check/pdfjs-node-assets"
+
 export type ExtractResult = {
   kind: "text" | "image" | "empty"
   text?: string
@@ -20,14 +25,6 @@ export const PDF_TEXT_PAGE_CHUNK = 8
 export const PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES = 2 * 1024 * 1024
 /** これ以下は一括抽出を先に試す（介護報酬Q&A Vol.1 は約1.2MB / 113ページ） */
 const PDF_FULL_EXTRACT_MAX_BYTES = 8 * 1024 * 1024
-
-/** 本番（Vercel）では CMap の file:// を渡すと例外になるため、本文抽出だけ指定する */
-function pdfParseLoadOptions(buffer: Buffer) {
-  return {
-    data: Uint8Array.from(buffer),
-    stopAtErrors: false,
-  }
-}
 
 /** スキャンPDFは先頭ページのみ画像化（ペイロード肥大を防ぐ） */
 const SCAN_PDF_MAX_PAGES = 1
@@ -154,7 +151,7 @@ export function joinPdfTextChunks(chunks: string[]): string {
  */
 export async function extractPdfPlainText(buffer: Buffer): Promise<string> {
   try {
-    const { PDFParse } = await import("pdf-parse")
+    const { PDFParse } = loadPdfParse()
     const parser = new PDFParse(pdfParseLoadOptions(buffer))
     try {
       if (buffer.byteLength <= PDF_FULL_EXTRACT_MAX_BYTES) {
@@ -267,7 +264,7 @@ export async function extractDocumentContent(
       if (!isMostlyNoisePdfText(text)) {
         return { kind: "text", text }
       }
-      const { PDFParse } = await import("pdf-parse")
+      const { PDFParse } = loadPdfParse()
       const parser = new PDFParse(pdfParseLoadOptions(buffer))
       try {
         // 文字がほぼ無い → スキャンPDFとして画像化

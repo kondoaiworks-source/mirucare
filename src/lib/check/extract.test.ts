@@ -73,3 +73,11 @@ describe("extractPdfPlainText", () => {
     expect(text).toContain("Visit care page 12")
   })
 })
+
+describe("resolvePdfjsAssetDir", () => {
+  it("cmaps ディレクトリを解決できる", async () => {
+    const { resolvePdfjsAssetDir } = await import("@/lib/check/pdfjs-node-assets")
+    const dir = resolvePdfjsAssetDir("cmaps")
+    expect(dir).toMatch(/cmaps\/$/)
+  })
+})
