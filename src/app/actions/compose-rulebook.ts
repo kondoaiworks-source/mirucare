@@ -74,6 +74,7 @@ export type ComposeJobView = {
   serviceLabel: string
   cityName: string
   citySlug: string | null
+  layer: "shared" | "city"
   domainLabel: string
   domains: RuleDomain[]
   items: ComposeJobItemView[]
@@ -400,6 +401,7 @@ async function attachOfficialSourceRules(input: {
   pickedIds: Set<string>
   auditItemId: string
   auditItems: Array<{ id: string; code: string; title: string }>
+  onlyLayers?: OfficialLayer[]
 }): Promise<OfficialExtractResult> {
   const empty: OfficialExtractResult = {
     notes: [],
@@ -695,8 +697,14 @@ async function attachOfficialSourceRules(input: {
     return { ok: true as const }
   }
 
+  const includeShared =
+    !input.onlyLayers ||
+    input.onlyLayers.includes("national") ||
+    input.onlyLayers.includes("prefecture")
+  const includeCity = !input.onlyLayers || input.onlyLayers.includes("city")
+
   let sharedStatus: ComposeExtractionNote["status"] | undefined
-  if (sharedHasText) {
+  if (includeShared && sharedHasText) {
     const national = packToChunks(packs.national, layerLabels.national)
     const prefecture = packToChunks(packs.prefecture, layerLabels.prefecture)
     const titles = [...national.titles, ...prefecture.titles]
@@ -717,7 +725,7 @@ async function attachOfficialSourceRules(input: {
   }
 
   let cityStatus: ComposeExtractionNote["status"] | undefined
-  if (cityHasText) {
+  if (includeCity && cityHasText) {
     const city = packToChunks(packs.city, layerLabels.city)
     const beforeCity = cityCreated
     const proposed = await runPropose({
@@ -778,13 +786,17 @@ async function attachOfficialSourceRules(input: {
     }),
   ]
 
+  const filteredNotes = input.onlyLayers
+    ? notes.filter((n) => input.onlyLayers?.includes(n.layer))
+    : notes
+
   return {
-    notes,
+    notes: filteredNotes,
     sharedCreated,
     cityCreated,
-    sharedHasText,
-    cityHasText,
-    sourceNote: summarizeExtractionNotes(notes),
+    sharedHasText: includeShared ? sharedHasText : false,
+    cityHasText: includeCity ? cityHasText : false,
+    sourceNote: summarizeExtractionNotes(filteredNotes),
   }
 }
 
@@ -1017,6 +1029,7 @@ export async function startComposeRulebookAction(input: {
   serviceSlug: string
   domainValue: string
   jurisdictionId: string
+  layer: "shared" | "city"
 }): Promise<ActionResult<{ jobId: string; sourceNote: string | null }>> {
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
@@ -1024,18 +1037,58 @@ export async function startComposeRulebookAction(input: {
   const serviceDef = getRuleServiceBySlug(input.serviceSlug)
   if (!serviceDef) return { ok: false, error: "介護サービスが見つかりません。" }
 
-  const jurisdictionId = input.jurisdictionId.trim()
-  if (!jurisdictionId) {
+  const layer = input.layer
+  if (layer !== "shared" && layer !== "city") {
+    return { ok: false, error: "国・県または自治体を指定してください。" }
+  }
+
+  const requestedId = input.jurisdictionId.trim()
+  if (layer === "city" && !requestedId) {
     return { ok: false, error: "自治体を選択してください。" }
+  }
+
+  const { data: nationalRow } = await op.service
+    .from("rule_jurisdictions")
+    .select("id, name, municipality_name, code, level, is_supported")
+    .eq("code", NATIONAL_JURISDICTION_CODE)
+    .maybeSingle()
+
+  let jobJurisdictionId = requestedId
+  let extractCityId = requestedId
+  if (layer === "shared") {
+    const nationalId = (nationalRow as { id?: string } | null)?.id
+    if (!nationalId) {
+      return { ok: false, error: "国の自治体マスタが見つかりません。" }
+    }
+    jobJurisdictionId = nationalId
+    if (!extractCityId) {
+      const { data: firstCity } = await op.service
+        .from("rule_jurisdictions")
+        .select("id")
+        .eq("level", "municipality")
+        .eq("is_supported", true)
+        .order("sort_order", { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      extractCityId = String(
+        (firstCity as { id?: string } | null)?.id ?? ""
+      )
+    }
   }
 
   const { data: city, error: cityError } = await op.service
     .from("rule_jurisdictions")
     .select("id, name, municipality_name, code, level, is_supported")
-    .eq("id", jurisdictionId)
+    .eq("id", extractCityId)
     .maybeSingle()
   if (cityError) return { ok: false, error: toUserErrorMessage(cityError) }
-  if (!city || city.level !== "municipality" || !city.is_supported) {
+  if (!city) {
+    return { ok: false, error: "対象の自治体が見つかりません。" }
+  }
+  if (
+    layer === "city" &&
+    (city.level !== "municipality" || !city.is_supported)
+  ) {
     return { ok: false, error: "対象の自治体が見つかりません。" }
   }
 
@@ -1052,13 +1105,16 @@ export async function startComposeRulebookAction(input: {
   if ("error" in selected) return { ok: false, error: selected.error }
 
   const domainIds = selected.domains.map((d) => d.id)
-  const jobDomainId = selected.all ? null : selected.domains[0]?.id ?? null
+  const jobDomainId =
+    selected.all || selected.domains.length !== 1
+      ? null
+      : selected.domains[0]?.id ?? null
 
   const existingJobQuery = op.service
     .from("rulebook_compose_jobs")
     .select("id")
     .eq("service_type", serviceDef.serviceType)
-    .eq("jurisdiction_id", jurisdictionId)
+    .eq("jurisdiction_id", jobJurisdictionId)
     .eq("status", "draft")
     .order("created_at", { ascending: false })
     .limit(1)
@@ -1089,7 +1145,7 @@ export async function startComposeRulebookAction(input: {
       service_type: serviceDef.serviceType,
       domain_id: jobDomainId,
       domain_ids: domainIds,
-      jurisdiction_id: jurisdictionId,
+      jurisdiction_id: jobJurisdictionId,
       status: "draft",
       created_by: op.userId,
     })
@@ -1110,7 +1166,10 @@ export async function startComposeRulebookAction(input: {
     }
   }
   const auditItemId = auditRes.data[0].id
-  const existingRules = await loadScopedRules(op.service, jurisdictionId)
+  const existingRules = await loadScopedRules(
+    op.service,
+    layer === "shared" ? jobJurisdictionId : extractCityId
+  )
   const pickedIds = new Set<string>()
   const cityName = String(city.municipality_name || city.name || "")
   const phase1 = PHASE1_CITIES.find(
@@ -1122,7 +1181,7 @@ export async function startComposeRulebookAction(input: {
     jobId: job.id as string,
     cityName,
     prefectureName: phase1?.prefectureName ?? "神奈川県",
-    cityJurisdictionId: jurisdictionId,
+    cityJurisdictionId: extractCityId,
     citySlug: phase1?.slug,
     serviceLabel: serviceDef.label,
     domains: selected.domains,
@@ -1130,10 +1189,12 @@ export async function startComposeRulebookAction(input: {
     pickedIds,
     auditItemId,
     auditItems: auditRes.data,
+    onlyLayers:
+      layer === "shared" ? ["national", "prefecture"] : ["city"],
   })
 
   const notes = [...extracted.notes]
-  if (!extracted.sharedHasText) {
+  if (layer === "shared" && !extracted.sharedHasText) {
     await fillTemplateGaps({
       service: op.service,
       jobId: job.id as string,
@@ -1203,7 +1264,7 @@ export async function getComposeJobAction(input: {
     op.service.from("rule_domains").select("*"),
     op.service
       .from("rule_jurisdictions")
-      .select("id, name, municipality_name, code")
+      .select("id, name, municipality_name, code, level")
       .eq("id", job.jurisdiction_id)
       .maybeSingle(),
   ])
@@ -1264,17 +1325,23 @@ export async function getComposeJobAction(input: {
 
   const juris = jurisRes.data as Pick<
     RuleJurisdiction,
-    "name" | "municipality_name" | "code"
+    "name" | "municipality_name" | "code" | "level"
   > | null
-  const cityName = String(juris?.municipality_name || juris?.name || "")
-  const citySlug =
-    getPhase1CityBySlug(
-      PHASE1_CITIES.find(
-        (c) => c.name === cityName || c.code === String(juris?.code ?? "")
-      )?.slug ?? ""
-    )?.slug ??
-    PHASE1_CITIES.find((c) => c.name === cityName)?.slug ??
-    null
+  const isSharedJob =
+    juris?.level === "national" ||
+    String(juris?.code ?? "") === NATIONAL_JURISDICTION_CODE
+  const cityName = isSharedJob
+    ? "国・県"
+    : String(juris?.municipality_name || juris?.name || "")
+  const citySlug = isSharedJob
+    ? null
+    : getPhase1CityBySlug(
+        PHASE1_CITIES.find(
+          (c) => c.name === cityName || c.code === String(juris?.code ?? "")
+        )?.slug ?? ""
+      )?.slug ??
+      PHASE1_CITIES.find((c) => c.name === cityName)?.slug ??
+      null
 
   const serviceLabel =
     job.service_type === "訪問介護"
@@ -1303,6 +1370,7 @@ export async function getComposeJobAction(input: {
       serviceLabel,
       cityName,
       citySlug,
+      layer: isSharedJob ? "shared" : "city",
       domainLabel,
       domains,
       items,
@@ -1415,14 +1483,19 @@ export async function addComposeManualRuleAction(input: {
 
   const { data: juris } = await op.service
     .from("rule_jurisdictions")
-    .select("code, municipality_name, name")
+    .select("code, municipality_name, name, level")
     .eq("id", job.jurisdiction_id)
     .maybeSingle()
-  const slug = PHASE1_CITIES.find(
-    (c) =>
-      c.name === String(juris?.municipality_name || juris?.name || "") ||
-      c.code === String(juris?.code ?? "")
-  )?.slug
+  const isSharedJob =
+    String((juris as { level?: string } | null)?.level) === "national" ||
+    String(juris?.code ?? "") === NATIONAL_JURISDICTION_CODE
+  const slug = isSharedJob
+    ? undefined
+    : PHASE1_CITIES.find(
+        (c) =>
+          c.name === String(juris?.municipality_name || juris?.name || "") ||
+          c.code === String(juris?.code ?? "")
+      )?.slug
 
   const domainId =
     input.domainId?.trim() ||
@@ -1440,7 +1513,7 @@ export async function addComposeManualRuleAction(input: {
   }
 
   const code = await allocateAiCheckRuleCode(op.service, {
-    scopeKind: "city",
+    scopeKind: isSharedJob ? "shared" : "city",
     citySlug: slug,
   })
 
@@ -1452,8 +1525,8 @@ export async function addComposeManualRuleAction(input: {
       title,
       target_doc_types: ["その他"],
       status: "active",
-      scope_kind: "city",
-      jurisdiction_id: job.jurisdiction_id,
+      scope_kind: isSharedJob ? "shared" : "city",
+      jurisdiction_id: isSharedJob ? null : job.jurisdiction_id,
       domain_id: domainId,
     })
     .select("id")
@@ -1534,19 +1607,21 @@ export async function confirmComposeJobAction(input: {
   const includedIds = new Set(
     loaded.data.items.filter((i) => i.included).map((i) => i.rule_id)
   )
-  const existingRules = await loadScopedRules(
-    op.service,
-    loaded.data.job.jurisdiction_id
-  )
-  for (const rule of existingRules) {
-    if (rule.scopeKind === "city") continue
-    if (includedIds.has(rule.id)) continue
-    if (!isThinComposeGuidance(rule.guidanceText)) continue
-    await op.service
-      .from("ai_check_rules")
-      .update({ status: "retired" })
-      .eq("id", rule.id)
-      .eq("status", "active")
+  if (loaded.data.layer === "shared") {
+    const existingRules = await loadScopedRules(
+      op.service,
+      loaded.data.job.jurisdiction_id
+    )
+    for (const rule of existingRules) {
+      if (rule.scopeKind === "city") continue
+      if (includedIds.has(rule.id)) continue
+      if (!isThinComposeGuidance(rule.guidanceText)) continue
+      await op.service
+        .from("ai_check_rules")
+        .update({ status: "retired" })
+        .eq("id", rule.id)
+        .eq("status", "active")
+    }
   }
 
   const { error } = await op.service

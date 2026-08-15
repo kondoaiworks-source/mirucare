@@ -36,7 +36,7 @@ describe("check-rule-scope", () => {
 
   it("places manage screens on ルールブックを見る", () => {
     expect(checkRulesManagePath(shared)).toBe(
-      "/admin/rules/services/homecare/book"
+      "/admin/rules/services/homecare/book?city=national-prefecture"
     )
     expect(checkRulesManagePath(yokohama)).toBe(
       "/admin/rules/services/homecare/book?city=yokohama"
@@ -66,7 +66,7 @@ describe("check-rule-scope", () => {
         jurisdictionLevel: "国",
         regionName: null,
       })
-    ).toBe("/admin/rules/services/homecare/book")
+    ).toBe("/admin/rules/services/homecare/book?city=national-prefecture")
     expect(
       checkRulesManagePathFromDocument({
         jurisdictionLevel: "市区町村",

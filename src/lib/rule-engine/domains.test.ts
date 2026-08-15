@@ -10,6 +10,7 @@ import {
   ruleMatchesDomain,
   slugifyDomainTitle,
   templateItemMatchesDomain,
+  encodeDomainSelection,
 } from "@/lib/rule-engine/domains"
 
 describe("domains master", () => {
@@ -110,5 +111,23 @@ describe("domains master", () => {
 
     const stopped = resolveSelectedDomains("b", rows)
     expect("error" in stopped).toBe(true)
+
+    const multi = resolveSelectedDomains("a,c", rows)
+    expect("error" in multi).toBe(false)
+    if ("error" in multi) return
+    expect(multi.all).toBe(true)
+    expect(multi.domains.map((d) => d.id)).toEqual(["a", "c"])
+
+    const one = resolveSelectedDomains("a", rows)
+    expect("error" in one).toBe(false)
+    if ("error" in one) return
+    expect(one.all).toBe(false)
+    expect(one.domains.map((d) => d.id)).toEqual(["a"])
+  })
+
+  it("encodes checkbox selection as 全て or ids", () => {
+    expect(encodeDomainSelection(["a", "c"], ["a", "c"])).toBe(ALL_DOMAINS_VALUE)
+    expect(encodeDomainSelection(["a"], ["a", "c"])).toBe("a")
+    expect(encodeDomainSelection([], ["a"])).toBe("")
   })
 })

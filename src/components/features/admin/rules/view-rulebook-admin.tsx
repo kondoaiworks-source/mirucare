@@ -17,6 +17,7 @@ import {
 } from "@/app/actions/view-rulebook"
 import { ALL_DOMAINS_VALUE, ruleMatchesDomain } from "@/lib/rule-engine/domains"
 import { servicePath } from "@/lib/rule-engine/services"
+import { VIEW_SHARED_CITY } from "@/lib/rule-engine/check-rule-scope"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import type { FindingSeverity, RuleDomain } from "@/types/database"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
@@ -61,7 +62,9 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
   const [municipalities, setMunicipalities] = useState<MunicipalityOption[]>(
     []
   )
-  const [citySlug, setCitySlug] = useState(initialCitySlug?.trim() || "")
+  const [citySlug, setCitySlug] = useState(
+    initialCitySlug?.trim() || VIEW_SHARED_CITY
+  )
   const [domainValue, setDomainValue] = useState<string>(ALL_DOMAINS_VALUE)
   const [data, setData] = useState<CityRulebookData | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -83,21 +86,26 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
       }
       setDomains(result.data.domains)
       setMunicipalities(result.data.municipalities)
-      if (!citySlug && result.data.municipalities[0]?.slug) {
-        setCitySlug(result.data.municipalities[0].slug)
+      if (!initialCitySlug?.trim() && !citySlug) {
+        setCitySlug(VIEW_SHARED_CITY)
       }
     })()
     // 初回の選択肢取得のみ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [service.slug])
 
+  const isSharedView = citySlug === VIEW_SHARED_CITY
+  const loadCitySlug = isSharedView
+    ? municipalities[0]?.slug || ""
+    : citySlug
+
   useEffect(() => {
-    if (!citySlug) return
+    if (!loadCitySlug) return
     let cancelled = false
     void (async () => {
       setLoading(true)
       setError(null)
-      const result = await getCityRulebookAction(citySlug)
+      const result = await getCityRulebookAction(loadCitySlug)
       if (cancelled) return
       if (!result.ok || !result.data) {
         setError(result.error ?? "ルールブックを開けませんでした。")
@@ -111,7 +119,7 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
     return () => {
       cancelled = true
     }
-  }, [citySlug])
+  }, [loadCitySlug])
 
   function syncCityInUrl(nextSlug: string) {
     setCitySlug(nextSlug)
@@ -125,7 +133,10 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
   const selectedDomain = domains.find((d) => d.id === domainValue) ?? null
 
   const visibleRules = useMemo(() => {
-    const rules = data?.approvedCheckRules ?? []
+    let rules = data?.approvedCheckRules ?? []
+    rules = isSharedView
+      ? rules.filter((rule) => rule.scopeKind === "shared")
+      : rules.filter((rule) => rule.scopeKind === "city")
     if (!selectedDomain) return rules
     return rules.filter((rule) => {
       if (rule.domainId && rule.domainId === selectedDomain.id) return true
@@ -137,7 +148,7 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
         templateCodes: selectedDomain.template_codes,
       })
     })
-  }, [data?.approvedCheckRules, selectedDomain])
+  }, [data?.approvedCheckRules, selectedDomain, isSharedView])
 
   const grouped = useMemo(() => {
     const map = new Map<string, CityRulebookCheckRule[]>()
@@ -162,8 +173,8 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
   }, [visibleRules, domains])
 
   async function reload() {
-    if (!citySlug) return
-    const result = await getCityRulebookAction(citySlug)
+    if (!loadCitySlug) return
+    const result = await getCityRulebookAction(loadCitySlug)
     if (result.ok && result.data) setData(result.data)
   }
 
@@ -219,16 +230,19 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
 
   function onAdd(e: FormEvent) {
     e.preventDefault()
-    const jurisdictionId = data?.layerJurisdictions.city.id
-    if (!jurisdictionId) return
+    const jurisdictionId = isSharedView
+      ? null
+      : data?.layerJurisdictions.city.id
+    if (!isSharedView && !jurisdictionId) return
     startTransition(async () => {
       const result = await addViewRulebookRuleAction({
         title: addTitle,
         guidanceText: addGuidance,
         severity: addSeverity,
         jurisdictionId,
-        citySlug,
+        citySlug: isSharedView ? null : citySlug,
         domainId: domainValue === ALL_DOMAINS_VALUE ? null : domainValue,
+        scopeKind: isSharedView ? "shared" : "city",
       })
       if (!result.ok) {
         toast.error(result.error ?? "追加できませんでした。")
@@ -259,15 +273,16 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
       <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="view-city">自治体</Label>
+            <Label htmlFor="view-city">国・県／自治体</Label>
             <Select
               value={citySlug || undefined}
               onValueChange={syncCityInUrl}
             >
               <SelectTrigger id="view-city" className="h-11 min-h-11">
-                <SelectValue placeholder="自治体を選ぶ" />
+                <SelectValue placeholder="国・県または自治体を選ぶ" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={VIEW_SHARED_CITY}>国・県</SelectItem>
                 {municipalities.map((m) =>
                   m.slug ? (
                     <SelectItem key={m.id} value={m.slug}>
@@ -315,8 +330,9 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
       {!loading && data ? (
         <>
           <p className="text-base leading-relaxed text-muted-foreground">
-            {service.label}／{data.city.name}の確定済みルール {visibleRules.length}
-            件。国・県の共通ルールと、この市のルールが並びます。
+            {isSharedView
+              ? `${service.label}／国・県の確定済みルール ${visibleRules.length}件。全市のチェックに足されます。`
+              : `${service.label}／${data.city.name}の確定済みルール ${visibleRules.length}件。この市だけのルールです。`}
           </p>
 
           {grouped.map(([domainTitle, rules]) => (

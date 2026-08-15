@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
-import { getRuleServiceBySlug, servicePath } from "@/lib/rule-engine/services"
+import { getRuleServiceBySlug } from "@/lib/rule-engine/services"
+import { viewRulebookPath } from "@/lib/rule-engine/check-rule-scope"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 export const dynamic = "force-dynamic"
@@ -28,5 +29,5 @@ export default async function NationalPrefectureRedirectPage({
   const { serviceSlug } = await Promise.resolve(params)
   const service = getRuleServiceBySlug(serviceSlug)
   if (!service) redirect("/admin/rules/setup")
-  redirect(servicePath(service.slug, "book"))
+  redirect(viewRulebookPath(service.slug))
 }

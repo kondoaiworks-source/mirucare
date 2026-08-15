@@ -36,13 +36,16 @@ export function ruleCodePrefix(context: CheckRuleManageContext): string {
   return slug.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase() || "CITY"
 }
 
+/** ルールブックを見る：国・県（共通） */
+export const VIEW_SHARED_CITY = "national-prefecture"
+
 export function viewRulebookPath(
   serviceSlug: string,
   citySlug?: string | null
 ): string {
   const base = servicePath(serviceSlug, "book")
   const slug = citySlug?.trim()
-  if (!slug) return base
+  if (!slug) return `${base}?city=${encodeURIComponent(VIEW_SHARED_CITY)}`
   return `${base}?city=${encodeURIComponent(slug)}`
 }
 

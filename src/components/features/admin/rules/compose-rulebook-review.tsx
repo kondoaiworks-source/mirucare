@@ -17,6 +17,7 @@ import {
 } from "@/app/actions/compose-rulebook"
 import { servicePath } from "@/lib/rule-engine/services"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
+import { viewRulebookPath } from "@/lib/rule-engine/check-rule-scope"
 import type { FindingSeverity } from "@/types/database"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { sourceListPath } from "@/lib/rule-engine/rulebook-source-links"
@@ -98,12 +99,13 @@ export function ComposeRulebookReview({ service, initial }: Props) {
         toast.error(result.error ?? "確定できませんでした。")
         return
       }
-      toast.success("ルールブックを確定しました。チェックに使えます。")
-      router.push(
-        data.citySlug
-          ? `${servicePath(service.slug, "book")}?city=${encodeURIComponent(data.citySlug)}`
-          : servicePath(service.slug, "book")
-      )
+      if (data.layer === "shared") {
+        toast.success("国・県のルールブックを確定しました。続けて自治体の下書きを作れます。")
+        router.push(servicePath(service.slug, "compose"))
+      } else {
+        toast.success("ルールブックを確定しました。チェックに使えます。")
+        router.push(viewRulebookPath(service.slug, data.citySlug))
+      }
     })
   }
 

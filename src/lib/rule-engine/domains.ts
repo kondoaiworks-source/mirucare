@@ -221,12 +221,45 @@ export function resolveSelectedDomains<T extends { id: string; status: string }>
     }
     return { all: true, domains: active }
   }
-  const hit = domains.find((d) => d.id === selected)
-  if (!hit) {
+
+  const ids = selected
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (ids.length === 0) {
     return { error: "領域を選択してください。" }
   }
-  if (hit.status !== "active") {
-    return { error: "停止中の領域では、新しいルールブックを作れません。" }
+
+  const hits: T[] = []
+  for (const id of ids) {
+    const hit = domains.find((d) => d.id === id)
+    if (!hit) {
+      return { error: "領域を選択してください。" }
+    }
+    if (hit.status !== "active") {
+      return { error: "停止中の領域では、新しいルールブックを作れません。" }
+    }
+    if (!hits.some((h) => h.id === hit.id)) hits.push(hit)
   }
-  return { all: false, domains: [hit] }
+
+  const all =
+    hits.length === active.length &&
+    active.every((a) => hits.some((h) => h.id === a.id))
+  return { all, domains: hits }
+}
+
+/** チェック状態を domainValue（全て or カンマ区切りID）にする */
+export function encodeDomainSelection(
+  selectedIds: string[],
+  activeIds: string[]
+): string {
+  const unique = Array.from(new Set(selectedIds.filter(Boolean)))
+  if (unique.length === 0) return ""
+  const selectedSet = new Set(unique)
+  const allSelected =
+    activeIds.length > 0 &&
+    activeIds.every((id) => selectedSet.has(id)) &&
+    unique.length === activeIds.length
+  if (allSelected) return ALL_DOMAINS_VALUE
+  return unique.join(",")
 }

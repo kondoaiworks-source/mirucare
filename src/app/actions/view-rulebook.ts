@@ -23,34 +23,41 @@ export async function addViewRulebookRuleAction(input: {
   title: string
   guidanceText: string
   severity: FindingSeverity
-  jurisdictionId: string
+  jurisdictionId?: string | null
   citySlug?: string | null
   domainId?: string | null
+  scopeKind?: "shared" | "city"
 }): Promise<ActionResult> {
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
 
   const title = input.title.trim()
   const guidanceText = input.guidanceText.trim()
-  const jurisdictionId = input.jurisdictionId.trim()
+  const scopeKind = input.scopeKind === "shared" ? "shared" : "city"
+  const jurisdictionId = input.jurisdictionId?.trim() || ""
   if (!title) return { ok: false, error: "ルール名を入力してください。" }
   if (!guidanceText) return { ok: false, error: "案内文を入力してください。" }
-  if (!jurisdictionId) {
+  if (scopeKind === "city" && !jurisdictionId) {
     return { ok: false, error: "自治体を選んでください。" }
   }
 
-  const { data: juris } = await op.service
-    .from("rule_jurisdictions")
-    .select("code, municipality_name, name")
-    .eq("id", jurisdictionId)
-    .maybeSingle()
+  const { data: juris } =
+    scopeKind === "city" && jurisdictionId
+      ? await op.service
+          .from("rule_jurisdictions")
+          .select("code, municipality_name, name")
+          .eq("id", jurisdictionId)
+          .maybeSingle()
+      : { data: null }
   const slug =
-    input.citySlug?.trim() ||
-    PHASE1_CITIES.find(
-      (c) =>
-        c.name === String(juris?.municipality_name || juris?.name || "") ||
-        c.code === String(juris?.code ?? "")
-    )?.slug
+    scopeKind === "city"
+      ? input.citySlug?.trim() ||
+        PHASE1_CITIES.find(
+          (c) =>
+            c.name === String(juris?.municipality_name || juris?.name || "") ||
+            c.code === String(juris?.code ?? "")
+        )?.slug
+      : undefined
 
   const auditRes = await ensureAuditItemOptions(op.service)
   if (!auditRes.ok || auditRes.data.length === 0) {
@@ -63,7 +70,7 @@ export async function addViewRulebookRuleAction(input: {
   }
 
   const code = await allocateAiCheckRuleCode(op.service, {
-    scopeKind: "city",
+    scopeKind,
     citySlug: slug,
   })
 
@@ -75,8 +82,8 @@ export async function addViewRulebookRuleAction(input: {
       title,
       target_doc_types: ["その他"],
       status: "active",
-      scope_kind: "city",
-      jurisdiction_id: jurisdictionId,
+      scope_kind: scopeKind,
+      jurisdiction_id: scopeKind === "city" ? jurisdictionId : null,
       domain_id: input.domainId?.trim() || null,
     })
     .select("id")
