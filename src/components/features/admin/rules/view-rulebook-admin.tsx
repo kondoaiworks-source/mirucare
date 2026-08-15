@@ -190,7 +190,7 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
         toast.error(result.error ?? "保存できませんでした。")
         return
       }
-      toast.success("案内文を更新しました。")
+      toast.success("ルールを更新しました。")
       setEditing((prev) => {
         const next = { ...prev }
         delete next[rule.ruleId]
@@ -362,7 +362,9 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
                         </div>
                       </div>
                       <div className="mt-3 space-y-2">
-                        <Label htmlFor={`guidance-${rule.ruleId}`}>案内文</Label>
+                        <Label htmlFor={`guidance-${rule.ruleId}`}>
+                          {RULES_UI.ruleText}
+                        </Label>
                         <Textarea
                           id={`guidance-${rule.ruleId}`}
                           className="min-h-24 text-base"
@@ -384,7 +386,7 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
                           disabled={pending}
                           onClick={() => saveGuidance(rule)}
                         >
-                          案内文を保存する
+                          ルールを保存する
                         </Button>
                         <Button
                           type="button"
@@ -436,7 +438,7 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
             </h2>
             <form className="space-y-4" onSubmit={onAdd}>
               <div className="space-y-2">
-                <Label htmlFor="add-title">ルール名</Label>
+                <Label htmlFor="add-title">{RULES_UI.ruleName}</Label>
                 <Input
                   id="add-title"
                   className="h-11 min-h-11"
@@ -446,7 +448,7 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="add-guidance">案内文</Label>
+                <Label htmlFor="add-guidance">{RULES_UI.ruleText}</Label>
                 <Textarea
                   id="add-guidance"
                   className="min-h-24 text-base"

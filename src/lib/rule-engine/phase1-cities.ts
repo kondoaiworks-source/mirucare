@@ -67,7 +67,7 @@ export function citySlugFromRegionName(
 
 export type SourceLayer = "national" | "prefecture" | "city"
 
-/** 知識台帳の jurisdiction_level から資料先の層 */
+/** 知識台帳の jurisdiction_level から資料庫の層 */
 export function sourceLayerFromJurisdictionLevel(
   level?: string | null
 ): SourceLayer | null {

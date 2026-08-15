@@ -140,7 +140,7 @@ export function CityRulebookSourcesPanel({
         return
       }
       const monitorMessage =
-        result.data?.monitorMessage ?? "根拠URLを追加しました。"
+        result.data?.monitorMessage ?? "資料を追加しました。"
       toast.success(monitorMessage, {
         description: result.data?.monitoringReady
           ? "以降の変更は自動で監視します。変わったら監視状況からルールブックを作り直してください。"
@@ -242,7 +242,7 @@ export function CityRulebookSourcesPanel({
           ) : (
             <>
               <Plus className="size-4" aria-hidden />
-              根拠URLを追加する
+              資料を追加する
             </>
           )}
         </Button>
@@ -270,7 +270,7 @@ export function CityRulebookSourcesPanel({
         <Card className="rounded-xl border-primary/20 bg-primary/[0.02] shadow-subtle">
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg text-primary-dark">
-              {layerLabel}の根拠URLを追加
+              {layerLabel}の資料を追加
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
               公式の公開情報PDF（直リンク）を登録します。登録すると監視状況に載ります。一覧HTMLは本文にならないので、PDFの直URLに直してください。直したあとは「ルールブックを作る」から下書きを作り直してください。
@@ -372,7 +372,7 @@ export function CityRulebookSourcesPanel({
 
       {sources.length === 0 && !showAdd ? (
         <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-4 text-base text-muted-foreground">
-          まだ公式URLがありません。「根拠URLを追加する」から入れてください。
+          まだ公式URLがありません。「資料を追加する」から入れてください。
         </p>
       ) : (
         <ul className="space-y-2">

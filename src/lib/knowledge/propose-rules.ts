@@ -14,7 +14,7 @@ const GEMINI_INPUT_MAX_CHARS = 80_000
 const DEFAULT_MAX_PROPOSALS = 12
 const COMPOSE_MAX_PROPOSALS = 20
 
-const GUIDANCE_SHAPE = `案内文（guidance_text）は1〜3文で、次を必ず含める。
+const GUIDANCE_SHAPE = `ルール（guidance_text）は1〜3文で、次を必ず含める。
 - どの書類を見るか（勤務表、提供記録、訪問介護計画、契約書、請求データなど）
 - 何と何を見比べるか（配置と実施、計画と記録、日付と署名など）
 - 抜け・ずれの典型（未記載、食い違い、期限切れ）
@@ -153,7 +153,7 @@ function buildProposeFromDiffPrompt(input: {
 行政マニュアルの変更内容から、書類チェック用の「判定ルール案」をJSONのみで提案してください。
 
 重要方針:
-- 断定・合否判定は禁止。案内文は「〜の可能性があります」「〜をご確認ください」形式
+- 断定・合否判定は禁止。ルールは「〜の可能性があります」「〜をご確認ください」形式
 - URLや原文をそのまま本番基準にせず、人が確認できる提案にする
 - 整合性だけでなく、記載方法・記載漏れ・自治体固有の注意点も含めてよい
 - 提案は最大${DEFAULT_MAX_PROPOSALS}件。重要度の高いもの優先
@@ -175,7 +175,7 @@ ${auditList || "（なし）"}
     {
       "code": "英数字とアンダースコアの短いコード",
       "title": "判定ルール名",
-      "guidance_text": "AIへの案内文（丁寧語・可能性表現）",
+      "guidance_text": "書類と見比べるルール（丁寧語・可能性表現）",
       "severity": "high" | "mid" | "low",
       "target_doc_types": ["ケアプラン"|"提供記録"|"勤務表"|"請求データ"|"その他"],
       "audit_item_code": "上記リストのコードのいずれか",
@@ -242,7 +242,7 @@ function buildProposeFromSourcePrompt(input: {
 
   return `あなたは介護保険の実地指導（運営指導）向けWチェック支援のルール設計者です。
 根拠資料の本文から、書類チェック用の「判定ルール案」をJSONのみで提案してください。
-人は案内文を読んで「この物差しで足りるか」を判断します。チェックAIも同じ文で書類を見比べます。
+人はルールを読んで「この物差しで足りるか」を判断します。チェックAIも同じ文で書類を見比べます。
 
 重要方針:
 - ${GUIDANCE_SHAPE}

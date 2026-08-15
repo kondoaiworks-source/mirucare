@@ -959,7 +959,7 @@ async function fillTemplateGaps(input: {
           severity: defaultComposeSeverity(pick.item),
           effective_from: effectiveFrom,
           review_status: "pending_review",
-          change_summary: `領域テンプレの案内を見比べ文に更新（${pick.item.section}）`,
+          change_summary: `領域テンプレのルールを見比べ文に更新（${pick.item.section}）`,
         })
       if (verError) continue
       const { error: itemError } = await input.service
@@ -1475,7 +1475,7 @@ export async function addComposeManualRuleAction(input: {
   if (!jobId) return { ok: false, error: "下書きが指定されていません。" }
   if (!title) return { ok: false, error: "ルール名を入力してください。" }
   if (!guidanceText) {
-    return { ok: false, error: "案内文を入力してください。" }
+    return { ok: false, error: "ルールを入力してください。" }
   }
 
   const { data: job, error: jobError } = await op.service
@@ -1746,7 +1746,7 @@ export async function updateComposeItemGuidanceAction(input: {
   const versionId = input.versionId.trim()
   const guidanceText = input.guidanceText.trim()
   if (!versionId) return { ok: false, error: "対象が指定されていません。" }
-  if (!guidanceText) return { ok: false, error: "案内文を入力してください。" }
+  if (!guidanceText) return { ok: false, error: "ルールを入力してください。" }
 
   const { data: existing, error: fetchError } = await op.service
     .from("ai_check_rule_versions")
@@ -1759,7 +1759,7 @@ export async function updateComposeItemGuidanceAction(input: {
     return {
       ok: false,
       error:
-        "確定済みの案内文は、ここでは直接直せません。下書きから外すか、判定ルール管理で修正案を出してください。",
+        "確定済みのルールは、ここでは直接直せません。下書きから外すか、判定ルール管理で修正案を出してください。",
     }
   }
 

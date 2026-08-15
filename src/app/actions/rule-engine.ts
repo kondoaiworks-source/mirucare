@@ -1322,7 +1322,7 @@ export async function reviewAiCheckRuleVersionAction(input: {
 }
 
 /**
- * 了承済みルールの案内文を直す新版を、承認待ちとして載せる。
+ * 了承済みルールの本文を直す新版を、承認待ちとして載せる。
  * 了承されるまで本番チェックには使わない。
  */
 export async function proposeAiCheckRuleTextRevisionAction(input: {
@@ -1337,7 +1337,7 @@ export async function proposeAiCheckRuleTextRevisionAction(input: {
   const guidanceText = input.guidanceText?.trim()
   if (!ruleId) return { ok: false, error: "対象ルールが指定されていません。" }
   if (!guidanceText) {
-    return { ok: false, error: "案内文（文言）を入力してください。" }
+    return { ok: false, error: "ルールを入力してください。" }
   }
 
   const { data: rule, error: ruleError } = await op.service
@@ -1387,7 +1387,7 @@ export async function proposeAiCheckRuleTextRevisionAction(input: {
   const effectiveFrom = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
   const summary =
     input.changeSummary?.trim() ||
-    `案内文の修正案（${rule.code} v${nextVersionNo}）`
+    `ルールの修正案（${rule.code} v${nextVersionNo}）`
 
   const prevLogic =
     latest.check_logic && typeof latest.check_logic === "object"
@@ -1485,7 +1485,7 @@ export async function listRuleVersionHistoryAction(input?: {
 }
 
 /**
- * 更新履歴の版を編集する（案内文・重大度・適用開始日・変更概要）。
+ * 更新履歴の版を編集する（ルール・重大度・適用開始日・変更概要）。
  * 了承状態は変えず、誤記の修正用。
  */
 export async function updateAiCheckRuleVersionAction(input: {

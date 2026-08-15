@@ -201,10 +201,10 @@ export function PendingRulesAdmin({ context }: Props) {
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      判定の見方（案内文）
+                      ルール
                     </p>
                     <p className="mt-1 text-base leading-relaxed whitespace-pre-wrap">
-                      {row.guidance_text || "（案内文なし）"}
+                      {row.guidance_text || "（ルールなし）"}
                     </p>
                   </div>
                   {row.change_summary ? (

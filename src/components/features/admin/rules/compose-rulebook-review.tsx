@@ -179,7 +179,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
         toast.error(result.error ?? "保存できませんでした。")
         return
       }
-      toast.success("案内文を更新しました。")
+      toast.success("ルールを更新しました。")
       setEditing((prev) => {
         const next = { ...prev }
         delete next[item.id]
@@ -228,7 +228,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
           {data.serviceLabel}／{data.domainLabel}／{data.cityName}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          下書き {data.includedCount}件（国・県 {data.sharedCount}件／市固有 {data.cityCount}件。承認待ち {data.pendingCount}件）。確定するまでチェックには使いません。案内文は、どの書類の何を見比べるかを人が判断できる文にしてください。
+          下書き {data.includedCount}件（国・県 {data.sharedCount}件／市固有 {data.cityCount}件。承認待ち {data.pendingCount}件）。確定するまでチェックには使いません。{RULES_UI.ruleText}は、どの書類の何を見比べるかを人が判断できる文にしてください。
         </p>
       </div>
 
@@ -259,7 +259,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                       needsText: true,
                     })}
                   >
-                    資料先でリンクを確認する
+                    資料庫でリンクを確認する
                   </Link>
                 </Button>
               </AlertDescription>
@@ -286,8 +286,8 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                         })}
                       >
                         {note.status === "no_sources"
-                          ? "資料先でURLを追加する"
-                          : "資料先でリンクを直す"}
+                          ? "資料庫でURLを追加する"
+                          : "資料庫でリンクを直す"}
                       </Link>
                     </Button>
                   </div>
@@ -348,7 +348,9 @@ export function ComposeRulebookReview({ service, initial }: Props) {
 
                   {item.included && pendingReview ? (
                     <div className="mt-3 space-y-2">
-                      <Label htmlFor={`guidance-${item.id}`}>案内文</Label>
+                      <Label htmlFor={`guidance-${item.id}`}>
+                        {RULES_UI.ruleText}
+                      </Label>
                       <Textarea
                         id={`guidance-${item.id}`}
                         className="min-h-24 text-base"
@@ -378,7 +380,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                           disabled={pending}
                           onClick={() => saveGuidance(item)}
                         >
-                          案内文を保存する
+                          ルールを保存する
                         </Button>
                       ) : null}
                       {item.included ? (
@@ -430,7 +432,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
           </h2>
           <form className="space-y-4" onSubmit={onAdd}>
             <div className="space-y-2">
-              <Label htmlFor="add-title">ルール名</Label>
+              <Label htmlFor="add-title">{RULES_UI.ruleName}</Label>
               <Input
                 id="add-title"
                 className="h-11 min-h-11"
@@ -440,7 +442,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="add-guidance">案内文</Label>
+              <Label htmlFor="add-guidance">{RULES_UI.ruleText}</Label>
               <Textarea
                 id="add-guidance"
                 className="min-h-24 text-base"

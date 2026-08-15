@@ -29,7 +29,7 @@ type Props = {
 }
 
 /**
- * 了承済み判定ルールの案内文を直し、承認待ちへ載せる。
+ * 了承済み判定ルールの本文を直し、承認待ちへ載せる。
  */
 export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
   const router = useRouter()
@@ -126,7 +126,7 @@ export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
       <CardHeader className="space-y-2">
         <CardTitle className="flex items-center gap-2 text-lg text-primary-dark">
           <Pencil className="size-5 text-primary" aria-hidden />
-          案内文（文言）を修正する
+          ルールを修正する
         </CardTitle>
         <CardDescription className="text-base leading-relaxed">
           {title}
@@ -145,7 +145,7 @@ export function CheckRuleTextRevisionForm({ ruleId, fromCitySlug }: Props) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="rule-guidance-edit">案内文</Label>
+          <Label htmlFor="rule-guidance-edit">ルール</Label>
           <Textarea
             id="rule-guidance-edit"
             value={guidance}

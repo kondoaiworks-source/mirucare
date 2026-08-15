@@ -255,7 +255,7 @@ export function MonitoringStatusHub() {
             監視状況
           </h1>
           <p className="mt-1 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            資料先に置いた公式PDFの更新結果です。変わったら原文を確認し、ルールブックを作り直してください。確定するまでチェックには使いません。
+            資料庫に置いた公式PDFの更新結果です。変わったら原文を確認し、ルールブックを作り直してください。確定するまでチェックには使いません。
           </p>
         </div>
         <Button
@@ -408,7 +408,7 @@ export function MonitoringStatusHub() {
               <CardHeader>
                 <CardTitle className="text-lg">監視対象がありません</CardTitle>
                 <CardDescription className="text-base">
-                  資料先で、国・県・市の公式PDF直リンクを登録してください。
+                  資料庫で、国・県・市の公式PDF直リンクを登録してください。
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -480,7 +480,7 @@ export function MonitoringStatusHub() {
                     {selected.result === "ng" ? (
                       <Button asChild className="min-h-11">
                         <Link href={sourcesHref(selected)}>
-                          資料先でリンクを直す
+                          資料庫でリンクを直す
                         </Link>
                       </Button>
                     ) : null}

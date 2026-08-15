@@ -211,7 +211,7 @@ export function RulesHistoryAdmin({ embedded = false, context }: Props) {
           <CardContent>
             <form onSubmit={onSaveEdit} className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="hist-guidance">判定の見方（案内文）</Label>
+                <Label htmlFor="hist-guidance">ルール</Label>
                 <textarea
                   id="hist-guidance"
                   rows={4}

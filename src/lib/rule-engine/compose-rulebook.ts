@@ -53,7 +53,7 @@ export type ComposeExtractionNote = {
 
 /** 本文0件のとき、了承画面と抽出メモで使う */
 export const COMPOSE_NO_TEXT_HINT =
-  "資料先でリンクを開き、PDFの直リンクに直してから下書きを作り直してください。"
+  "資料庫でリンクを開き、PDFの直リンクに直してから下書きを作り直してください。"
 
 export function pickTemplateItemsForDomains(input: {
   items: readonly HomeVisitAuditTemplateItem[]
@@ -157,7 +157,7 @@ function categoryComparisonGuidance(
   return byCategory[item.category]
 }
 
-/** 項目名のメモになっており、書類との見比べに使えない案内文 */
+/** 項目名のメモになっており、書類との見比べに使えないルール */
 export function isThinComposeGuidance(text: string | null | undefined): boolean {
   const t = (text ?? "").trim()
   if (!t) return true

@@ -166,7 +166,7 @@ describe("compose-rulebook", () => {
   })
 
   it("tells operators to fix links when there is no source text", () => {
-    expect(COMPOSE_NO_TEXT_HINT).toContain("資料先")
+    expect(COMPOSE_NO_TEXT_HINT).toContain("資料庫")
     expect(COMPOSE_NO_TEXT_HINT).toContain("PDF")
   })
 

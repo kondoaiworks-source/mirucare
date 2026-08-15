@@ -54,7 +54,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
     setError(null)
     const result = await getCityRulebookAction(slug)
     if (!result.ok || !result.data) {
-      setError(result.error ?? "資料先を開けませんでした。")
+      setError(result.error ?? "資料庫を開けませんでした。")
       setData(null)
       setLoading(false)
       return

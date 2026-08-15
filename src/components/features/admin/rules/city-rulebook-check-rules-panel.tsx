@@ -251,7 +251,7 @@ function RuleRow({
             </p>
           ) : null}
           <p className="text-base leading-relaxed text-muted-foreground line-clamp-3">
-            {rule.guidanceText || "（案内文なし）"}
+            {rule.guidanceText || "（ルールなし）"}
           </p>
           {rule.sourceDocumentTitle ? (
             <p className="text-sm text-muted-foreground line-clamp-1">

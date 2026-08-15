@@ -122,7 +122,7 @@ export function ManualCheckRuleForm({ context, onCreated }: Props) {
         </Select>
       </div>
       <div className="space-y-2 sm:col-span-2">
-        <Label htmlFor="manual-rule-guide">判定の観点・案内文</Label>
+        <Label htmlFor="manual-rule-guide">ルール</Label>
         <textarea
           id="manual-rule-guide"
           rows={3}

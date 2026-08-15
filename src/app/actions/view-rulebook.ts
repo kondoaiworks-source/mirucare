@@ -36,7 +36,7 @@ export async function addViewRulebookRuleAction(input: {
   const scopeKind = input.scopeKind === "shared" ? "shared" : "city"
   const jurisdictionId = input.jurisdictionId?.trim() || ""
   if (!title) return { ok: false, error: "ルール名を入力してください。" }
-  if (!guidanceText) return { ok: false, error: "案内文を入力してください。" }
+  if (!guidanceText) return { ok: false, error: "ルールを入力してください。" }
   if (scopeKind === "city" && !jurisdictionId) {
     return { ok: false, error: "自治体を選んでください。" }
   }
@@ -124,7 +124,7 @@ export async function updateViewRulebookGuidanceAction(input: {
   const versionId = input.versionId.trim()
   const guidanceText = input.guidanceText.trim()
   if (!versionId) return { ok: false, error: "対象が指定されていません。" }
-  if (!guidanceText) return { ok: false, error: "案内文を入力してください。" }
+  if (!guidanceText) return { ok: false, error: "ルールを入力してください。" }
 
   const { data: existing, error: fetchError } = await op.service
     .from("ai_check_rule_versions")

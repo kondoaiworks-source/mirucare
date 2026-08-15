@@ -319,7 +319,7 @@ export function ComposeRulebookForm({
           </div>
         ) : (
           <p className="text-base text-muted-foreground">
-            資料先を読み込めませんでした。資料先ページから置いてください。
+            資料庫を読み込めませんでした。資料庫ページから置いてください。
           </p>
         )}
         <Button
