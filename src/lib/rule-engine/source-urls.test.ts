@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
   looksLikeDirectFileUrl,
+  isReadablePdfSource,
+  isLinkCollectionSource,
   ruleSourceHasReadableText,
+  sourceNeedsPdfTextFix,
 } from "@/lib/rule-engine/source-urls"
 
 describe("source-urls", () => {
@@ -17,6 +20,51 @@ describe("source-urls", () => {
       looksLikeDirectFileUrl("https://example.jp/kaigo/oshirase/")
     ).toBe(false)
     expect(looksLikeDirectFileUrl(null)).toBe(false)
+  })
+
+  it("separates readable PDFs from link-collection HTML", () => {
+    expect(
+      isReadablePdfSource({
+        file_type: "pdf",
+        direct_file_url: "https://example.jp/a.pdf",
+      })
+    ).toBe(true)
+    expect(
+      isLinkCollectionSource({
+        file_type: "html",
+        parent_page_url: "https://example.jp/kaigo/oshirase/",
+      })
+    ).toBe(true)
+    expect(
+      isLinkCollectionSource({
+        file_type: null,
+        parent_page_url: "https://example.jp/kaigo/oshirase/",
+        official_url: "https://example.jp/kaigo/oshirase/",
+      })
+    ).toBe(true)
+    expect(
+      isReadablePdfSource({
+        file_type: "html",
+        direct_file_url: "https://example.jp/a.pdf",
+      })
+    ).toBe(false)
+  })
+
+  it("does not treat link-collection HTML as missing PDF text", () => {
+    expect(
+      sourceNeedsPdfTextFix({
+        file_type: "html",
+        parent_page_url: "https://example.jp/kaigo/oshirase/",
+        hasText: false,
+      })
+    ).toBe(false)
+    expect(
+      sourceNeedsPdfTextFix({
+        file_type: "pdf",
+        direct_file_url: "https://example.jp/a.pdf",
+        hasText: false,
+      })
+    ).toBe(true)
   })
 
   it("finds readable text by document id or matching URL", () => {

@@ -8,7 +8,7 @@
  * 作る: ①領域（チェック）→ ②国・県の資料と下書き → ③市の資料と下書き
  * 見る: 国・県（共通）／各市
  * 本線: 資料庫にPDF直URLを置く → 監視 → 作る → 人が直して確定 → 見る
- * 根拠: 資料庫（国／県／市の公式PDF。領域の下には置かない）
+ * 根拠: 資料庫（読むPDFとリンク集。領域の下には置かない）
  * チェック: 国・県の共通ルール ＋ その市のルール
  * 欄: ルール名＝見出し、ルール＝見比べ本文（旧「案内文」）
  *
@@ -42,6 +42,8 @@ export const RULES_UI = {
   confirmRulebook: "確定する",
   viewRulebook: "ルールブックを見る",
   sourceList: "資料庫",
+  readableSource: "読む資料",
+  linkCollection: "リンク集",
   ruleName: "ルール名",
   ruleText: "ルール",
   evidenceUrl: "根拠URL",

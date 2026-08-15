@@ -71,15 +71,15 @@ export function primarySourceUrl(row: {
 export const SOURCE_URL_MONITORING_ALERT_TITLE = "自動監視について"
 
 export const SOURCE_URL_MONITORING_ALERT_BODY =
-  "公式PDFの直リンクを置くと、監視状況に載ります。一覧ページだけでは本文も更新検知も弱いことがあります。変わったら人が原文を確認し、ルールブックを作るから作り直してください。自動では本番の物差しを書き換えません。"
+  "読むPDFの直リンクを置くと、監視状況に載り、ルールブックを作るときに読みます。参考リンク（HTML）はリンク集に置き、ルール抽出には使いません。変わったら人が原文を確認し、作るから作り直してください。自動では本番の物差しを書き換えません。"
 
 /** 直接ファイルURL欄の短い補足 */
 export const SOURCE_URL_DIRECT_FILE_HINT =
-  "公開情報PDFの直リンクです。更新の自動監視に必要です。公開情報リンク（一覧ページ）だけでは監視が始まらないことがあります。"
+  "公式PDFの直リンクです。ルールを作るときに読みます。一覧ページではなく、ファイルそのもののURLを置いてください。"
 
 /** 本文が無いときの、人によるリンク確認 */
 export const SOURCE_URL_FIX_HINT =
-  "リンク先を開いて確認してください。規則・様式のPDF直リンクならそのままでよい。お知らせや一覧のHTMLなら、PDFの直URLに直してください。ページ移転や404なら新しい公式ページに更新してください。"
+  "読むPDFのリンク先を開いて確認してください。規則・様式のPDF直リンクならそのままでよい。ビューアやお知らせ一覧なら、PDFの直URLに直してください。"
 
 export function looksLikeDirectFileUrl(
   url: string | null | undefined,
@@ -89,6 +89,44 @@ export function looksLikeDirectFileUrl(
   const lower = url?.trim().toLowerCase() ?? ""
   if (!lower) return false
   return lower.includes(".pdf") || lower.includes("application/pdf")
+}
+
+/** ルール抽出の対象（読むPDF）。リンク集のHTMLは含めない。 */
+export function isReadablePdfSource(source: {
+  file_type?: string | null
+  direct_file_url?: string | null
+  parent_page_url?: string | null
+  official_url?: string | null
+}): boolean {
+  if (source.file_type === "html") return false
+  if (source.file_type === "pdf") return true
+  const direct = source.direct_file_url?.trim() || null
+  if (looksLikeDirectFileUrl(direct, source.file_type)) return true
+  const official = source.official_url?.trim() || null
+  const parent = source.parent_page_url?.trim() || null
+  if (official && parent && official === parent) return false
+  return looksLikeDirectFileUrl(official, source.file_type)
+}
+
+export function isLinkCollectionSource(source: {
+  file_type?: string | null
+  direct_file_url?: string | null
+  parent_page_url?: string | null
+  official_url?: string | null
+}): boolean {
+  return !isReadablePdfSource(source)
+}
+
+/** 読むPDFなのに本文が無いときだけ、リンク修正が必要 */
+export function sourceNeedsPdfTextFix(source: {
+  file_type?: string | null
+  direct_file_url?: string | null
+  parent_page_url?: string | null
+  official_url?: string | null
+  hasText?: boolean
+}): boolean {
+  if (!isReadablePdfSource(source)) return false
+  return source.hasText !== true
 }
 
 /** 台帳に読める本文があるか（URL一致または紐付け） */

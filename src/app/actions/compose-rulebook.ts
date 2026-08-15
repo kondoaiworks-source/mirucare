@@ -38,6 +38,7 @@ import {
 import { isGeminiConfigured } from "@/lib/knowledge/gemini"
 import { ensureKnowledgeDocumentFromRuleSource } from "@/lib/knowledge/ensure-from-rule-source"
 import { getLatestSnapshot, readSnapshotText } from "@/lib/knowledge/snapshots"
+import { isReadablePdfSource } from "@/lib/rule-engine/source-urls"
 import type {
   AiCheckRule,
   AiCheckRuleVersion,
@@ -281,17 +282,6 @@ type OfficialExtractResult = {
   sourceNote: string
 }
 
-function regionMatchesName(region: string, name: string): boolean {
-  if (!region || !name) return false
-  if (region === name || region.includes(name) || name.includes(region)) {
-    return true
-  }
-  const strip = (s: string) => s.replace(/[市区町村]$/, "")
-  const a = strip(region)
-  const b = strip(name)
-  return a.length >= 2 && a === b
-}
-
 async function ensureSourceDocumentId(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   service: any,
@@ -429,7 +419,9 @@ async function attachOfficialSourceRules(input: {
 
   const { data: sourceRows } = await input.service
     .from("rule_sources")
-    .select("id, knowledge_document_id, title, jurisdiction_id")
+    .select(
+      "id, knowledge_document_id, title, jurisdiction_id, file_type, direct_file_url, parent_page_url, official_url"
+    )
     .in("jurisdiction_id", jurisdictionIds)
     .eq("status", "active")
     .limit(40)
@@ -455,7 +447,13 @@ async function attachOfficialSourceRules(input: {
     id: string
     knowledge_document_id: string | null
     jurisdiction_id: string
+    file_type: string | null
+    direct_file_url: string | null
+    parent_page_url: string | null
+    official_url: string | null
   }>) {
+    // リンク集（HTML）は件数にも抽出にも入れない
+    if (!isReadablePdfSource(row)) continue
     const layer = layerOfJurisdiction(row.jurisdiction_id)
     sourceCountByLayer[layer] += 1
     if (linkedByLayer[layer].size >= MAX_DOCS_PER_LAYER) continue
@@ -491,26 +489,6 @@ async function attachOfficialSourceRules(input: {
     }
     if (linkedByLayer.city.has(id)) {
       docsByLayer.city.push(doc)
-      continue
-    }
-    const level = String(doc.jurisdiction_level ?? "")
-    const region = String(doc.region_name ?? "")
-    if (level === "国" || level === "national") {
-      docsByLayer.national.push(doc)
-      continue
-    }
-    if (
-      (level === "都道府県" || level === "prefecture") &&
-      regionMatchesName(region, input.prefectureName)
-    ) {
-      docsByLayer.prefecture.push(doc)
-      continue
-    }
-    if (
-      (level === "市区町村" || level === "municipality") &&
-      regionMatchesName(region, cityName)
-    ) {
-      docsByLayer.city.push(doc)
     }
   }
 
@@ -526,9 +504,8 @@ async function attachOfficialSourceRules(input: {
     city: emptyLayerPack(),
   }
   for (const layer of ["national", "prefecture", "city"] as const) {
-    const fallbackCount = docsByLayer[layer].length
     packs[layer] = {
-      sourceCount: Math.max(sourceCountByLayer[layer], fallbackCount),
+      sourceCount: sourceCountByLayer[layer],
       docs: await readDocsForLayer(input.service, docsByLayer[layer]),
     }
   }

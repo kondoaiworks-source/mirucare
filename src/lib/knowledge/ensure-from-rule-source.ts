@@ -55,6 +55,10 @@ function resolveMonitorUrl(source: Pick<
   const url = direct || official || parent
   if (!url) return { url: null, isPdfLikely: false }
 
+  if (source.file_type === "html") {
+    return { url, isPdfLikely: false }
+  }
+
   const lower = url.toLowerCase()
   const isPdfLikely =
     source.file_type === "pdf" ||
@@ -142,6 +146,17 @@ export async function ensureKnowledgeDocumentFromRuleSource(
     }
   }
 
+  if (!isPdfLikely) {
+    return {
+      knowledgeDocumentId: source.knowledge_document_id,
+      created: false,
+      synced: false,
+      monitoringReady: false,
+      message:
+        "参考リンクとして資料庫のリンク集に載せました。ルール抽出には使いません。",
+    }
+  }
+
   const jurisdictionLevel = mapJurisdictionLevel(jurisdiction.level)
   const regionName = regionNameFor(jurisdictionLevel, jurisdiction)
   const year = new Date().getFullYear()
@@ -215,18 +230,6 @@ export async function ensureKnowledgeDocumentFromRuleSource(
       .from("rule_sources")
       .update({ knowledge_document_id: documentId })
       .eq("id", ruleSourceId)
-  }
-
-  if (!isPdfLikely) {
-    return {
-      knowledgeDocumentId: documentId,
-      created,
-      synced: false,
-      monitoringReady: false,
-      message: created
-        ? "公開情報を台帳に登録しました。PDFの直リンクがあると自動監視が始まります。"
-        : "台帳と紐付けました。PDFの直リンクがあると自動監視が始まります。",
-    }
   }
 
   const { data: docRow } = await service

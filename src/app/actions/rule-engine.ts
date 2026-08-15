@@ -398,6 +398,8 @@ export async function updateRuleSourceUrlAction(input: {
   sourceKind?: RuleSourceKind
   parentPageUrl?: string
   directFileUrl?: string
+  kind?: "pdf" | "html"
+  url?: string
   priority?: number
   sourceLastUpdatedOn?: string
   fileType?: RuleSourceFileType | ""
@@ -461,7 +463,21 @@ export async function updateRuleSourceUrlAction(input: {
     patch.human_review_status = "verified"
   }
 
-  if (
+  if (input.kind === "pdf" || input.kind === "html") {
+    const nextUrl = input.url?.trim() || null
+    if (!nextUrl) return { ok: false, error: "URLを入力してください。" }
+    if (input.kind === "pdf") {
+      patch.direct_file_url = nextUrl
+      patch.parent_page_url = null
+      patch.file_type = "pdf"
+      patch.official_url = nextUrl
+    } else {
+      patch.parent_page_url = nextUrl
+      patch.direct_file_url = null
+      patch.file_type = "html"
+      patch.official_url = nextUrl
+    }
+  } else if (
     input.parentPageUrl !== undefined ||
     input.directFileUrl !== undefined
   ) {
@@ -523,10 +539,12 @@ export async function createMunicipalitySourceUrlAction(input: {
   jurisdictionId: string
   title: string
   serviceType: ServiceType
-  materialCategory: RuleMaterialCategory
+  materialCategory?: RuleMaterialCategory
   sourceKind?: RuleSourceKind
   parentPageUrl?: string
   directFileUrl?: string
+  kind?: "pdf" | "html"
+  url?: string
   priority?: number
   fileType?: RuleSourceFileType | ""
   memo?: string
@@ -546,12 +564,31 @@ export async function createMunicipalitySourceUrlAction(input: {
   if (!input.jurisdictionId) {
     return { ok: false, error: "自治体を選択してください。" }
   }
-  if (!input.materialCategory) {
-    return { ok: false, error: "資料カテゴリを選択してください。" }
-  }
 
-  const parent = input.parentPageUrl?.trim() || null
-  const direct = input.directFileUrl?.trim() || null
+  const kind = input.kind
+  const kindUrl = input.url?.trim() || null
+  const parent =
+    kind === "html"
+      ? kindUrl
+      : kind === "pdf"
+        ? null
+        : input.parentPageUrl?.trim() || null
+  const direct =
+    kind === "pdf"
+      ? kindUrl
+      : kind === "html"
+        ? null
+        : input.directFileUrl?.trim() || null
+  const fileType =
+    kind === "pdf"
+      ? "pdf"
+      : kind === "html"
+        ? "html"
+        : input.fileType || null
+
+  if (!parent && !direct) {
+    return { ok: false, error: "URLを入力してください。" }
+  }
 
   const { data: inserted, error } = await op.service
     .from("rule_sources")
@@ -559,13 +596,13 @@ export async function createMunicipalitySourceUrlAction(input: {
       jurisdiction_id: input.jurisdictionId,
       title,
       service_type: input.serviceType,
-      material_category: input.materialCategory,
+      material_category: input.materialCategory ?? null,
       source_kind: input.sourceKind ?? "manual",
       parent_page_url: parent,
       direct_file_url: direct,
       official_url: direct || parent,
       priority: input.priority ?? 100,
-      file_type: input.fileType || null,
+      file_type: fileType,
       memo: input.memo?.trim() || null,
       status: "active",
       human_review_status: "unverified",

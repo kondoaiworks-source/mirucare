@@ -6,7 +6,7 @@ import { getCityRulebookAction, type CityRulebookData } from "@/app/actions/city
 import { listComposeOptionsAction } from "@/app/actions/compose-rulebook"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
 import { servicePath } from "@/lib/rule-engine/services"
-import { SOURCE_URL_FIX_HINT } from "@/lib/rule-engine/source-urls"
+import { SOURCE_URL_FIX_HINT, isReadablePdfSource } from "@/lib/rule-engine/source-urls"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
@@ -111,7 +111,9 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
 
   const missingTextCount = useMemo(() => {
     if (!data) return 0
-    return data.sources.filter((s) => !s.hasText).length
+    return data.sources.filter(
+      (s) => isReadablePdfSource(s) && !s.hasText
+    ).length
   }, [data])
 
   return (
@@ -128,7 +130,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
           {RULES_UI.sourceList}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          ルールブックを作るときに読む、国・県・市の公式PDFです。直リンクを置くと監視状況に載ります。本文が無いときは、人がリンク先を確認して直します。
+          ルールブックを作るときに読む公式PDFと、人が開く参考リンク（HTML）を置きます。PDFの直リンクは監視状況に載ります。本文が無いPDFは、人がリンク先を確認して直します。
         </p>
       </div>
 
@@ -158,7 +160,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
               checked={onlyNeedsText}
               onChange={(e) => setOnlyNeedsText(e.target.checked)}
             />
-            本文がないものだけ見る（{missingTextCount}件）
+            本文がないPDFだけ見る（{missingTextCount}件）
           </label>
         ) : null}
       </section>
@@ -179,7 +181,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
             <Alert className="rounded-xl border-accent/40 bg-accent/5">
               <FileWarning className="text-accent" aria-hidden />
               <AlertTitle className="text-base text-primary-dark">
-                本文が無い資料が {missingTextCount}件あります
+                本文が無い読むPDFが {missingTextCount}件あります
               </AlertTitle>
               <AlertDescription className="text-base leading-relaxed">
                 {SOURCE_URL_FIX_HINT}{" "}
@@ -188,7 +190,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
             </Alert>
           ) : (
             <p className="text-base leading-relaxed text-muted-foreground">
-              この自治体の資料は、本文がある状態です。原文を開いて内容を確認できます。
+              この自治体の読むPDFは、本文がある状態です。参考リンクはリンク集にあります。
             </p>
           )}
 
@@ -200,21 +202,26 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
                   ? data.city.prefectureName
                   : data.city.name
             const layerSources = data.sources.filter((s) => s.layer === layer)
+            const pdfSources = layerSources.filter((s) =>
+              isReadablePdfSource(s)
+            )
+            const linkCount = layerSources.length - pdfSources.length
             const visible = onlyNeedsText
-              ? layerSources.filter((s) => !s.hasText)
+              ? pdfSources.filter((s) => !s.hasText)
               : layerSources
-            const textCount = layerSources.filter((s) => s.hasText).length
+            const textCount = pdfSources.filter((s) => s.hasText).length
             return (
               <section
                 key={layer}
                 className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
               >
                 <p className="text-sm text-muted-foreground tabular-nums">
-                  資料 {layerSources.length}件／本文 {textCount}件
+                  読む資料 {pdfSources.length}件／本文 {textCount}件
+                  {linkCount > 0 ? `／リンク集 ${linkCount}件` : ""}
                 </p>
                 {onlyNeedsText && visible.length === 0 ? (
                   <p className="text-base text-muted-foreground">
-                    {layerLabel}に、本文が無い資料はありません。
+                    {layerLabel}に、本文が無い読むPDFはありません。
                   </p>
                 ) : (
                   <CityRulebookSourcesPanel

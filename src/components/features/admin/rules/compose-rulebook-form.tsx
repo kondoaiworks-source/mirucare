@@ -282,7 +282,7 @@ export function ComposeRulebookForm({
           ② 国・県の資料を確認する
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          全市で使う共通ルールです。PDFの直リンクが無ければここで置きます。下書きを作ったあと、直して確定してください。
+          全市で使う共通ルールです。読むPDFが無ければここで置きます。参考リンクはリンク集です。下書きを作ったあと、直して確定してください。
         </p>
         {bookLoading && !book ? (
           <p className="text-base text-muted-foreground">読み込み中です。</p>

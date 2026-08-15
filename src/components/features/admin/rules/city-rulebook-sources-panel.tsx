@@ -11,16 +11,16 @@ import {
 import type { CityRulebookSource } from "@/app/actions/city-rulebook"
 import {
   HUMAN_REVIEW_STATUS_LABEL,
-  MATERIAL_CATEGORIES,
-  MATERIAL_CATEGORY_LABEL,
   SOURCE_URL_DIRECT_FILE_HINT,
   SOURCE_URL_FIX_HINT,
   SOURCE_URL_MONITORING_ALERT_BODY,
   SOURCE_URL_MONITORING_ALERT_TITLE,
-  looksLikeDirectFileUrl,
+  isLinkCollectionSource,
+  isReadablePdfSource,
   primarySourceUrl,
+  sourceNeedsPdfTextFix,
 } from "@/lib/rule-engine/source-urls"
-import type { RuleMaterialCategory } from "@/types/database"
+import { cn } from "@/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -34,13 +34,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   CheckCircle2,
   ExternalLink,
   FileWarning,
@@ -52,6 +45,7 @@ import {
 } from "lucide-react"
 
 export type SourceLayer = "national" | "prefecture" | "city"
+type RegisterKind = "pdf" | "html"
 
 const LAYER_BADGE: Record<SourceLayer, string> = {
   national: "国",
@@ -60,29 +54,43 @@ const LAYER_BADGE: Record<SourceLayer, string> = {
 }
 
 type Props = {
-  /** 表示用のレイヤ名（例：国、神奈川県、横浜市） */
   layerLabel: string
   layer: SourceLayer
   jurisdictionId: string | null
   sources: CityRulebookSource[]
-  /** 折りたたみ内など。監視注意は先頭レイヤだけ出すときに false */
   showMonitoringAlert?: boolean
-  /** 保存・削除後に親が一覧を取り直す */
   onChanged?: () => void
 }
 
 type EditDraft = {
   id: string
   title: string
-  parentPageUrl: string
-  directFileUrl: string
-  materialCategory: RuleMaterialCategory
+  kind: RegisterKind
+  url: string
   memo: string
 }
 
+function kindOf(source: CityRulebookSource): RegisterKind {
+  return isReadablePdfSource(source) ? "pdf" : "html"
+}
+
+function urlOf(source: CityRulebookSource): string {
+  if (kindOf(source) === "pdf") {
+    return (
+      source.direct_file_url?.trim() ||
+      primarySourceUrl(source) ||
+      ""
+    )
+  }
+  return (
+    source.parent_page_url?.trim() ||
+    primarySourceUrl(source) ||
+    ""
+  )
+}
+
 /**
- * 市ルールブック「自治体ルール設定」内で、国／県／市の公開情報を
- * 追加・修正・削除（無効化）する。
+ * 資料庫の国／県／市。読むPDFと参考リンク（HTML）を分けて置く。
  */
 export function CityRulebookSourcesPanel({
   layerLabel,
@@ -98,13 +106,13 @@ export function CityRulebookSourcesPanel({
   const [editing, setEditing] = useState<EditDraft | null>(null)
 
   const [newTitle, setNewTitle] = useState("")
-  const [newParentUrl, setNewParentUrl] = useState("")
-  const [newDirectUrl, setNewDirectUrl] = useState("")
-  const [newCategory, setNewCategory] =
-    useState<RuleMaterialCategory>("訪問介護")
+  const [newKind, setNewKind] = useState<RegisterKind>("pdf")
+  const [newUrl, setNewUrl] = useState("")
   const [newMemo, setNewMemo] = useState("")
 
   const canManage = Boolean(jurisdictionId)
+  const pdfSources = sources.filter((s) => isReadablePdfSource(s))
+  const linkSources = sources.filter((s) => isLinkCollectionSource(s))
 
   function refresh() {
     onChanged?.()
@@ -116,9 +124,8 @@ export function CityRulebookSourcesPanel({
     setEditing({
       id: source.id,
       title: source.title,
-      parentPageUrl: source.parent_page_url ?? "",
-      directFileUrl: source.direct_file_url ?? "",
-      materialCategory: source.material_category ?? "訪問介護",
+      kind: kindOf(source),
+      url: urlOf(source),
       memo: source.memo ?? "",
     })
   }
@@ -130,9 +137,8 @@ export function CityRulebookSourcesPanel({
         jurisdictionId,
         title: newTitle,
         serviceType: "訪問介護",
-        materialCategory: newCategory,
-        parentPageUrl: newParentUrl,
-        directFileUrl: newDirectUrl,
+        kind: newKind,
+        url: newUrl,
         memo: newMemo,
       })
       if (!result.ok) {
@@ -142,15 +148,18 @@ export function CityRulebookSourcesPanel({
       const monitorMessage =
         result.data?.monitorMessage ?? "資料を追加しました。"
       toast.success(monitorMessage, {
-        description: result.data?.monitoringReady
-          ? "以降の変更は自動で監視します。変わったら監視状況からルールブックを作り直してください。"
-          : "公開情報PDFの直リンクを入れると自動監視が始まります。",
+        description:
+          newKind === "pdf" && result.data?.monitoringReady
+            ? "以降の変更は自動で監視します。変わったら監視状況からルールブックを作り直してください。"
+            : newKind === "pdf"
+              ? "PDFの直リンクだと本文の取得が始まります。"
+              : "リンク集に載せました。ルール抽出には使いません。",
         duration: 10000,
       })
       setNewTitle("")
-      setNewParentUrl("")
-      setNewDirectUrl("")
+      setNewUrl("")
       setNewMemo("")
+      setNewKind("pdf")
       setShowAdd(false)
       refresh()
     })
@@ -162,9 +171,8 @@ export function CityRulebookSourcesPanel({
       const result = await updateRuleSourceUrlAction({
         id: editing.id,
         title: editing.title,
-        materialCategory: editing.materialCategory,
-        parentPageUrl: editing.parentPageUrl,
-        directFileUrl: editing.directFileUrl,
+        kind: editing.kind,
+        url: editing.url,
         memo: editing.memo,
       })
       if (!result.ok) {
@@ -172,9 +180,10 @@ export function CityRulebookSourcesPanel({
         return
       }
       toast.success(result.data?.monitorMessage ?? "リンクを更新しました。", {
-        description: result.data?.monitoringReady
-          ? "本文が取れたら、ルールブックを作るから下書きを作り直してください。"
-          : "PDFの直リンクだと本文の取得が始まります。",
+        description:
+          editing.kind === "pdf"
+            ? "本文が取れたら、ルールブックを作るから下書きを作り直してください。"
+            : "リンク集の参考リンクとして保存しました。",
         duration: 10000,
       })
       setEditing(null)
@@ -208,7 +217,7 @@ export function CityRulebookSourcesPanel({
         toast.error(result.error ?? "削除に失敗しました。")
         return
       }
-      toast.success("公開情報を一覧から外しました。")
+      toast.success("資料庫から外しました。")
       if (editing?.id === source.id) setEditing(null)
       refresh()
     })
@@ -217,12 +226,12 @@ export function CityRulebookSourcesPanel({
   return (
     <section
       id={`source-layer-${layer}`}
-      className="space-y-3"
-      aria-label={`${layerLabel}の公式URL`}
+      className="space-y-4"
+      aria-label={`${layerLabel}の資料庫`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-base font-semibold text-primary-dark">
-          {layerLabel}の公式URL
+          {layerLabel}
         </p>
         <Button
           type="button"
@@ -270,13 +279,32 @@ export function CityRulebookSourcesPanel({
         <Card className="rounded-xl border-primary/20 bg-primary/[0.02] shadow-subtle">
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg text-primary-dark">
-              {layerLabel}の資料を追加
+              {layerLabel}に資料を追加
             </CardTitle>
             <CardDescription className="text-base leading-relaxed">
-              公式の公開情報PDF（直リンク）を登録します。登録すると監視状況に載ります。一覧HTMLは本文にならないので、PDFの直URLに直してください。直したあとは「ルールブックを作る」から下書きを作り直してください。
+              読むPDFか、参考のHTMLリンクかを選んでください。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">この資料はどれですか</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <KindButton
+                  selected={newKind === "pdf"}
+                  disabled={pending}
+                  title="読むPDF"
+                  hint="ルールを作るときに読みます"
+                  onSelect={() => setNewKind("pdf")}
+                />
+                <KindButton
+                  selected={newKind === "html"}
+                  disabled={pending}
+                  title="参考リンク（HTML）"
+                  hint="リンク集に置きます"
+                  onSelect={() => setNewKind("html")}
+                />
+              </div>
+            </fieldset>
             <div className="space-y-2">
               <Label htmlFor={`new-source-title-${layer}`}>資料名</Label>
               <Input
@@ -289,62 +317,29 @@ export function CityRulebookSourcesPanel({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`new-source-category-${layer}`}>資料の種類</Label>
-              <Select
-                value={newCategory}
-                onValueChange={(v) =>
-                  setNewCategory(v as RuleMaterialCategory)
+              <Label htmlFor={`new-source-url-${layer}`}>
+                {newKind === "pdf" ? "PDFの直リンク" : "参考リンク（HTML）"}
+              </Label>
+              <Input
+                id={`new-source-url-${layer}`}
+                type="url"
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+                placeholder={
+                  newKind === "pdf" ? "https://.../*.pdf" : "https://..."
                 }
-                disabled={pending}
-              >
-                <SelectTrigger
-                  id={`new-source-category-${layer}`}
-                  className="min-h-11 text-base"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MATERIAL_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {MATERIAL_CATEGORY_LABEL[c]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`new-parent-url-${layer}`}>
-                公開情報リンク（HTML・一覧ページ可）
-              </Label>
-              <Input
-                id={`new-parent-url-${layer}`}
-                type="url"
-                value={newParentUrl}
-                onChange={(e) => setNewParentUrl(e.target.value)}
-                placeholder="https://..."
                 className="min-h-11 text-base"
                 disabled={pending}
               />
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                根拠の所在を残すためのURLです。これだけでは自動監視が始まらないことがあります。
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`new-direct-url-${layer}`}>
-                公開情報PDF（直接URL・自動監視用・推奨）
-              </Label>
-              <Input
-                id={`new-direct-url-${layer}`}
-                type="url"
-                value={newDirectUrl}
-                onChange={(e) => setNewDirectUrl(e.target.value)}
-                placeholder="https://.../*.pdf"
-                className="min-h-11 text-base"
-                disabled={pending}
-              />
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {SOURCE_URL_DIRECT_FILE_HINT}
-              </p>
+              {newKind === "pdf" ? (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {SOURCE_URL_DIRECT_FILE_HINT}
+                </p>
+              ) : (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  お知らせ一覧や案内ページです。人は開けますが、ルール抽出には使いません。
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor={`new-memo-${layer}`}>メモ（任意）</Label>
@@ -361,27 +356,125 @@ export function CityRulebookSourcesPanel({
               type="button"
               size="lg"
               className="min-h-11"
-              disabled={pending || !newTitle.trim()}
+              disabled={pending || !newTitle.trim() || !newUrl.trim()}
               onClick={onCreate}
             >
-              {layerLabel}の公開情報に追加する
+              {layerLabel}に追加する
             </Button>
           </CardContent>
         </Card>
       ) : null}
 
-      {sources.length === 0 && !showAdd ? (
-        <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-4 text-base text-muted-foreground">
-          まだ公式URLがありません。「資料を追加する」から入れてください。
-        </p>
+      <SourceGroup
+        heading="読む資料"
+        variant="pdf"
+        emptyText="読むPDFはまだありません。"
+        sources={pdfSources}
+        layer={layer}
+        editing={editing}
+        pending={pending}
+        onStartEdit={startEdit}
+        onSaveEdit={onSaveEdit}
+        onCancelEdit={() => setEditing(null)}
+        onChangeEdit={setEditing}
+        onMarkVerified={onMarkVerified}
+        onDelete={onDelete}
+      />
+
+      <SourceGroup
+        heading="リンク集"
+        variant="link"
+        emptyText="参考リンクはまだありません。"
+        sources={linkSources}
+        layer={layer}
+        editing={editing}
+        pending={pending}
+        onStartEdit={startEdit}
+        onSaveEdit={onSaveEdit}
+        onCancelEdit={() => setEditing(null)}
+        onChangeEdit={setEditing}
+        onMarkVerified={onMarkVerified}
+        onDelete={onDelete}
+      />
+    </section>
+  )
+}
+
+function KindButton({
+  selected,
+  disabled,
+  title,
+  hint,
+  onSelect,
+}: {
+  selected: boolean
+  disabled: boolean
+  title: string
+  hint: string
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "flex min-h-11 w-full flex-col items-start rounded-xl border px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        selected
+          ? "border-primary bg-primary/5 font-semibold text-primary-dark"
+          : "border-border"
+      )}
+      aria-pressed={selected}
+      disabled={disabled}
+      onClick={onSelect}
+    >
+      <span className="text-base">{title}</span>
+      <span className="mt-1 text-sm font-normal leading-relaxed text-muted-foreground">
+        {hint}
+      </span>
+    </button>
+  )
+}
+
+function SourceGroup({
+  heading,
+  variant,
+  emptyText,
+  sources,
+  layer,
+  editing,
+  pending,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onChangeEdit,
+  onMarkVerified,
+  onDelete,
+}: {
+  heading: string
+  variant: "pdf" | "link"
+  emptyText: string
+  sources: CityRulebookSource[]
+  layer: SourceLayer
+  editing: EditDraft | null
+  pending: boolean
+  onStartEdit: (source: CityRulebookSource) => void
+  onSaveEdit: () => void
+  onCancelEdit: () => void
+  onChangeEdit: (next: EditDraft) => void
+  onMarkVerified: (id: string) => void
+  onDelete: (source: CityRulebookSource) => void
+}) {
+  const isLinks = variant === "link"
+  return (
+    <div className="space-y-2">
+      <h3 className="text-base font-semibold text-primary-dark">{heading}</h3>
+      {sources.length === 0 ? (
+        <p className="text-base text-muted-foreground">{emptyText}</p>
       ) : (
         <ul className="space-y-2">
           {sources.map((s) => {
             const url = primarySourceUrl(s)
             const isEditing = editing?.id === s.id
-            const hasText = s.hasText === true
-            const looksPdf = looksLikeDirectFileUrl(url, s.file_type)
-            const needsLinkFix = Boolean(url) && !hasText
+            const needsLinkFix = sourceNeedsPdfTextFix(s)
             const needsAttention =
               s.human_review_status === "needs_review" ||
               s.human_review_status === "outdated" ||
@@ -409,83 +502,59 @@ export function CityRulebookSourcesPanel({
                           </AlertDescription>
                         </Alert>
                       ) : null}
+                      <fieldset className="space-y-2">
+                        <legend className="text-sm font-medium">
+                          この資料はどれですか
+                        </legend>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <KindButton
+                            selected={editing.kind === "pdf"}
+                            disabled={pending}
+                            title="読むPDF"
+                            hint="ルールを作るときに読みます"
+                            onSelect={() =>
+                              onChangeEdit({ ...editing, kind: "pdf" })
+                            }
+                          />
+                          <KindButton
+                            selected={editing.kind === "html"}
+                            disabled={pending}
+                            title="参考リンク（HTML）"
+                            hint="リンク集に置きます"
+                            onSelect={() =>
+                              onChangeEdit({ ...editing, kind: "html" })
+                            }
+                          />
+                        </div>
+                      </fieldset>
                       <div className="space-y-2">
                         <Label htmlFor={`edit-title-${s.id}`}>資料名</Label>
                         <Input
                           id={`edit-title-${s.id}`}
                           value={editing.title}
                           onChange={(e) =>
-                            setEditing({ ...editing, title: e.target.value })
+                            onChangeEdit({ ...editing, title: e.target.value })
                           }
                           className="min-h-11 text-base"
                           disabled={pending}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor={`edit-cat-${s.id}`}>資料の種類</Label>
-                        <Select
-                          value={editing.materialCategory}
-                          onValueChange={(v) =>
-                            setEditing({
-                              ...editing,
-                              materialCategory: v as RuleMaterialCategory,
-                            })
-                          }
-                          disabled={pending}
-                        >
-                          <SelectTrigger
-                            id={`edit-cat-${s.id}`}
-                            className="min-h-11 text-base"
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {MATERIAL_CATEGORIES.map((c) => (
-                              <SelectItem key={c} value={c}>
-                                {MATERIAL_CATEGORY_LABEL[c]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`edit-parent-${s.id}`}>
-                          公開情報リンク（HTML・一覧ページ可）
+                        <Label htmlFor={`edit-url-${s.id}`}>
+                          {editing.kind === "pdf"
+                            ? "PDFの直リンク"
+                            : "参考リンク（HTML）"}
                         </Label>
                         <Input
-                          id={`edit-parent-${s.id}`}
+                          id={`edit-url-${s.id}`}
                           type="url"
-                          value={editing.parentPageUrl}
+                          value={editing.url}
                           onChange={(e) =>
-                            setEditing({
-                              ...editing,
-                              parentPageUrl: e.target.value,
-                            })
+                            onChangeEdit({ ...editing, url: e.target.value })
                           }
                           className="min-h-11 text-base"
                           disabled={pending}
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`edit-direct-${s.id}`}>
-                          公開情報PDF（直接URL・自動監視用・推奨）
-                        </Label>
-                        <Input
-                          id={`edit-direct-${s.id}`}
-                          type="url"
-                          value={editing.directFileUrl}
-                          onChange={(e) =>
-                            setEditing({
-                              ...editing,
-                              directFileUrl: e.target.value,
-                            })
-                          }
-                          className="min-h-11 text-base"
-                          disabled={pending}
-                        />
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          {SOURCE_URL_DIRECT_FILE_HINT}
-                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor={`edit-memo-${s.id}`}>メモ（任意）</Label>
@@ -493,7 +562,7 @@ export function CityRulebookSourcesPanel({
                           id={`edit-memo-${s.id}`}
                           value={editing.memo}
                           onChange={(e) =>
-                            setEditing({ ...editing, memo: e.target.value })
+                            onChangeEdit({ ...editing, memo: e.target.value })
                           }
                           className="min-h-11 text-base"
                           disabled={pending}
@@ -513,7 +582,7 @@ export function CityRulebookSourcesPanel({
                           size="lg"
                           variant="outline"
                           disabled={pending}
-                          onClick={() => setEditing(null)}
+                          onClick={onCancelEdit}
                         >
                           やめる
                         </Button>
@@ -524,7 +593,11 @@ export function CityRulebookSourcesPanel({
                       <Badge variant="outline" className="rounded-md">
                         {LAYER_BADGE[layer]}
                       </Badge>
-                      {hasText ? (
+                      {isLinks ? (
+                        <Badge variant="outline" className="rounded-md">
+                          参考リンク
+                        </Badge>
+                      ) : s.hasText ? (
                         <Badge variant="outline" className="rounded-md">
                           本文あり
                         </Badge>
@@ -534,11 +607,7 @@ export function CityRulebookSourcesPanel({
                           className="inline-flex items-center gap-1 rounded-md"
                         >
                           <FileWarning className="size-3.5" aria-hidden />
-                          {!url
-                            ? "URLなし"
-                            : looksPdf
-                              ? "本文なし"
-                              : "一覧ページの可能性"}
+                          {!url ? "URLなし" : "本文なし"}
                         </Badge>
                       )}
                       <div className="min-w-0 flex-1">
@@ -547,9 +616,6 @@ export function CityRulebookSourcesPanel({
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {s.jurisdictionName}
-                          {s.material_category
-                            ? `／${MATERIAL_CATEGORY_LABEL[s.material_category] ?? s.material_category}`
-                            : ""}
                           ／
                           {HUMAN_REVIEW_STATUS_LABEL[s.human_review_status] ??
                             s.human_review_status}
@@ -583,7 +649,7 @@ export function CityRulebookSourcesPanel({
                           size="sm"
                           className="min-h-11"
                           disabled={pending}
-                          onClick={() => startEdit(s)}
+                          onClick={() => onStartEdit(s)}
                         >
                           <Pencil className="size-4" aria-hidden />
                           {needsLinkFix || !url ? "リンクを直す" : "修正する"}
@@ -620,6 +686,6 @@ export function CityRulebookSourcesPanel({
           })}
         </ul>
       )}
-    </section>
+    </div>
   )
 }
