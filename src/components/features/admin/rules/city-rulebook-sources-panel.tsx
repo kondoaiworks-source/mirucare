@@ -6,6 +6,7 @@ import { toast } from "@/components/ui/sonner"
 import {
   archiveRuleSourceUrlAction,
   createMunicipalitySourceUrlAction,
+  resyncRuleSourceTextAction,
   updateRuleSourceUrlAction,
 } from "@/app/actions/rule-engine"
 import type { CityRulebookSource } from "@/app/actions/city-rulebook"
@@ -40,6 +41,7 @@ import {
   Info,
   Pencil,
   Plus,
+  RefreshCw,
   Trash2,
   X,
 } from "lucide-react"
@@ -114,6 +116,22 @@ export function CityRulebookSourcesPanel({
   const pdfSources = sources.filter((s) => isReadablePdfSource(s))
   const linkSources = sources.filter((s) => isLinkCollectionSource(s))
 
+  function notifyMonitor(opts: {
+    kind: RegisterKind
+    message: string
+    synced?: boolean
+    description: string
+  }) {
+    const failed = opts.kind === "pdf" && opts.synced === false
+    const toastFn = failed ? toast.error : toast.success
+    toastFn(opts.message, {
+      description: failed
+        ? "本文なしのままです。「本文を取り直す」からやり直せます。"
+        : opts.description,
+      duration: 10000,
+    })
+  }
+
   function refresh() {
     onChanged?.()
     router.refresh()
@@ -147,14 +165,16 @@ export function CityRulebookSourcesPanel({
       }
       const monitorMessage =
         result.data?.monitorMessage ?? "資料を追加しました。"
-      toast.success(monitorMessage, {
+      notifyMonitor({
+        kind: newKind,
+        message: monitorMessage,
+        synced: result.data?.synced,
         description:
           newKind === "pdf" && result.data?.monitoringReady
             ? "以降の変更は自動で監視します。変わったら監視状況からルールブックを作り直してください。"
             : newKind === "pdf"
               ? "PDFの直リンクだと本文の取得が始まります。"
               : "リンク集に載せました。ルール抽出には使いません。",
-        duration: 10000,
       })
       setNewTitle("")
       setNewUrl("")
@@ -179,12 +199,14 @@ export function CityRulebookSourcesPanel({
         toast.error(result.error ?? "保存に失敗しました。")
         return
       }
-      toast.success(result.data?.monitorMessage ?? "リンクを更新しました。", {
+      notifyMonitor({
+        kind: editing.kind,
+        message: result.data?.monitorMessage ?? "リンクを更新しました。",
+        synced: result.data?.synced,
         description:
           editing.kind === "pdf"
             ? "本文が取れたら、ルールブックを作るから下書きを作り直してください。"
             : "リンク集の参考リンクとして保存しました。",
-        duration: 10000,
       })
       setEditing(null)
       refresh()
@@ -219,6 +241,23 @@ export function CityRulebookSourcesPanel({
       }
       toast.success("資料庫から外しました。")
       if (editing?.id === source.id) setEditing(null)
+      refresh()
+    })
+  }
+
+  function onResync(source: CityRulebookSource) {
+    startTransition(async () => {
+      const result = await resyncRuleSourceTextAction(source.id)
+      if (!result.ok) {
+        toast.error(result.error ?? "本文の取り直しに失敗しました。")
+        return
+      }
+      notifyMonitor({
+        kind: "pdf",
+        message: result.data?.message ?? "本文の取り直しが終わりました。",
+        synced: result.data?.synced,
+        description: "本文ありが付けば、ルールブックを作るで使えます。",
+      })
       refresh()
     })
   }
@@ -378,6 +417,7 @@ export function CityRulebookSourcesPanel({
         onCancelEdit={() => setEditing(null)}
         onChangeEdit={setEditing}
         onMarkVerified={onMarkVerified}
+        onResync={onResync}
         onDelete={onDelete}
       />
 
@@ -394,6 +434,7 @@ export function CityRulebookSourcesPanel({
         onCancelEdit={() => setEditing(null)}
         onChangeEdit={setEditing}
         onMarkVerified={onMarkVerified}
+        onResync={onResync}
         onDelete={onDelete}
       />
     </section>
@@ -447,6 +488,7 @@ function SourceGroup({
   onCancelEdit,
   onChangeEdit,
   onMarkVerified,
+  onResync,
   onDelete,
 }: {
   heading: string
@@ -461,6 +503,7 @@ function SourceGroup({
   onCancelEdit: () => void
   onChangeEdit: (next: EditDraft) => void
   onMarkVerified: (id: string) => void
+  onResync: (source: CityRulebookSource) => void
   onDelete: (source: CityRulebookSource) => void
 }) {
   const isLinks = variant === "link"
@@ -643,6 +686,18 @@ function SourceGroup({
                             URL未設定
                           </span>
                         )}
+                        {needsLinkFix && url ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="min-h-11"
+                            disabled={pending}
+                            onClick={() => onResync(s)}
+                          >
+                            <RefreshCw className="size-4" aria-hidden />
+                            本文を取り直す
+                          </Button>
+                        ) : null}
                         <Button
                           type="button"
                           variant={needsLinkFix || !url ? "default" : "outline"}

@@ -413,6 +413,7 @@ export async function updateRuleSourceUrlAction(input: {
     knowledgeDocumentId: string | null
     monitoringReady: boolean
     monitorMessage: string
+    synced: boolean
   }>
 > {
   const op = await requireOperator()
@@ -531,6 +532,7 @@ export async function updateRuleSourceUrlAction(input: {
       knowledgeDocumentId: monitor.knowledgeDocumentId,
       monitoringReady: monitor.monitoringReady,
       monitorMessage: monitor.message,
+      synced: monitor.synced,
     },
   }
 }
@@ -554,6 +556,7 @@ export async function createMunicipalitySourceUrlAction(input: {
     knowledgeDocumentId: string | null
     monitoringReady: boolean
     monitorMessage: string
+    synced: boolean
   }>
 > {
   const op = await requireOperator()
@@ -634,7 +637,31 @@ export async function createMunicipalitySourceUrlAction(input: {
       knowledgeDocumentId: monitor.knowledgeDocumentId,
       monitoringReady: monitor.monitoringReady,
       monitorMessage: monitor.message,
+      synced: monitor.synced,
     },
+  }
+}
+
+/**
+ * 読むPDFの本文を取り直す（資料庫の「本文なし」から使う）。
+ */
+export async function resyncRuleSourceTextAction(
+  sourceId: string
+): Promise<ActionResult<{ synced: boolean; message: string }>> {
+  const op = await requireOperator()
+  if ("error" in op) return { ok: false, error: op.error }
+  if (!sourceId.trim()) {
+    return { ok: false, error: "対象が指定されていません。" }
+  }
+
+  const monitor = await ensureKnowledgeDocumentFromRuleSource(
+    op.service,
+    sourceId
+  )
+  revalidateRules("/admin/rules/documents")
+  return {
+    ok: true,
+    data: { synced: monitor.synced, message: monitor.message },
   }
 }
 

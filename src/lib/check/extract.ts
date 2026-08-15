@@ -4,6 +4,10 @@
  * CSV・テキスト: UTF-8 / 画像: テキストなし（ビジョンへ委譲）
  */
 
+import { existsSync } from "node:fs"
+import path from "node:path"
+import { pathToFileURL } from "node:url"
+
 export type ExtractResult = {
   kind: "text" | "image" | "empty"
   text?: string
@@ -18,6 +22,43 @@ const MIN_USEFUL_TEXT_CHARS = 30
 export const PDF_TEXT_PAGE_CHUNK = 8
 /** 抽出テキストのソフト上限（UTF-8 バイト）。スナップショット保存上限と揃える */
 export const PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES = 2 * 1024 * 1024
+/** これ以下は一括抽出を先に試す（介護報酬Q&A Vol.1 は約1.2MB / 113ページ） */
+const PDF_FULL_EXTRACT_MAX_BYTES = 8 * 1024 * 1024
+
+function pdfjsAssetUrl(subdir: "cmaps" | "standard_fonts"): string | undefined {
+  const dirs = [
+    path.join(process.cwd(), "node_modules", "pdfjs-dist", subdir),
+    path.join(
+      process.cwd(),
+      "node_modules",
+      "pdf-parse",
+      "node_modules",
+      "pdfjs-dist",
+      subdir
+    ),
+  ]
+  for (const dir of dirs) {
+    if (existsSync(dir)) {
+      const href = pathToFileURL(dir).href
+      return href.endsWith("/") ? href : `${href}/`
+    }
+  }
+  return undefined
+}
+
+function pdfParseLoadOptions(buffer: Buffer) {
+  const cMapUrl = pdfjsAssetUrl("cmaps")
+  const standardFontDataUrl = pdfjsAssetUrl("standard_fonts")
+  return {
+    data: new Uint8Array(buffer),
+    stopAtErrors: false,
+    cMapPacked: true,
+    isOffscreenCanvasSupported: false,
+    useWasm: false,
+    ...(cMapUrl ? { cMapUrl } : {}),
+    ...(standardFontDataUrl ? { standardFontDataUrl } : {}),
+  }
+}
 
 /** スキャンPDFは先頭ページのみ画像化（ペイロード肥大を防ぐ） */
 const SCAN_PDF_MAX_PAGES = 1
@@ -139,12 +180,27 @@ export function joinPdfTextChunks(chunks: string[]): string {
 /**
  * PDF本文テキストのみ抽出（スキャン画像化なし）。
  * ナレッジ差分用スナップショットで使用。
- * 113ページ級は一括だと途中で落ちやすいので、数ページずつ抜き、取れた分は残す。
+ * 中規模の公式PDFは一括、大きいもの・一括失敗は数ページずつ抜く。
  */
 export async function extractPdfPlainText(buffer: Buffer): Promise<string> {
   const { PDFParse } = await import("pdf-parse")
-  const parser = new PDFParse({ data: buffer, stopAtErrors: false })
+  const parser = new PDFParse(pdfParseLoadOptions(buffer))
   try {
+    if (buffer.byteLength <= PDF_FULL_EXTRACT_MAX_BYTES) {
+      try {
+        const data = await parser.getText()
+        const text = (data.text ?? "").trim()
+        if (!isMostlyNoisePdfText(text)) {
+          return text
+        }
+      } catch (err) {
+        console.error("[extract] pdf_full_failed", {
+          error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
+          bytes: buffer.byteLength,
+        })
+      }
+    }
+
     let totalPages = 0
     try {
       const info = await parser.getInfo()
@@ -228,7 +284,7 @@ export async function extractDocumentContent(
         return { kind: "text", text }
       }
       const { PDFParse } = await import("pdf-parse")
-      const parser = new PDFParse({ data: buffer, stopAtErrors: false })
+      const parser = new PDFParse(pdfParseLoadOptions(buffer))
       try {
         // 文字がほぼ無い → スキャンPDFとして画像化
         return await extractScanPdfAsImage(parser, text)

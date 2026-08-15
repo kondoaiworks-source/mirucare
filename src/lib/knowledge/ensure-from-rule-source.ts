@@ -266,6 +266,6 @@ export async function ensureKnowledgeDocumentFromRuleSource(
       ? created
         ? "公開情報を登録し、公開情報監視の監視を開始しました。"
         : "公開情報監視の監視を更新しました。"
-      : `台帳は用意しましたが、初回取得に問題があります（${syncResult.message}）。監視トラブルの「同期の結果」でご確認ください。`,
+      : `台帳は用意しましたが、本文の初回取得に問題があります（${syncResult.message}）。資料庫の「本文を取り直す」からやり直せます。`,
   }
 }
