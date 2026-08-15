@@ -8,10 +8,7 @@ import {
   syncAllKnowledgeDocuments,
   syncKnowledgeDocument,
 } from "@/lib/knowledge/sync"
-import {
-  PDF_TEXT_EXTRACT_FAILED_MESSAGE,
-  trySaveKnowledgePdfSnapshot,
-} from "@/lib/knowledge/snapshots"
+import { trySaveKnowledgePdfSnapshot } from "@/lib/knowledge/snapshots"
 import type {
   AppAnnouncement,
   JurisdictionLevel,
@@ -279,12 +276,12 @@ export async function registerKnowledgeDocumentAction(input: {
       pdfBuffer: Buffer.from(input.fileBase64, "base64"),
       sourceUrlAtCapture: sourceUrl,
     })
-    if (!saved) {
+    if (!saved.ok) {
       await op.service
         .from("knowledge_documents")
         .update({
           last_sync_status: "failed",
-          last_error: PDF_TEXT_EXTRACT_FAILED_MESSAGE,
+          last_error: saved.error,
         })
         .eq("id", document.id)
     }

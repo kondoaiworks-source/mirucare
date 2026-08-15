@@ -10,7 +10,10 @@ import { createServiceClient } from "@/lib/supabase/server"
 import type { KnowledgeDocumentSnapshot } from "@/types/database"
 
 export const PDF_TEXT_EXTRACT_FAILED_MESSAGE =
-  "PDFから本文を取り出せませんでした。スキャン画像の可能性があります。資料庫で直リンクをご確認ください。"
+  "PDFから本文を取り出せませんでした。スキャン画像、または特殊なフォントの可能性があります。資料庫で直リンクをご確認ください。"
+
+export const PDF_TEXT_EXTRACT_PARSE_MESSAGE =
+  "ページ数の多いPDFの本文取り出しが途中で止まりました。監視状況から今すぐ同期をやり直してください。"
 
 export const KNOWLEDGE_SNAPSHOTS_BUCKET = "knowledge-snapshots"
 /** 抽出テキストのソフト上限（UTF-8 バイト） */
@@ -162,7 +165,7 @@ export async function saveKnowledgePdfSnapshot(opts: {
       documentId: opts.knowledgeDocumentId,
       error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
     })
-    throw new Error(PDF_TEXT_EXTRACT_FAILED_MESSAGE)
+    throw new Error(PDF_TEXT_EXTRACT_PARSE_MESSAGE)
   }
 
   if (!rawText.trim() || isMostlyNoisePdfText(rawText)) {
@@ -265,23 +268,33 @@ export async function saveKnowledgePdfSnapshot(opts: {
   }
 }
 
+export type TrySaveKnowledgePdfSnapshotResult =
+  | {
+      ok: true
+      snapshot: KnowledgeDocumentSnapshot
+      created: boolean
+      isTruncated: boolean
+    }
+  | { ok: false; error: string }
+
 /**
  * 同期フロー用: 失敗しても同期本体を止めないラッパー
  */
 export async function trySaveKnowledgePdfSnapshot(
   opts: Parameters<typeof saveKnowledgePdfSnapshot>[0]
-): Promise<{
-  snapshot: KnowledgeDocumentSnapshot
-  created: boolean
-  isTruncated: boolean
-} | null> {
+): Promise<TrySaveKnowledgePdfSnapshotResult> {
   try {
-    return await saveKnowledgePdfSnapshot(opts)
+    const saved = await saveKnowledgePdfSnapshot(opts)
+    return { ok: true, ...saved }
   } catch (err) {
+    const error =
+      err instanceof Error && err.message.trim()
+        ? err.message
+        : PDF_TEXT_EXTRACT_FAILED_MESSAGE
     console.error("[knowledge-snapshot] save_failed", {
       documentId: opts.knowledgeDocumentId,
-      error: err instanceof Error ? err.message.slice(0, 200) : "unknown",
+      error: error.slice(0, 200),
     })
-    return null
+    return { ok: false, error }
   }
 }

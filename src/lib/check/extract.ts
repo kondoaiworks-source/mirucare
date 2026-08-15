@@ -14,6 +14,11 @@ export type ExtractResult = {
 /** これ未満は「実質テキストなし」（ページ番号のみ等）とみなす */
 const MIN_USEFUL_TEXT_CHARS = 30
 
+/** 100ページ超の公式PDFでもメモリを抑えつつ抜く */
+export const PDF_TEXT_PAGE_CHUNK = 8
+/** 抽出テキストのソフト上限（UTF-8 バイト）。スナップショット保存上限と揃える */
+export const PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES = 2 * 1024 * 1024
+
 /** スキャンPDFは先頭ページのみ画像化（ペイロード肥大を防ぐ） */
 const SCAN_PDF_MAX_PAGES = 1
 const SCAN_PDF_TARGET_WIDTH = 900
@@ -109,16 +114,91 @@ async function extractScanPdfAsImage(
   }
 }
 
+/** 1..total を chunkSize 件ずつのページ範囲に分ける */
+export function pdfPageRanges(
+  totalPages: number,
+  chunkSize: number = PDF_TEXT_PAGE_CHUNK
+): Array<[number, number]> {
+  const total = Math.max(1, Math.floor(Number(totalPages)) || 1)
+  const size = Math.max(1, Math.floor(Number(chunkSize)) || 1)
+  const ranges: Array<[number, number]> = []
+  for (let start = 1; start <= total; start += size) {
+    ranges.push([start, Math.min(start + size - 1, total)])
+  }
+  return ranges
+}
+
+export function joinPdfTextChunks(chunks: string[]): string {
+  return chunks
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.length > 0)
+    .join("\n")
+    .trim()
+}
+
 /**
  * PDF本文テキストのみ抽出（スキャン画像化なし）。
  * ナレッジ差分用スナップショットで使用。
+ * 113ページ級は一括だと途中で落ちやすいので、数ページずつ抜き、取れた分は残す。
  */
 export async function extractPdfPlainText(buffer: Buffer): Promise<string> {
   const { PDFParse } = await import("pdf-parse")
-  const parser = new PDFParse({ data: buffer })
+  const parser = new PDFParse({ data: buffer, stopAtErrors: false })
   try {
-    const data = await parser.getText()
-    return (data.text ?? "").trim()
+    let totalPages = 0
+    try {
+      const info = await parser.getInfo()
+      totalPages = Math.max(0, Number(info.total) || 0)
+    } catch (err) {
+      console.error("[extract] pdf_info_failed", {
+        error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
+      })
+    }
+
+    if (totalPages <= 0) {
+      const data = await parser.getText()
+      return (data.text ?? "").trim()
+    }
+
+    const parts: string[] = []
+    let textBytes = 0
+    let chunksOk = 0
+    let chunksFailed = 0
+    const ranges = pdfPageRanges(totalPages, PDF_TEXT_PAGE_CHUNK)
+
+    for (const [first, last] of ranges) {
+      try {
+        const data = await parser.getText({ first, last })
+        const chunk = (data.text ?? "").trim()
+        if (chunk) {
+          parts.push(chunk)
+          textBytes += Buffer.byteLength(chunk, "utf8")
+        }
+        chunksOk += 1
+      } catch (err) {
+        chunksFailed += 1
+        console.error("[extract] pdf_chunk_failed", {
+          first,
+          last,
+          totalPages,
+          error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
+        })
+      }
+      if (textBytes >= PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES) {
+        break
+      }
+    }
+
+    const text = joinPdfTextChunks(parts)
+    if (chunksFailed > 0 || totalPages >= 40) {
+      console.error("[extract] pdf_plain_text", {
+        totalPages,
+        chunksOk,
+        chunksFailed,
+        textBytes: Buffer.byteLength(text, "utf8"),
+      })
+    }
+    return text
   } finally {
     await parser.destroy().catch(() => undefined)
   }
@@ -143,14 +223,13 @@ export async function extractDocumentContent(
 
   if (isPdf(mimeType, fileName)) {
     try {
+      const text = await extractPdfPlainText(buffer)
+      if (!isMostlyNoisePdfText(text)) {
+        return { kind: "text", text }
+      }
       const { PDFParse } = await import("pdf-parse")
-      const parser = new PDFParse({ data: buffer })
+      const parser = new PDFParse({ data: buffer, stopAtErrors: false })
       try {
-        const data = await parser.getText()
-        const text = (data.text ?? "").trim()
-        if (!isMostlyNoisePdfText(text)) {
-          return { kind: "text", text }
-        }
         // 文字がほぼ無い → スキャンPDFとして画像化
         return await extractScanPdfAsImage(parser, text)
       } finally {

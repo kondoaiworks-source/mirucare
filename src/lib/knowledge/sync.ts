@@ -8,7 +8,6 @@ import {
   getSnapshotByHash,
   snapshotNeedsTextBackfill,
   trySaveKnowledgePdfSnapshot,
-  PDF_TEXT_EXTRACT_FAILED_MESSAGE,
 } from "@/lib/knowledge/snapshots"
 import { tryCreateChangeDraftOnHashChange } from "@/lib/knowledge/diff-draft"
 import { notifyChangeDraftCreated } from "@/lib/email/knowledge-change-draft"
@@ -222,14 +221,14 @@ async function syncFileDocument(
       sourceUrlAtCapture: sourceUrl,
     })
 
-    if (!backfilled) {
+    if (!backfilled.ok) {
       await service
         .from("knowledge_documents")
         .update({
           content_bytes: byteLength,
           last_checked_at: now,
           last_sync_status: "failed",
-          last_error: PDF_TEXT_EXTRACT_FAILED_MESSAGE,
+          last_error: backfilled.error,
           updated_at: now,
           // etag を進めない（次回も本体を再取得して補完を再試行）
           etag: null,
@@ -241,7 +240,7 @@ async function syncFileDocument(
         documentId: doc.id,
         title: doc.title,
         status: "failed",
-        message: PDF_TEXT_EXTRACT_FAILED_MESSAGE,
+        message: backfilled.error,
       }
     }
 
@@ -281,7 +280,7 @@ async function syncFileDocument(
   // ハッシュが変わった場合のみ差分ドラフト（初回ベースラインは作らない）
   if (previousHash && previousHash !== hash) {
     let draft: KnowledgeDocumentChangeDraft | null = null
-    if (saved) {
+    if (saved.ok) {
       draft = await tryCreateChangeDraftOnHashChange({
         service,
         doc,
@@ -323,14 +322,14 @@ async function syncFileDocument(
   const difyId = `dify-sync-${hash.slice(0, 12)}`
 
   // スナップショット保存に失敗したときは content_hash / etag を進めない（提案時の欠落を防ぐ）
-  if (!saved) {
+  if (!saved.ok) {
     await service
       .from("knowledge_documents")
       .update({
         content_bytes: byteLength,
         last_checked_at: now,
         last_sync_status: "failed",
-        last_error: PDF_TEXT_EXTRACT_FAILED_MESSAGE,
+        last_error: saved.error,
         updated_at: now,
         etag: null,
         last_modified: null,
@@ -341,7 +340,7 @@ async function syncFileDocument(
       documentId: doc.id,
       title: doc.title,
       status: "failed",
-      message: PDF_TEXT_EXTRACT_FAILED_MESSAGE,
+      message: saved.error,
     }
   }
 
