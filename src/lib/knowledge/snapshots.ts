@@ -13,7 +13,7 @@ export const PDF_TEXT_EXTRACT_FAILED_MESSAGE =
   "PDFから本文を取り出せませんでした。スキャン画像、または特殊なフォントの可能性があります。資料庫で直リンクをご確認ください。"
 
 export const PDF_TEXT_EXTRACT_PARSE_MESSAGE =
-  "ページ数の多いPDFの本文取り出しが途中で止まりました。監視状況から今すぐ同期をやり直してください。"
+  "ページ数の多いPDFの本文取り出しが途中で止まりました。資料庫の「本文を取り直す」からやり直してください。"
 
 export const KNOWLEDGE_SNAPSHOTS_BUCKET = "knowledge-snapshots"
 /** 抽出テキストのソフト上限（UTF-8 バイト） */

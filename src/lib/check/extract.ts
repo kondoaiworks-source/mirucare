@@ -4,10 +4,6 @@
  * CSV・テキスト: UTF-8 / 画像: テキストなし（ビジョンへ委譲）
  */
 
-import { existsSync } from "node:fs"
-import path from "node:path"
-import { pathToFileURL } from "node:url"
-
 export type ExtractResult = {
   kind: "text" | "image" | "empty"
   text?: string
@@ -25,38 +21,11 @@ export const PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES = 2 * 1024 * 1024
 /** これ以下は一括抽出を先に試す（介護報酬Q&A Vol.1 は約1.2MB / 113ページ） */
 const PDF_FULL_EXTRACT_MAX_BYTES = 8 * 1024 * 1024
 
-function pdfjsAssetUrl(subdir: "cmaps" | "standard_fonts"): string | undefined {
-  const dirs = [
-    path.join(process.cwd(), "node_modules", "pdfjs-dist", subdir),
-    path.join(
-      process.cwd(),
-      "node_modules",
-      "pdf-parse",
-      "node_modules",
-      "pdfjs-dist",
-      subdir
-    ),
-  ]
-  for (const dir of dirs) {
-    if (existsSync(dir)) {
-      const href = pathToFileURL(dir).href
-      return href.endsWith("/") ? href : `${href}/`
-    }
-  }
-  return undefined
-}
-
+/** 本番（Vercel）では CMap の file:// を渡すと例外になるため、本文抽出だけ指定する */
 function pdfParseLoadOptions(buffer: Buffer) {
-  const cMapUrl = pdfjsAssetUrl("cmaps")
-  const standardFontDataUrl = pdfjsAssetUrl("standard_fonts")
   return {
-    data: new Uint8Array(buffer),
+    data: Uint8Array.from(buffer),
     stopAtErrors: false,
-    cMapPacked: true,
-    isOffscreenCanvasSupported: false,
-    useWasm: false,
-    ...(cMapUrl ? { cMapUrl } : {}),
-    ...(standardFontDataUrl ? { standardFontDataUrl } : {}),
   }
 }
 
@@ -181,82 +150,97 @@ export function joinPdfTextChunks(chunks: string[]): string {
  * PDF本文テキストのみ抽出（スキャン画像化なし）。
  * ナレッジ差分用スナップショットで使用。
  * 中規模の公式PDFは一括、大きいもの・一括失敗は数ページずつ抜く。
+ * 本番で途中例外になっても、空文字を返して呼び出し側で案内する。
  */
 export async function extractPdfPlainText(buffer: Buffer): Promise<string> {
-  const { PDFParse } = await import("pdf-parse")
-  const parser = new PDFParse(pdfParseLoadOptions(buffer))
   try {
-    if (buffer.byteLength <= PDF_FULL_EXTRACT_MAX_BYTES) {
-      try {
-        const data = await parser.getText()
-        const text = (data.text ?? "").trim()
-        if (!isMostlyNoisePdfText(text)) {
-          return text
-        }
-      } catch (err) {
-        console.error("[extract] pdf_full_failed", {
-          error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
-          bytes: buffer.byteLength,
-        })
-      }
-    }
-
-    let totalPages = 0
+    const { PDFParse } = await import("pdf-parse")
+    const parser = new PDFParse(pdfParseLoadOptions(buffer))
     try {
-      const info = await parser.getInfo()
-      totalPages = Math.max(0, Number(info.total) || 0)
-    } catch (err) {
-      console.error("[extract] pdf_info_failed", {
-        error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
-      })
-    }
-
-    if (totalPages <= 0) {
-      const data = await parser.getText()
-      return (data.text ?? "").trim()
-    }
-
-    const parts: string[] = []
-    let textBytes = 0
-    let chunksOk = 0
-    let chunksFailed = 0
-    const ranges = pdfPageRanges(totalPages, PDF_TEXT_PAGE_CHUNK)
-
-    for (const [first, last] of ranges) {
-      try {
-        const data = await parser.getText({ first, last })
-        const chunk = (data.text ?? "").trim()
-        if (chunk) {
-          parts.push(chunk)
-          textBytes += Buffer.byteLength(chunk, "utf8")
+      if (buffer.byteLength <= PDF_FULL_EXTRACT_MAX_BYTES) {
+        try {
+          const data = await parser.getText()
+          const text = (data.text ?? "").trim()
+          if (!isMostlyNoisePdfText(text)) {
+            return text
+          }
+        } catch (err) {
+          console.error("[extract] pdf_full_failed", {
+            error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
+            bytes: buffer.byteLength,
+          })
         }
-        chunksOk += 1
+      }
+
+      let totalPages = 0
+      try {
+        const info = await parser.getInfo()
+        totalPages = Math.max(0, Number(info.total) || 0)
       } catch (err) {
-        chunksFailed += 1
-        console.error("[extract] pdf_chunk_failed", {
-          first,
-          last,
-          totalPages,
+        console.error("[extract] pdf_info_failed", {
           error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
         })
       }
-      if (textBytes >= PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES) {
-        break
-      }
-    }
 
-    const text = joinPdfTextChunks(parts)
-    if (chunksFailed > 0 || totalPages >= 40) {
-      console.error("[extract] pdf_plain_text", {
-        totalPages,
-        chunksOk,
-        chunksFailed,
-        textBytes: Buffer.byteLength(text, "utf8"),
-      })
+      if (totalPages <= 0) {
+        try {
+          const data = await parser.getText()
+          return (data.text ?? "").trim()
+        } catch (err) {
+          console.error("[extract] pdf_retry_failed", {
+            error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
+          })
+          return ""
+        }
+      }
+
+      const parts: string[] = []
+      let textBytes = 0
+      let chunksOk = 0
+      let chunksFailed = 0
+      const ranges = pdfPageRanges(totalPages, PDF_TEXT_PAGE_CHUNK)
+
+      for (const [first, last] of ranges) {
+        try {
+          const data = await parser.getText({ first, last })
+          const chunk = (data.text ?? "").trim()
+          if (chunk) {
+            parts.push(chunk)
+            textBytes += Buffer.byteLength(chunk, "utf8")
+          }
+          chunksOk += 1
+        } catch (err) {
+          chunksFailed += 1
+          console.error("[extract] pdf_chunk_failed", {
+            first,
+            last,
+            totalPages,
+            error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
+          })
+        }
+        if (textBytes >= PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES) {
+          break
+        }
+      }
+
+      const text = joinPdfTextChunks(parts)
+      if (chunksFailed > 0 || totalPages >= 40) {
+        console.error("[extract] pdf_plain_text", {
+          totalPages,
+          chunksOk,
+          chunksFailed,
+          textBytes: Buffer.byteLength(text, "utf8"),
+        })
+      }
+      return text
+    } finally {
+      await parser.destroy().catch(() => undefined)
     }
-    return text
-  } finally {
-    await parser.destroy().catch(() => undefined)
+  } catch (err) {
+    console.error("[extract] pdf_plain_text_failed", {
+      error: err instanceof Error ? err.message.slice(0, 160) : "unknown",
+    })
+    return ""
   }
 }
 
