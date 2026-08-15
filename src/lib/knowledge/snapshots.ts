@@ -5,9 +5,12 @@
  * - ソフト上限 2MB（超過時は切り詰め + is_truncated）
  */
 
-import { extractPdfPlainText } from "@/lib/check/extract"
+import { extractPdfPlainText, isMostlyNoisePdfText } from "@/lib/check/extract"
 import { createServiceClient } from "@/lib/supabase/server"
 import type { KnowledgeDocumentSnapshot } from "@/types/database"
+
+export const PDF_TEXT_EXTRACT_FAILED_MESSAGE =
+  "PDFから本文を取り出せませんでした。スキャン画像の可能性があります。資料庫で直リンクをご確認ください。"
 
 export const KNOWLEDGE_SNAPSHOTS_BUCKET = "knowledge-snapshots"
 /** 抽出テキストのソフト上限（UTF-8 バイト） */
@@ -60,6 +63,14 @@ export function snapshotStoragePath(
   contentHash: string
 ): string {
   return `${knowledgeDocumentId}/${contentHash}.txt`
+}
+
+/** 本文が無い（未作成・0バイト）スナップショットは、次回同期で取り直す */
+export function snapshotNeedsTextBackfill(
+  snapshot: { text_bytes?: number | null } | null | undefined
+): boolean {
+  if (!snapshot) return true
+  return Number(snapshot.text_bytes) <= 0
 }
 
 export async function getSnapshotByHash(
@@ -116,7 +127,8 @@ export async function readSnapshotText(
 
 /**
  * PDFバッファからテキスト抽出し、Storage + DB に保存。
- * 同一 (doc_id, content_hash) が既にあれば作成せず返す。
+ * 本文がある同一 (doc_id, content_hash) があれば作成せず返す。
+ * 本文0件の行は成功扱いにせず、取り直す。
  */
 export async function saveKnowledgePdfSnapshot(opts: {
   service: ServiceClient
@@ -134,7 +146,7 @@ export async function saveKnowledgePdfSnapshot(opts: {
     opts.knowledgeDocumentId,
     opts.contentHash
   )
-  if (existing) {
+  if (existing && !snapshotNeedsTextBackfill(existing)) {
     return {
       snapshot: existing,
       created: false,
@@ -150,10 +162,18 @@ export async function saveKnowledgePdfSnapshot(opts: {
       documentId: opts.knowledgeDocumentId,
       error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
     })
-    rawText = ""
+    throw new Error(PDF_TEXT_EXTRACT_FAILED_MESSAGE)
+  }
+
+  if (!rawText.trim() || isMostlyNoisePdfText(rawText)) {
+    throw new Error(PDF_TEXT_EXTRACT_FAILED_MESSAGE)
   }
 
   const prepared = prepareSnapshotText(rawText)
+  if (prepared.textBytes <= 0) {
+    throw new Error(PDF_TEXT_EXTRACT_FAILED_MESSAGE)
+  }
+
   const storagePath = snapshotStoragePath(
     opts.knowledgeDocumentId,
     opts.contentHash
@@ -173,28 +193,51 @@ export async function saveKnowledgePdfSnapshot(opts: {
     )
   }
 
+  const meta = {
+    storage_path: storagePath,
+    text_bytes: prepared.textBytes,
+    is_truncated: prepared.isTruncated,
+    source_url_at_capture: opts.sourceUrlAtCapture?.trim() || null,
+  }
+
+  if (existing) {
+    const { data, error } = await opts.service
+      .from("knowledge_document_snapshots")
+      .update(meta)
+      .eq("id", existing.id)
+      .select("*")
+      .single()
+    if (error || !data) {
+      throw new Error(
+        error?.message ?? "スナップショットメタの更新に失敗しました。"
+      )
+    }
+    return {
+      snapshot: data as KnowledgeDocumentSnapshot,
+      created: false,
+      isTruncated: prepared.isTruncated,
+    }
+  }
+
   const { data, error } = await opts.service
     .from("knowledge_document_snapshots")
     .insert({
       knowledge_document_id: opts.knowledgeDocumentId,
       content_hash: opts.contentHash,
-      storage_path: storagePath,
-      text_bytes: prepared.textBytes,
-      is_truncated: prepared.isTruncated,
-      source_url_at_capture: opts.sourceUrlAtCapture?.trim() || null,
+      ...meta,
     })
     .select("*")
     .single()
 
   if (error || !data) {
-    // 並行実行で UNIQUE 衝突した場合は既存を返す
+    // 並行実行で UNIQUE 衝突した場合は、本文がある既存だけ返す
     if (error?.code === "23505") {
       const raced = await getSnapshotByHash(
         opts.service,
         opts.knowledgeDocumentId,
         opts.contentHash
       )
-      if (raced) {
+      if (raced && !snapshotNeedsTextBackfill(raced)) {
         return {
           snapshot: raced,
           created: false,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   prepareSnapshotText,
   SNAPSHOT_TEXT_SOFT_LIMIT_BYTES,
+  snapshotNeedsTextBackfill,
   snapshotStoragePath,
 } from "./snapshots"
 
@@ -21,6 +22,14 @@ describe("prepareSnapshotText", () => {
     expect(out.isTruncated).toBe(true)
     expect(out.textBytes).toBeLessThanOrEqual(SNAPSHOT_TEXT_SOFT_LIMIT_BYTES)
     expect(out.text.length).toBeLessThan(raw.length)
+  })
+})
+
+describe("snapshotNeedsTextBackfill", () => {
+  it("未作成と本文0件は取り直す", () => {
+    expect(snapshotNeedsTextBackfill(null)).toBe(true)
+    expect(snapshotNeedsTextBackfill({ text_bytes: 0 })).toBe(true)
+    expect(snapshotNeedsTextBackfill({ text_bytes: 1200 })).toBe(false)
   })
 })
 

@@ -69,11 +69,11 @@ async function main() {
       if (doc.content_hash) {
         const { data: existing } = await service
           .from("knowledge_document_snapshots")
-          .select("id")
+          .select("id, text_bytes")
           .eq("knowledge_document_id", doc.id)
           .eq("content_hash", doc.content_hash)
           .maybeSingle()
-        if (existing) {
+        if (existing && Number(existing.text_bytes) > 0) {
           skipped += 1
           console.log(`SKIP 既存 ${doc.title}`)
           continue

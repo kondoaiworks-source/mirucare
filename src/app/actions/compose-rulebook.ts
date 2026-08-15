@@ -37,7 +37,11 @@ import {
 } from "@/lib/knowledge/propose-rules"
 import { isGeminiConfigured } from "@/lib/knowledge/gemini"
 import { ensureKnowledgeDocumentFromRuleSource } from "@/lib/knowledge/ensure-from-rule-source"
-import { getLatestSnapshot, readSnapshotText } from "@/lib/knowledge/snapshots"
+import {
+  getLatestSnapshot,
+  readSnapshotText,
+  snapshotNeedsTextBackfill,
+} from "@/lib/knowledge/snapshots"
 import { isReadablePdfSource } from "@/lib/rule-engine/source-urls"
 import type {
   AiCheckRule,
@@ -291,7 +295,9 @@ async function ensureSourceDocumentId(
   if (existingDocId) {
     try {
       const snapshot = await getLatestSnapshot(service, existingDocId)
-      if (snapshot) return existingDocId
+      if (snapshot && !snapshotNeedsTextBackfill(snapshot)) {
+        return existingDocId
+      }
     } catch {
       // 本文が無いときは同期を試みる
     }

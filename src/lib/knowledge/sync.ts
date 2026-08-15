@@ -6,7 +6,9 @@ import { conditionalFetch } from "@/lib/knowledge/http"
 import { extractWatchRows } from "@/lib/knowledge/index-extract"
 import {
   getSnapshotByHash,
+  snapshotNeedsTextBackfill,
   trySaveKnowledgePdfSnapshot,
+  PDF_TEXT_EXTRACT_FAILED_MESSAGE,
 } from "@/lib/knowledge/snapshots"
 import { tryCreateChangeDraftOnHashChange } from "@/lib/knowledge/diff-draft"
 import { notifyChangeDraftCreated } from "@/lib/email/knowledge-change-draft"
@@ -117,7 +119,7 @@ async function needsPdfSnapshotBackfill(
   if (!hash) return true
   try {
     const snap = await getSnapshotByHash(service, doc.id, hash)
-    return !snap
+    return snapshotNeedsTextBackfill(snap)
   } catch {
     return true
   }
@@ -227,8 +229,7 @@ async function syncFileDocument(
           content_bytes: byteLength,
           last_checked_at: now,
           last_sync_status: "failed",
-          last_error:
-            "PDFの本文スナップショット保存に失敗しました。Storage（knowledge-snapshots）とPDF直リンクをご確認ください。",
+          last_error: PDF_TEXT_EXTRACT_FAILED_MESSAGE,
           updated_at: now,
           // etag を進めない（次回も本体を再取得して補完を再試行）
           etag: null,
@@ -240,8 +241,7 @@ async function syncFileDocument(
         documentId: doc.id,
         title: doc.title,
         status: "failed",
-        message:
-          "内容は取得できましたが、本文スナップショットの保存に失敗しました。判定ルール案の生成にはスナップショットが必要です。",
+        message: PDF_TEXT_EXTRACT_FAILED_MESSAGE,
       }
     }
 
@@ -330,8 +330,7 @@ async function syncFileDocument(
         content_bytes: byteLength,
         last_checked_at: now,
         last_sync_status: "failed",
-        last_error:
-          "PDFの本文スナップショット保存に失敗しました。Storage（knowledge-snapshots）とPDF直リンクをご確認ください。",
+        last_error: PDF_TEXT_EXTRACT_FAILED_MESSAGE,
         updated_at: now,
         etag: null,
         last_modified: null,
@@ -342,8 +341,7 @@ async function syncFileDocument(
       documentId: doc.id,
       title: doc.title,
       status: "failed",
-      message:
-        "内容は取得できましたが、本文スナップショットの保存に失敗しました。判定ルール案の生成にはスナップショットが必要です。",
+      message: PDF_TEXT_EXTRACT_FAILED_MESSAGE,
     }
   }
 
