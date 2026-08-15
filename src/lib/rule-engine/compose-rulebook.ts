@@ -211,6 +211,70 @@ export function summarizeExtractionNotes(
   return notes.map((n) => n.message).join(" ")
 }
 
+/** 資料（PDF）1件ずつの抽出結果。層全体を1回のAI呼び出しにまとめない。 */
+export type PerDocExtractOutcome = {
+  attempted: number
+  succeeded: number
+  failed: number
+  created: number
+  timedOut: boolean
+  unavailable: boolean
+}
+
+export function emptyPerDocExtractOutcome(): PerDocExtractOutcome {
+  return {
+    attempted: 0,
+    succeeded: 0,
+    failed: 0,
+    created: 0,
+    timedOut: false,
+    unavailable: false,
+  }
+}
+
+export function resolvePerDocExtractStatus(
+  outcome: PerDocExtractOutcome
+): ComposeExtractionStatus | undefined {
+  if (outcome.unavailable) return "ai_unavailable"
+  if (outcome.created > 0) return "extracted"
+  if (outcome.succeeded > 0) return "empty"
+  if (outcome.attempted > 0 || outcome.timedOut) return "ai_failed"
+  return undefined
+}
+
+export function extraForPerDocExtract(
+  label: string,
+  outcome: PerDocExtractOutcome,
+  status: ComposeExtractionStatus | undefined
+): string | undefined {
+  if (!status) return undefined
+
+  if (outcome.timedOut && outcome.attempted === 0) {
+    return `${label}の資料は、時間の都合で今回は読んでいません。下書きを作り直すと読みます。`
+  }
+
+  const failedPart =
+    outcome.failed > 0
+      ? `本文 ${outcome.failed}件は観点を出せませんでした。`
+      : ""
+  const timePart = outcome.timedOut
+    ? "時間の都合で一部の資料は読んでいません。下書きを作り直すと再度読みます。"
+    : ""
+  const tail = [failedPart, timePart].filter(Boolean).join(" ")
+  if (!tail) return undefined
+
+  if (status === "extracted") {
+    return `${label}の公式資料から ${outcome.created}件を載せました。 ${tail}`
+  }
+  if (status === "empty") {
+    return `${label}の資料は確認しましたが、新たに出す観点はありませんでした。 ${tail}`
+  }
+  if (status === "ai_failed") {
+    return `${label}の資料は確認しましたが、観点を自動で出せませんでした。 ${tail}`
+  }
+  return undefined
+}
+
 export function defaultComposeSeverity(
   item: HomeVisitAuditTemplateItem
 ): FindingSeverity {

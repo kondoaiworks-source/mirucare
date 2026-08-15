@@ -58,6 +58,9 @@ export function ComposeRulebookForm({
   const [selectedDomainIds, setSelectedDomainIds] = useState<string[]>([])
   const [jurisdictionId, setJurisdictionId] = useState("")
   const [pending, startTransition] = useTransition()
+  const [pendingLayer, setPendingLayer] = useState<"shared" | "city" | null>(
+    null
+  )
   const [book, setBook] = useState<CityRulebookData | null>(null)
   const [bookLoading, setBookLoading] = useState(false)
 
@@ -129,6 +132,7 @@ export function ComposeRulebookForm({
   }
 
   function onGenerate(layer: "shared" | "city") {
+    setPendingLayer(layer)
     startTransition(async () => {
       const result = await startComposeRulebookAction({
         serviceSlug: service.slug,
@@ -137,6 +141,7 @@ export function ComposeRulebookForm({
         layer,
       })
       if (!result.ok || !result.data) {
+        setPendingLayer(null)
         toast.error(result.error ?? "下書きを作れませんでした。")
         return
       }
@@ -323,10 +328,14 @@ export function ComposeRulebookForm({
           disabled={pending || !domainValue || Boolean(error)}
           onClick={() => onGenerate("shared")}
         >
-          {pending ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-          ) : null}
-          国・県の下書きを作る
+          {pending && pendingLayer === "shared" ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              資料を読んでいます…
+            </>
+          ) : (
+            "国・県の下書きを作る"
+          )}
         </Button>
       </section>
 
@@ -387,10 +396,14 @@ export function ComposeRulebookForm({
           disabled={pending || !domainValue || !jurisdictionId || Boolean(error)}
           onClick={() => onGenerate("city")}
         >
-          {pending ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-          ) : null}
-          この市の下書きを作る
+          {pending && pendingLayer === "city" ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              資料を読んでいます…
+            </>
+          ) : (
+            "この市の下書きを作る"
+          )}
         </Button>
       </section>
     </div>

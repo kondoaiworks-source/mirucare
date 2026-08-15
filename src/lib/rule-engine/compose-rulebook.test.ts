@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest"
 import {
   extraExistingRulesForDomain,
+  extraForPerDocExtract,
   findExistingRuleForTemplate,
   isDuplicateCityProposalTitle,
   isThinComposeGuidance,
   composeItemGuidance,
   pickDomainForCityProposal,
   pickTemplateItemsForDomains,
+  resolvePerDocExtractStatus,
   summarizeExtractionNotes,
   COMPOSE_NO_TEXT_HINT,
 } from "@/lib/rule-engine/compose-rulebook"
@@ -166,5 +168,69 @@ describe("compose-rulebook", () => {
   it("tells operators to fix links when there is no source text", () => {
     expect(COMPOSE_NO_TEXT_HINT).toContain("資料先")
     expect(COMPOSE_NO_TEXT_HINT).toContain("PDF")
+  })
+
+  it("keeps extracted rules when some documents fail", () => {
+    expect(
+      resolvePerDocExtractStatus({
+        attempted: 3,
+        succeeded: 2,
+        failed: 1,
+        created: 5,
+        timedOut: false,
+        unavailable: false,
+      })
+    ).toBe("extracted")
+    expect(
+      extraForPerDocExtract(
+        "横浜市",
+        {
+          attempted: 3,
+          succeeded: 2,
+          failed: 1,
+          created: 5,
+          timedOut: false,
+          unavailable: false,
+        },
+        "extracted"
+      )
+    ).toContain("5件を載せました")
+    expect(
+      extraForPerDocExtract(
+        "横浜市",
+        {
+          attempted: 3,
+          succeeded: 2,
+          failed: 1,
+          created: 5,
+          timedOut: false,
+          unavailable: false,
+        },
+        "extracted"
+      )
+    ).toContain("本文 1件は観点を出せませんでした")
+  })
+
+  it("marks the layer failed only when no document produced rules", () => {
+    expect(
+      resolvePerDocExtractStatus({
+        attempted: 3,
+        succeeded: 0,
+        failed: 3,
+        created: 0,
+        timedOut: false,
+        unavailable: false,
+      })
+    ).toBe("ai_failed")
+    expect(
+      resolvePerDocExtractStatus({
+        attempted: 0,
+        succeeded: 0,
+        failed: 0,
+        created: 0,
+        timedOut: true,
+        unavailable: false,
+      })
+    ).toBe("ai_failed")
   })
 })

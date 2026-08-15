@@ -7,6 +7,7 @@ import { allocateAiCheckRuleCode } from "@/lib/rule-engine/allocate-rule-code"
 import { ensureAuditItemOptions } from "@/lib/rule-engine/default-audit-item"
 import {
   extraExistingRulesForDomain,
+  extraForPerDocExtract,
   findExistingRuleForTemplate,
   pickTemplateItemsForDomains,
   composeItemGuidance,
@@ -18,10 +19,13 @@ import {
   isDuplicateCityProposalTitle,
   isThinComposeGuidance,
   parseExtractionNotes,
+  resolvePerDocExtractStatus,
   summarizeExtractionNotes,
+  emptyPerDocExtractOutcome,
   COMPOSE_NO_TEXT_HINT,
   type ExistingComposeRule,
   type ComposeExtractionNote,
+  type PerDocExtractOutcome,
 } from "@/lib/rule-engine/compose-rulebook"
 import { resolveSelectedDomains } from "@/lib/rule-engine/domains"
 import { HOME_VISIT_AUDIT_TEMPLATE_ITEMS } from "@/lib/rule-engine/home-visit-audit-template"
@@ -30,7 +34,6 @@ import { getRuleServiceBySlug } from "@/lib/rule-engine/services"
 import {
   defaultEffectiveFrom,
   proposeRulesFromSourceText,
-  COMPOSE_MAX_PROPOSALS,
 } from "@/lib/knowledge/propose-rules"
 import { isGeminiConfigured } from "@/lib/knowledge/gemini"
 import { ensureKnowledgeDocumentFromRuleSource } from "@/lib/knowledge/ensure-from-rule-source"
@@ -255,9 +258,12 @@ async function loadScopedRules(
   return rows
 }
 
-const MAX_DOCS_PER_LAYER = 3
-const MAX_CHARS_PER_DOC = 10_000
-const LAYER_GEMINI_TIMEOUT_MS = 50_000
+const MAX_DOCS_PER_LAYER = 12
+const MAX_CHARS_PER_DOC = 12_000
+const DOC_GEMINI_TIMEOUT_MS = 60_000
+const COMPOSE_EXTRACT_BUDGET_MS = 240_000
+const MIN_DOC_TIMEOUT_MS = 12_000
+const MAX_PROPOSALS_PER_DOC = 8
 
 type OfficialLayer = "national" | "prefecture" | "city"
 
@@ -313,19 +319,6 @@ async function ensureSourceDocumentId(
 
 function emptyLayerPack(): LayerPack {
   return { sourceCount: 0, docs: [] }
-}
-
-function packToChunks(
-  pack: LayerPack,
-  label: string
-): { titles: string[]; chunks: string[] } {
-  const titles: string[] = []
-  const chunks: string[] = []
-  for (const doc of pack.docs) {
-    titles.push(doc.title)
-    chunks.push(`===== ${label}資料: ${doc.title} =====\n${doc.text}`)
-  }
-  return { titles, chunks }
 }
 
 function noteForPack(input: {
@@ -565,7 +558,8 @@ async function attachOfficialSourceRules(input: {
     }>,
     sourceTitle: string,
     forceScope: "shared" | "city"
-  ) => {
+  ): Promise<number> => {
+    let created = 0
     for (const proposal of proposals) {
       if (isDuplicateCityProposalTitle(proposal.title, existingTitles)) continue
       if (isThinComposeGuidance(proposal.guidanceText)) continue
@@ -648,53 +642,74 @@ async function attachOfficialSourceRules(input: {
 
       input.pickedIds.add(rule.id as string)
       existingTitles.push(proposal.title)
+      created += 1
       if (scopeKind === "city") cityCreated += 1
       else sharedCreated += 1
     }
+    return created
   }
 
-  const runPropose = async (opts: {
-    titles: string[]
-    chunks: string[]
+  const extractDeadline = Date.now() + COMPOSE_EXTRACT_BUDGET_MS
+
+  const proposeDocs = async (opts: {
+    docs: Array<{ title: string; text: string }>
+    label: string
     forceScope: "shared" | "city"
     cityUnique?: boolean
     layered?: boolean
     jurisdictionLevel: string
-  }) => {
-    if (opts.chunks.length === 0) {
-      return { ok: false as const, error: "no_text" }
-    }
+  }): Promise<PerDocExtractOutcome> => {
+    const outcome = emptyPerDocExtractOutcome()
+    if (opts.docs.length === 0) return outcome
     if (!isGeminiConfigured()) {
-      return { ok: false as const, error: "ai_unavailable" }
+      outcome.unavailable = true
+      return outcome
     }
-    const proposed = await proposeRulesFromSourceText({
-      documentTitle: opts.titles.join("／"),
-      regionName: cityName,
-      jurisdictionLevel: opts.jurisdictionLevel,
-      sourceText: opts.chunks.join("\n\n"),
-      auditItems: input.auditItems,
-      layered: opts.layered,
-      cityUnique: opts.cityUnique,
-      skipRetry: true,
-      forceScope: opts.forceScope,
-      maxProposals: COMPOSE_MAX_PROPOSALS,
-      timeoutMs: LAYER_GEMINI_TIMEOUT_MS,
-      serviceLabel: input.serviceLabel,
-      domainLabels: input.domains.map((d) => d.title),
-    })
-    if (!proposed.ok) {
-      console.error("[compose] official_propose_failed", {
-        scope: opts.forceScope,
-        error: proposed.error.slice(0, 160),
+    if (Date.now() >= extractDeadline) {
+      outcome.timedOut = true
+      return outcome
+    }
+
+    for (const doc of opts.docs) {
+      const remaining = extractDeadline - Date.now()
+      if (remaining < MIN_DOC_TIMEOUT_MS) {
+        outcome.timedOut = true
+        break
+      }
+      outcome.attempted += 1
+      const timeoutMs = Math.min(DOC_GEMINI_TIMEOUT_MS, remaining)
+      const proposed = await proposeRulesFromSourceText({
+        documentTitle: doc.title,
+        regionName: cityName,
+        jurisdictionLevel: opts.jurisdictionLevel,
+        sourceText: `===== ${opts.label}資料: ${doc.title} =====\n${doc.text}`,
+        auditItems: input.auditItems,
+        layered: opts.layered,
+        cityUnique: opts.cityUnique,
+        skipRetry: true,
+        forceScope: opts.forceScope,
+        maxProposals: MAX_PROPOSALS_PER_DOC,
+        timeoutMs,
+        serviceLabel: input.serviceLabel,
+        domainLabels: input.domains.map((d) => d.title),
       })
-      return { ok: false as const, error: "ai_failed" }
+      if (!proposed.ok) {
+        outcome.failed += 1
+        console.error("[compose] official_propose_failed", {
+          scope: opts.forceScope,
+          title: doc.title.slice(0, 80),
+          error: proposed.error.slice(0, 160),
+        })
+        continue
+      }
+      outcome.succeeded += 1
+      outcome.created += await saveProposals(
+        proposed.proposals,
+        doc.title,
+        opts.forceScope
+      )
     }
-    await saveProposals(
-      proposed.proposals,
-      opts.titles.join("／"),
-      opts.forceScope
-    )
-    return { ok: true as const }
+    return outcome
   }
 
   const includeShared =
@@ -703,86 +718,78 @@ async function attachOfficialSourceRules(input: {
     input.onlyLayers.includes("prefecture")
   const includeCity = !input.onlyLayers || input.onlyLayers.includes("city")
 
-  let sharedStatus: ComposeExtractionNote["status"] | undefined
-  if (includeShared && sharedHasText) {
-    const national = packToChunks(packs.national, layerLabels.national)
-    const prefecture = packToChunks(packs.prefecture, layerLabels.prefecture)
-    const titles = [...national.titles, ...prefecture.titles]
-    const chunks = [...national.chunks, ...prefecture.chunks]
-    const proposed = await runPropose({
-      titles,
-      chunks,
+  let nationalOutcome = emptyPerDocExtractOutcome()
+  let prefectureOutcome = emptyPerDocExtractOutcome()
+  let cityOutcome = emptyPerDocExtractOutcome()
+
+  if (includeShared && packs.national.docs.length > 0) {
+    nationalOutcome = await proposeDocs({
+      docs: packs.national.docs,
+      label: layerLabels.national,
       forceScope: "shared",
       layered: true,
       jurisdictionLevel: "国・都道府県",
     })
-    if (!proposed.ok) {
-      sharedStatus =
-        proposed.error === "ai_unavailable" ? "ai_unavailable" : "ai_failed"
-    } else if (sharedCreated === 0) {
-      sharedStatus = "empty"
-    }
   }
-
-  let cityStatus: ComposeExtractionNote["status"] | undefined
-  if (includeCity && cityHasText) {
-    const city = packToChunks(packs.city, layerLabels.city)
-    const beforeCity = cityCreated
-    const proposed = await runPropose({
-      titles: city.titles,
-      chunks: city.chunks,
+  if (includeShared && packs.prefecture.docs.length > 0) {
+    prefectureOutcome = await proposeDocs({
+      docs: packs.prefecture.docs,
+      label: layerLabels.prefecture,
+      forceScope: "shared",
+      layered: true,
+      jurisdictionLevel: "国・都道府県",
+    })
+  }
+  if (includeCity && packs.city.docs.length > 0) {
+    cityOutcome = await proposeDocs({
+      docs: packs.city.docs,
+      label: layerLabels.city,
       forceScope: "city",
       cityUnique: true,
       jurisdictionLevel: "市区町村",
     })
-    if (!proposed.ok) {
-      cityStatus =
-        proposed.error === "ai_unavailable" ? "ai_unavailable" : "ai_failed"
-    } else if (cityCreated === beforeCity) {
-      cityStatus = "empty"
-    }
   }
 
-  const nationalRuleCount =
-    sharedHasText && packs.national.docs.length > 0 ? sharedCreated : 0
-  const prefectureRuleCount =
-    packs.national.docs.length > 0
-      ? 0
-      : sharedHasText && packs.prefecture.docs.length > 0
-        ? sharedCreated
-        : 0
+  const nationalStatus = resolvePerDocExtractStatus(nationalOutcome)
+  const prefectureStatus = resolvePerDocExtractStatus(prefectureOutcome)
+  const cityStatus = resolvePerDocExtractStatus(cityOutcome)
 
   const notes: ComposeExtractionNote[] = [
     noteForPack({
       layer: "national",
       label: layerLabels.national,
       pack: packs.national,
-      ruleCount: nationalRuleCount,
-      status: packs.national.docs.length > 0 ? sharedStatus : undefined,
-      extra:
-        packs.national.docs.length > 0 &&
-        packs.prefecture.docs.length > 0 &&
-        sharedCreated > 0
-          ? `国と${layerLabels.prefecture}の公式資料から、共通ルール ${sharedCreated}件を載せました。`
-          : undefined,
+      ruleCount: nationalOutcome.created,
+      status: nationalStatus,
+      extra: extraForPerDocExtract(
+        layerLabels.national,
+        nationalOutcome,
+        nationalStatus
+      ),
     }),
     noteForPack({
       layer: "prefecture",
       label: layerLabels.prefecture,
       pack: packs.prefecture,
-      ruleCount: prefectureRuleCount,
-      status: packs.prefecture.docs.length > 0 ? sharedStatus : undefined,
-      extra:
-        packs.prefecture.docs.length > 0 && packs.national.docs.length > 0
-          ? `${layerLabels.prefecture}の資料も読み、国とまとめて共通ルールにしています。`
-          : undefined,
+      ruleCount: prefectureOutcome.created,
+      status: prefectureStatus,
+      extra: extraForPerDocExtract(
+        layerLabels.prefecture,
+        prefectureOutcome,
+        prefectureStatus
+      ),
     }),
     noteForPack({
       layer: "city",
       label: layerLabels.city,
       pack: packs.city,
-      ruleCount: cityCreated,
+      ruleCount: cityOutcome.created,
       status: cityStatus,
+      extra: extraForPerDocExtract(
+        layerLabels.city,
+        cityOutcome,
+        cityStatus
+      ),
     }),
   ]
 
