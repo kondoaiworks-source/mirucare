@@ -3,7 +3,8 @@
  */
 
 export const REQUEST_INTERVAL_FLOOR_SEC = 5
-const FETCH_TIMEOUT_MS = 45_000
+/** 省庁の大きいPDFを取るため（登録・再同期の待ち時間もこれに合わせる） */
+export const FETCH_TIMEOUT_MS = 120_000
 
 let lastRequestAtMs = 0
 

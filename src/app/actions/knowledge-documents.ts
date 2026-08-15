@@ -20,6 +20,9 @@ import type {
   KnowledgeWatchKind,
 } from "@/types/database"
 
+/** 大きい公式PDFの再同期に備える（Hobby は上限に注意） */
+export const maxDuration = 300
+
 export type ActionResult<T = undefined> = {
   ok: boolean
   error?: string

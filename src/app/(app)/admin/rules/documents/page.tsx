@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   title: "公開情報監視",
 }
 
+export const maxDuration = 300
+
 export default async function RulesDocumentsPage() {
   const pending = await countPendingChangeDraftsAction()
   const count = pending.ok ? (pending.data?.count ?? 0) : 0
