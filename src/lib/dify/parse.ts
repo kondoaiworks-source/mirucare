@@ -179,13 +179,13 @@ export function buildUnreadableFinding(notes?: string): DifyFindingItem {
     description: `${CHECK_UI.summaryUnreadableBody}${note ? `\n${note}` : ""}`,
     basis: "システム",
     suggestion:
-      "文字情報のあるPDFやCSVでの再アップロードをご検討ください。画像の場合は文字がはっきり写っているかご確認ください。",
+      "介護ソフトから文字の入ったPDFやCSVで出し直して、もう一度アップロードをご検討ください。画像の場合は文字がはっきり写っているかご確認ください。",
   }
 }
 
 /**
  * リトライ付きパース。失敗時はフォールバック1件。
- * meta.unreadable かつ findings 空のときは「画像のため確認できませんでした」。
+ * meta.unreadable かつ findings 空のときは「本文を読み取れませんでした」。
  */
 export function parseWithRetryAndFallback(
   rawText: string,

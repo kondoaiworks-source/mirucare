@@ -288,19 +288,32 @@ export async function startDocumentCheckAction(
 
   const now = new Date()
   const consentAt = now.toISOString()
-  // 保持期限は監査完了時に確定する。開始時点では同意と希望日数のみ記録。
+  const checkSetId = crypto.randomUUID()
+  const basePatch = {
+    status: "checking" satisfies DocumentStatus,
+    keep_original_days: keepOriginalDays,
+    retention_consent_at: consentAt,
+  }
   const { error } = await ctx.supabase
     .from("documents")
-    .update({
-      status: "checking" satisfies DocumentStatus,
-      keep_original_days: keepOriginalDays,
-      retention_consent_at: consentAt,
-    })
+    .update({ ...basePatch, check_set_id: checkSetId })
     .in("id", documentIds)
     .eq("organization_id", ctx.organizationId)
 
   if (error) {
-    return { ok: false, error: toUserErrorMessage(error) }
+    const msg = error.message ?? ""
+    if (msg.includes("check_set_id")) {
+      const retry = await ctx.supabase
+        .from("documents")
+        .update(basePatch)
+        .in("id", documentIds)
+        .eq("organization_id", ctx.organizationId)
+      if (retry.error) {
+        return { ok: false, error: toUserErrorMessage(retry.error) }
+      }
+    } else {
+      return { ok: false, error: toUserErrorMessage(error) }
+    }
   }
 
   return { ok: true, data: { documentIds } }

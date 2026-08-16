@@ -11,13 +11,26 @@ const SEVERITY_ORDER = { high: 0, mid: 1, low: 2 } as const
 
 /**
  * これから確認 → あとで確認 → 違う指摘 → 対応した
- * 同一ステータス内は重要度順
+ * 同一ステータス内は書類同士 → 重要度順
  */
+export function isAlignmentFinding(
+  finding: Pick<Finding, "source_kind"> | { source_kind?: string | null }
+): boolean {
+  return finding.source_kind === "alignment"
+}
+
 export function sortFindings(findings: Finding[]): Finding[] {
   return [...findings].sort((a, b) => {
     const statusDiff =
       (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)
     if (statusDiff !== 0) return statusDiff
+    const alignDiff =
+      Number(isAlignmentFinding(a)) === Number(isAlignmentFinding(b))
+        ? 0
+        : isAlignmentFinding(a)
+          ? -1
+          : 1
+    if (alignDiff !== 0) return alignDiff
     const sevDiff =
       (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99)
     if (sevDiff !== 0) return sevDiff

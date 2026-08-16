@@ -15,9 +15,9 @@ export const CHECK_UI = {
     "AIが確認できませんでした。運営が確認します",
   summaryFallbackBody:
     "自動チェックの結果をうまく読み取れませんでした。運営側で内容を確認し、必要に応じてご連絡します。お手数ですが、書類の内容もあわせてご確認ください。",
-  summaryUnreadable: "画像のため確認できませんでした",
+  summaryUnreadable: "本文を読み取れませんでした",
   summaryUnreadableBody:
-    "書類が画像（スキャンPDFなど）として扱われ、本文を十分に読み取れなかった可能性があります。文字の入ったPDF・CSVでの再アップロードか、画像が鮮明かご確認ください。",
+    "手元で文字をコピーできるPDFでも、サーバー側で抜けてしまうことがあります。介護ソフトから「文字の入ったPDF」で出し直すか、画像の場合は文字がはっきり写っているかご確認ください。",
   pendingReview:
     "運営が結果を確認しています。公開までしばらくお待ちください。",
   checking: "書類を確認しています。完了まで少々お待ちください。",
@@ -60,6 +60,11 @@ export const CHECK_UI = {
   statusFixedHint: "書類を直した／確認した",
   remainingLabel: (open: number, later: number, total: number) =>
     `これから確認 ${open}件 · あとで ${later}件 / 全${total}件`,
+  alignmentSection: "書類同士のご確認",
+  alignmentBadge: "書類同士",
+  setTogetherHint: (count: number) =>
+    `今回一緒に入れた ${count}件をまとめて見ています。`,
+  setPrimaryLink: "今回一緒に入れた分の結果を見る",
   laterListTitle: "あとで確認",
   laterListDescription:
     "「あとで」を押した指摘がここに集まります。時間のあるときに結果画面から対応できます。",

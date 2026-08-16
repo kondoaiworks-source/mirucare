@@ -160,16 +160,8 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
         return
       }
 
-      // 先頭以外はバックグラウンドでチェック開始
-      const [firstId, ...rest] = ids
-      for (const id of rest) {
-        void fetch("/api/check", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ documentId: id }),
-        })
-      }
-
+      // 先頭の結果画面でセット全体を実行する（バラバラに呼ばない）
+      const firstId = ids[0]
       clearAll()
       if (firstId) {
         router.push(`/check/${firstId}`)
@@ -245,7 +237,7 @@ export function UploadWizard({ resumeDocumentId }: UploadWizardProps) {
             </h1>
             <p className="mt-2 text-base leading-relaxed text-muted-foreground">
               {purposeUploadHint}
-              。同じ種類の書類だけをまとめてください（{doneItems.length}件）。
+              。一緒に見る分をまとめてください（{doneItems.length}件）。ケアプランと計画書など、種類が違っても同じチェックで見比べます。
             </p>
           </div>
 

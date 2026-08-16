@@ -74,10 +74,44 @@ describe("extractPdfPlainText", () => {
   })
 })
 
+describe("pdf-parse getText", () => {
+  it("Node 側でも本文を取れる", async () => {
+    const { loadPdfParse, pdfParseLoadOptions } = await import(
+      "@/lib/check/pdfjs-node-assets"
+    )
+    const buf = buildTextPdf(["Care plan update date 2026-04-01"])
+    const { PDFParse } = loadPdfParse()
+    const parser = new PDFParse(pdfParseLoadOptions(buf))
+    try {
+      const result = await parser.getText({ pageJoiner: "\n" })
+      expect(result.text ?? "").toContain("Care plan update date 2026-04-01")
+    } finally {
+      await parser.destroy()
+    }
+  })
+})
+
+describe("isMostlyNoisePdfText", () => {
+  it("ページ番号だけならノイズ", async () => {
+    const { isMostlyNoisePdfText } = await import("@/lib/check/extract")
+    expect(isMostlyNoisePdfText("-- 1 of 1 --")).toBe(true)
+    expect(
+      isMostlyNoisePdfText(
+        "訪問介護計画の作成日がケアプランの更新日より前になっていないかご確認ください"
+      )
+    ).toBe(false)
+  })
+})
+
 describe("resolvePdfjsAssetDir", () => {
   it("cmaps ディレクトリを解決できる", async () => {
-    const { resolvePdfjsAssetDir } = await import("@/lib/check/pdfjs-node-assets")
+    const { resolvePdfjsAssetDir, toPdfjsDirUrl } = await import(
+      "@/lib/check/pdfjs-node-assets"
+    )
     const dir = resolvePdfjsAssetDir("cmaps")
     expect(dir).toMatch(/cmaps\/$/)
+    const url = toPdfjsDirUrl(dir)
+    expect(url).toMatch(/^file:\/\//)
+    expect(url).toMatch(/cmaps\/$/)
   })
 })

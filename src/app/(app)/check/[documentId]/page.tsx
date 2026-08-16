@@ -60,6 +60,9 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
     pendingReviewCount,
     allAddressed,
     setupHint,
+    setMembers,
+    primaryDocumentId,
+    isSetPrimary,
   } = result.data
   const typeMeta = DOC_TYPE_OPTIONS.find((o) => o.value === document.doc_type)
   const profile = await getCurrentProfile()
@@ -77,6 +80,21 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
         <p className="text-sm text-muted-foreground">
           {typeMeta?.title ?? document.doc_type} · {document.original_name}
         </p>
+        {setMembers.length > 1 ? (
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            {CHECK_UI.setTogetherHint(setMembers.length)}
+          </p>
+        ) : null}
+        {setMembers.length > 1 && !isSetPrimary ? (
+          <p className="mt-2 text-base">
+            <Link
+              href={`/check/${primaryDocumentId}`}
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {CHECK_UI.setPrimaryLink}
+            </Link>
+          </p>
+        ) : null}
         {document.original_purged_at ? (
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             {RETENTION_COPY.purged}
@@ -99,7 +117,7 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
               {CHECK_UI.checking}
             </h1>
             <div className="mt-6">
-              <CheckRunner documentId={document.id} />
+              <CheckRunner documentId={document.id} autoStart={isSetPrimary} />
             </div>
           </>
         ) : null}

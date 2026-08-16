@@ -194,7 +194,8 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
 5. Dify の「ログ」に `kansatsu-check` の実行が増えていれば API 到達成功（「監視」のメッセージ数は Workflow では増えにくいことがあります）
 6. **スキャンPDF（画像のみのPDF）**: 文字がほぼ無い場合、アプリが1ページ目を PNG 化し File Upload → top-level `files`（variable=`document_image`）で送ります。Vercel Logs に `[dify] file_uploaded` / `hasVisionFile: true` が出ること
 7. Dify ログで FAILURE かつ `messages: at least one message is required` のときは、Vision が LEGACY `files` のままか、`document_image` 未接続です。開始に `document_image`（ファイルリスト）を追加し Vision に接続して再公開。アプリは同エラー時に `files` なしで1回再試行します（ログ: `[dify] retry_without_files`）
-8. Dify が `meta.unreadable: true` を返した場合、画面に「画像のため確認できませんでした」と出ること
+8. Dify が `meta.unreadable: true` を返した場合、画面に「本文を読み取れませんでした」と出ること
+9. **手元で文字をコピーできる日本語PDF** を上げたとき、`kind: "text"` かつ `textLength` が数十以上であること（`[check] extracted`）。`[extract] pdf_runtime` の `hasCMapDir: true` が出ること。スキャン扱い（`pdf_scan_as_image`）にしないこと
 
 ### 本番 Dify への切替
 
@@ -209,8 +210,24 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
    - **Dify 開始ノード**: ファイルリスト変数 **`document_image`** を追加（必須オフ）。LLM Vision には LEGACY `files` ではなく **`document_image`** を接続して公開
    - 変数名が違う場合は Vercel / `.env.local` の `DIFY_FILE_INPUT_KEY` を合わせる（既定: `document_image`）
 6. Workflow 出力は JSON（例: `{ "findings": [{ "severity", "title", "description", "basis", "suggestion" }] }`）。出力変数名は `check_result` / `result` / `text` / `answer` / `output` / `findings` などに対応。パースできないと「AIが確認できませんでした…」になります
-7. 読めない場合は `{ "findings": [], "meta": { "unreadable": true, "model_notes": "…" } }` を返すと、アプリが「画像のため確認できませんでした」と表示します
+7. 読めない場合は `{ "findings": [], "meta": { "unreadable": true, "model_notes": "…" } }` を返すと、アプリが「本文を読み取れませんでした」と表示します
 8. 失敗時は Vercel Runtime Logs の `[dify] check` / `[dify] file_uploaded` / `[dify] retry_without_files` を確認（個人情報は含めません）
+
+## 動作確認手順（書類同士：ケアプラン更新日と計画書の日付）
+
+ルールブックに無い場合でも、今回一緒に入れた分の本文から日付を比べます（1枚でも、別ファイルでも。合否にはしません）。
+
+1. SQL Editor で `supabase/migrations/20260816090000_document_check_set.sql` を実行する
+2. `npx vitest run src/lib/check/plan-date-alignment.test.ts src/lib/check/alignment-catalog.test.ts` が PASS すること
+3. 文字入りPDF（スキャン画像のみは対象外）に、次が読める形で入っていること
+   - ケアプラン（または居宅サービス計画）の更新日／変更日
+   - 訪問介護計画の作成日／更新日が、それより前
+   - 同じPDFでも、別PDFをまとめて上げてもよい
+4. `/check/upload` から「今日の分」としてアップロードしてチェックする（先頭の結果画面だけがセットを実行する）
+5. 結果に「訪問介護計画の日付がケアプラン更新に追いついていない可能性があります」が **書類同士のご確認** に出ること（「不適合」とは出ない）
+6. 日付が片方しか無い、または計画の日付が同じ／新しい場合は、この指摘が出ないこと
+7. 「このチェックで使った基準」に「計画の更新日の確認」が出ること（標準観点。ルールブック未確定でも載る）
+8. 複数ファイルのときは「今回一緒に入れた N件」と出ること。Vercel / 開発ログに `[check] plan_date_alignment` と `setSize` / `mismatched` が出ること（日付・氏名は出さない）
 
 ## 動作確認手順（STEP 5：ダッシュボードと期限アラート）
 

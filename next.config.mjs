@@ -17,6 +17,7 @@ const nextConfig = {
       "heic-convert",
       "pdf-parse",
       "pdfjs-dist",
+      "unpdf",
       "@napi-rs/canvas",
     ],
     outputFileTracingIncludes: {

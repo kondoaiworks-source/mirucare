@@ -2,8 +2,22 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { extractDocumentContent } from "@/lib/check/extract"
 import { runDifyCheck } from "@/lib/dify/client"
 import { decideMockMode } from "@/lib/dify/env"
-import { normalizeSeverity, type MockScenario } from "@/lib/dify/types"
+import {
+  normalizeSeverity,
+  type DifyFindingItem,
+  type MockScenario,
+} from "@/lib/dify/types"
 import { prefectureFromMunicipality } from "@/lib/municipalities"
+import {
+  isSimilarPlanDateFinding,
+  PLAN_DATE_ALIGNMENT_CODE,
+  withBuiltinPlanDateAlignmentRule,
+} from "@/lib/check/plan-date-alignment"
+import {
+  mergeAiFindingsWithCatalog,
+  pickCheckSetPrimaryId,
+  runAlignmentCatalog,
+} from "@/lib/check/alignment-catalog"
 import {
   resolveApprovedRulesForCheck,
   serializeRegulatoryBasisForDify,
@@ -16,6 +30,9 @@ import {
 } from "@/lib/documents/retention"
 import { purgeDocumentOriginal } from "@/lib/documents/purge-originals"
 import type { DocumentStatus } from "@/types/database"
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export type RunCheckOptions = {
   documentId: string
@@ -33,26 +50,69 @@ export type RunCheckResult = {
   mode?: "live" | "mock" | "skipped_no_file" | "dify_error"
 }
 
+type AdminClient = ReturnType<typeof createServiceClient>
+
+type SetDoc = {
+  id: string
+  organization_id: string
+  doc_type: string
+  file_path: string
+  original_name: string
+  mime_type: string | null
+  status: string
+  keep_original_days: number | null
+  original_purged_at: string | null
+  created_at: string
+  check_set_id: string | null
+}
+
+type ExtractedDoc = {
+  doc: SetDoc
+  text?: string
+  imageBase64?: string
+  imageMimeType?: string
+  downloadFailed: boolean
+}
+
+const SET_DOC_SELECT =
+  "id, organization_id, doc_type, file_path, original_name, mime_type, status, deleted_at, keep_original_days, original_purged_at, created_at, check_set_id"
+const SET_DOC_SELECT_LEGACY =
+  "id, organization_id, doc_type, file_path, original_name, mime_type, status, deleted_at, keep_original_days, original_purged_at, created_at"
+
+function isMissingCheckSetColumn(error: { message?: string } | null): boolean {
+  return Boolean(error?.message?.includes("check_set_id"))
+}
+
 /**
- * 書類1件の AI チェックを実行し findings を保存する。
- * Service Role で Storage / findings INSERT を行う。
+ * 書類チェック。同じ check_set_id の分は1回で本文を足し、書類同士＋ルールブックを見る。
  */
 export async function runDocumentCheck(
   options: RunCheckOptions
 ): Promise<RunCheckResult> {
   const admin = createServiceClient()
 
-  const { data: doc, error: docError } = await admin
+  let seedQuery = await admin
     .from("documents")
-    .select(
-      "id, organization_id, doc_type, file_path, original_name, mime_type, status, deleted_at, keep_original_days, original_purged_at"
-    )
+    .select(SET_DOC_SELECT)
     .eq("id", options.documentId)
     .eq("organization_id", options.organizationId)
     .is("deleted_at", null)
     .maybeSingle()
 
-  if (docError || !doc) {
+  if (isMissingCheckSetColumn(seedQuery.error)) {
+    seedQuery = await admin
+      .from("documents")
+      .select(SET_DOC_SELECT_LEGACY)
+      .eq("id", options.documentId)
+      .eq("organization_id", options.organizationId)
+      .is("deleted_at", null)
+      .maybeSingle()
+  }
+
+  const seedDoc = seedQuery.data
+  const docError = seedQuery.error
+
+  if (docError || !seedDoc) {
     return { ok: false, error: "書類が見つかりません。" }
   }
 
@@ -66,18 +126,132 @@ export async function runDocumentCheck(
     return { ok: false, error: "事業所情報を取得できませんでした。" }
   }
 
-  // ステータスを checking に（冪等）
+  const setDocs = await loadCheckSetDocs(admin, seedDoc as SetDoc)
+  const primaryId =
+    pickCheckSetPrimaryId(setDocs) ?? (seedDoc.id as string)
+
   await admin
     .from("documents")
     .update({ status: "checking" satisfies DocumentStatus })
-    .eq("id", doc.id)
+    .in(
+      "id",
+      setDocs.map((d) => d.id)
+    )
+    .eq("organization_id", options.organizationId)
 
+  const extracted: ExtractedDoc[] = []
+  for (const doc of setDocs) {
+    extracted.push(await extractSetMember(admin, doc))
+  }
+
+  const texts = extracted.map((e) => e.text ?? "")
+  const catalogFindings = runAlignmentCatalog(texts)
+  console.error("[check] plan_date_alignment", {
+    documentId: primaryId,
+    setSize: setDocs.length,
+    mismatched: catalogFindings.length > 0,
+  })
+
+  const municipality = org.municipality?.trim() || ""
+  const skipReview = Boolean(org.skip_finding_review)
+  let totalFindings = 0
+  let usedFallback = false
+  let skippedAll = true
+  let anyDifyError = false
+
+  for (const item of extracted) {
+    const isPrimary = item.doc.id === primaryId
+    const catalog = isPrimary ? catalogFindings : []
+    const one = await finishSetMember(admin, {
+      item,
+      organizationId: options.organizationId,
+      municipality,
+      skipReview,
+      mockScenario: options.mockScenario,
+      catalogFindings: catalog,
+      deferReviewed: true,
+    })
+    if (!one.ok) {
+      await admin
+        .from("documents")
+        .update({ status: "reviewed" satisfies DocumentStatus })
+        .in(
+          "id",
+          setDocs.map((d) => d.id)
+        )
+        .eq("organization_id", options.organizationId)
+      return { ok: false, error: one.error }
+    }
+    totalFindings += one.findingCount
+    if (one.usedFallback) usedFallback = true
+    if (!item.downloadFailed) skippedAll = false
+    if (one.mode === "dify_error") anyDifyError = true
+  }
+
+  await admin
+    .from("documents")
+    .update({ status: "reviewed" satisfies DocumentStatus })
+    .in(
+      "id",
+      setDocs.map((d) => d.id)
+    )
+    .eq("organization_id", options.organizationId)
+
+  const mock = decideMockMode({ mockScenario: options.mockScenario }).mock
+  const mode: RunCheckResult["mode"] = skippedAll
+    ? "skipped_no_file"
+    : anyDifyError && totalFindings === catalogFindings.length + setDocs.length
+      ? "dify_error"
+      : mock
+        ? "mock"
+        : "live"
+
+  console.error("[check] finished", {
+    documentId: primaryId,
+    setSize: setDocs.length,
+    findingCount: totalFindings,
+    usedFallback,
+    mode,
+    catalogCount: catalogFindings.length,
+  })
+
+  return {
+    ok: true,
+    findingCount: totalFindings,
+    usedFallback,
+    reviewStatus: skipReview ? "approved" : "pending",
+    mode,
+  }
+}
+
+async function loadCheckSetDocs(
+  admin: AdminClient,
+  seed: SetDoc
+): Promise<SetDoc[]> {
+  const setId = seed.check_set_id?.trim()
+  if (!setId) return [seed]
+
+  const { data, error } = await admin
+    .from("documents")
+    .select(SET_DOC_SELECT)
+    .eq("organization_id", seed.organization_id)
+    .eq("check_set_id", setId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })
+
+  if (error || !data || data.length === 0) return [seed]
+  return data as SetDoc[]
+}
+
+async function extractSetMember(
+  admin: AdminClient,
+  doc: SetDoc
+): Promise<ExtractedDoc> {
   const { data: fileData, error: downloadError } = await admin.storage
     .from("documents")
     .download(doc.file_path)
 
   if (downloadError || !fileData) {
-    // 個人情報は出さない。Storage 失敗だと Dify は呼ばれない
     console.error("[check] storage_download_failed", {
       documentId: doc.id,
       hasPath: Boolean(doc.file_path),
@@ -86,19 +260,7 @@ export async function runDocumentCheck(
       errorMessage: downloadError?.message?.slice(0, 200) ?? "empty_body",
       errorName: downloadError?.name?.slice(0, 80),
     })
-    await saveFallbackAndFinish(admin, {
-      documentId: doc.id,
-      organizationId: options.organizationId,
-      skipReview: Boolean(org.skip_finding_review),
-      reason: "file_download_failed",
-    })
-    return {
-      ok: true,
-      findingCount: 1,
-      usedFallback: true,
-      reviewStatus: org.skip_finding_review ? "approved" : "pending",
-      mode: "skipped_no_file",
-    }
+    return { doc, downloadFailed: true }
   }
 
   const buffer = Buffer.from(await fileData.arrayBuffer())
@@ -107,7 +269,6 @@ export async function runDocumentCheck(
     doc.mime_type,
     doc.original_name
   )
-
   console.error("[check] extracted", {
     documentId: doc.id,
     kind: extracted.kind,
@@ -115,40 +276,92 @@ export async function runDocumentCheck(
     hasImage: Boolean(extracted.imageBase64),
     bufferBytes: buffer.length,
   })
+  return {
+    doc,
+    text: extracted.text,
+    imageBase64: extracted.imageBase64,
+    imageMimeType: extracted.imageMimeType,
+    downloadFailed: false,
+  }
+}
 
-  const municipality = org.municipality?.trim() || ""
-  const useNational = !municipality
+async function finishSetMember(
+  admin: AdminClient,
+  opts: {
+    item: ExtractedDoc
+    organizationId: string
+    municipality: string
+    skipReview: boolean
+    mockScenario?: MockScenario
+    catalogFindings: DifyFindingItem[]
+    deferReviewed?: boolean
+  }
+): Promise<{
+  ok: boolean
+  error?: string
+  findingCount: number
+  usedFallback: boolean
+  mode?: RunCheckResult["mode"]
+}> {
+  const { item, catalogFindings } = opts
+  const doc = item.doc
 
+  if (item.downloadFailed) {
+    await saveFallbackAndFinish(admin, {
+      documentId: doc.id,
+      organizationId: opts.organizationId,
+      skipReview: opts.skipReview,
+      reason: "file_download_failed",
+      extraFindings: catalogFindings,
+      deferReviewed: opts.deferReviewed,
+    })
+    return {
+      ok: true,
+      findingCount: 1 + catalogFindings.length,
+      usedFallback: true,
+      mode: "skipped_no_file",
+    }
+  }
+
+  const useNational = !opts.municipality
   const rulesResolution = await resolveApprovedRulesForCheck(admin, {
-    municipality,
+    municipality: opts.municipality,
     docType: doc.doc_type,
   })
-  const rulesSnapshot = toAppliedRulesSnapshot(rulesResolution)
+  const rulesForCheck = withBuiltinPlanDateAlignmentRule(rulesResolution.rules)
+  const rulesSnapshot = toAppliedRulesSnapshot({
+    ...rulesResolution,
+    rules: rulesForCheck,
+    truncated:
+      rulesResolution.truncated ||
+      rulesResolution.rules.filter((r) => r.code !== PLAN_DATE_ALIGNMENT_CODE)
+        .length >= 40,
+  })
 
   console.error("[check] applied_rules", {
     documentId: doc.id,
     asOf: rulesResolution.asOf,
-    ruleCount: rulesResolution.rules.length,
+    ruleCount: rulesForCheck.length,
     basisCount: rulesResolution.regulatoryBasis.length,
-    truncated: rulesResolution.truncated,
+    truncated: rulesSnapshot.truncated,
   })
 
   let difyResult
   try {
     difyResult = await runDifyCheck({
-      municipality,
-      prefecture: prefectureFromMunicipality(municipality),
+      municipality: opts.municipality,
+      prefecture: prefectureFromMunicipality(opts.municipality),
       national: useNational ? "1" : "0",
       docType: doc.doc_type,
-      documentText: extracted.text,
-      imageBase64: extracted.imageBase64,
-      imageMimeType: extracted.imageMimeType,
-      approvedRulesJson: serializeRulesForDify(rulesResolution.rules),
+      documentText: item.text,
+      imageBase64: item.imageBase64,
+      imageMimeType: item.imageMimeType,
+      approvedRulesJson: serializeRulesForDify(rulesForCheck),
       regulatoryBasisJson: serializeRegulatoryBasisForDify(
         rulesResolution.regulatoryBasis
       ),
       checkAsOf: rulesResolution.asOf,
-      mockScenario: options.mockScenario,
+      mockScenario: opts.mockScenario,
     })
   } catch (err) {
     console.error("[check] dify_invoke_failed", {
@@ -158,23 +371,22 @@ export async function runDocumentCheck(
     })
     await saveFallbackAndFinish(admin, {
       documentId: doc.id,
-      organizationId: options.organizationId,
-      skipReview: Boolean(org.skip_finding_review),
+      organizationId: opts.organizationId,
+      skipReview: opts.skipReview,
       reason: "dify_invoke_failed",
       rulesSnapshot,
+      extraFindings: catalogFindings,
+      deferReviewed: opts.deferReviewed,
     })
     return {
       ok: true,
-      findingCount: 1,
+      findingCount: 1 + catalogFindings.length,
       usedFallback: true,
-      reviewStatus: org.skip_finding_review ? "approved" : "pending",
       mode: "dify_error",
     }
   }
 
-  const reviewStatus = org.skip_finding_review ? "approved" : "pending"
-
-  // 既存 findings を論理削除して差し替え（再実行対応）
+  const reviewStatus = opts.skipReview ? "approved" : "pending"
   await admin
     .from("findings")
     .update({ deleted_at: new Date().toISOString() })
@@ -183,7 +395,11 @@ export async function runDocumentCheck(
 
   const severityOrder = { high: 0, mid: 1, low: 2 } as const
   const { anonymizeFindingFields } = await import("@/lib/privacy/anonymize")
-  const rows = difyResult.findings
+  const mergedFindings = mergeAiFindingsWithCatalog(
+    difyResult.findings,
+    catalogFindings
+  )
+  const rows = mergedFindings
     .map((f, index) => {
       const anon = anonymizeFindingFields({
         title: (f.title ?? "ご確認ください").slice(0, 200),
@@ -191,9 +407,11 @@ export async function runDocumentCheck(
         basis: f.basis?.slice(0, 1000) ?? null,
         suggestion: f.suggestion?.slice(0, 4000) ?? null,
       })
+      const isAlignment =
+        catalogFindings.length > 0 && isSimilarPlanDateFinding(f)
       return {
         document_id: doc.id,
-        organization_id: options.organizationId,
+        organization_id: opts.organizationId,
         severity: normalizeSeverity(f.severity),
         title: anon.title,
         description: anon.description,
@@ -201,23 +419,59 @@ export async function runDocumentCheck(
         suggestion: anon.suggestion,
         status: "open" as const,
         review_status: reviewStatus,
-        is_fallback: difyResult.usedFallback,
-        sort_order: severityOrder[normalizeSeverity(f.severity)] * 100 + index,
+        is_fallback:
+          Boolean(difyResult.usedFallback) && !isAlignment,
+        source_kind: isAlignment ? ("alignment" as const) : ("ai" as const),
+        sort_order: isAlignment
+          ? index
+          : 100 + severityOrder[normalizeSeverity(f.severity)] * 100 + index,
       }
     })
     .sort((a, b) => a.sort_order - b.sort_order)
 
   if (rows.length > 0) {
-    const { data: inserted, error: insertError } = await admin
+    type InsertedFinding = {
+      id: string
+      title: string
+      description: string
+      suggestion: string | null
+    }
+    let inserted: InsertedFinding[] | null = null
+    const first = await admin
       .from("findings")
       .insert(rows)
       .select("id, title, description, suggestion")
-
-    if (insertError) {
+    if (
+      first.error &&
+      String(first.error.message ?? "").includes("source_kind")
+    ) {
+      const fallbackRows = rows.map((row) => {
+        const { source_kind: _sourceKind, ...rest } = row
+        void _sourceKind
+        return rest
+      })
+      const retry = await admin
+        .from("findings")
+        .insert(fallbackRows)
+        .select("id, title, description, suggestion")
+      if (retry.error) {
+        return {
+          ok: false,
+          error: "チェック結果の保存に失敗しました。",
+          findingCount: 0,
+          usedFallback: false,
+        }
+      }
+      inserted = (retry.data ?? []) as InsertedFinding[]
+    } else if (first.error) {
       return {
         ok: false,
         error: "チェック結果の保存に失敗しました。",
+        findingCount: 0,
+        usedFallback: false,
       }
+    } else {
+      inserted = (first.data ?? []) as InsertedFinding[]
     }
 
     try {
@@ -225,7 +479,7 @@ export async function runDocumentCheck(
         "@/lib/check/generate-deadlines"
       )
       await generateDeadlinesFromFindings(admin, {
-        organizationId: options.organizationId,
+        organizationId: opts.organizationId,
         documentId: doc.id,
         docType: doc.doc_type,
         findings: (inserted ?? []).map((f) => ({
@@ -240,61 +494,89 @@ export async function runDocumentCheck(
     }
   }
 
-  await admin
-    .from("documents")
-    .update({
-      status: "reviewed" satisfies DocumentStatus,
-      check_as_of: rulesSnapshot.asOf,
-      applied_rule_version_ids: rulesResolution.rules.map((r) => r.versionId),
-      applied_rules_snapshot: rulesSnapshot,
-    })
-    .eq("id", doc.id)
+  const docPatch: Record<string, unknown> = {}
+  if (!opts.deferReviewed) {
+    docPatch.status = "reviewed" satisfies DocumentStatus
+  }
+  docPatch.check_as_of = rulesSnapshot.asOf
+  docPatch.applied_rule_version_ids = rulesForCheck
+    .map((r) => r.versionId)
+    .filter((id) => UUID_RE.test(id))
+  docPatch.applied_rules_snapshot = rulesSnapshot
+
+  await admin.from("documents").update(docPatch).eq("id", doc.id)
 
   await applyOriginalRetentionAfterCheck(admin, {
     documentId: doc.id,
-    organizationId: options.organizationId,
-    filePath: doc.file_path as string,
-    keepOriginalDays: (Number(doc.keep_original_days) === 7 ? 7 : 0) as OriginalKeepDays,
+    organizationId: opts.organizationId,
+    filePath: doc.file_path,
+    keepOriginalDays: (Number(doc.keep_original_days) === 7
+      ? 7
+      : 0) as OriginalKeepDays,
     alreadyPurged: Boolean(doc.original_purged_at),
   })
 
   const mode: RunCheckResult["mode"] = decideMockMode({
-    mockScenario: options.mockScenario,
+    mockScenario: opts.mockScenario,
   }).mock
     ? "mock"
     : "live"
 
-  console.error("[check] finished", {
-    documentId: doc.id,
-    findingCount: rows.length,
-    usedFallback: difyResult.usedFallback,
-    mode,
-    appliedRuleCount: rulesResolution.rules.length,
-  })
-
   return {
     ok: true,
     findingCount: rows.length,
-    usedFallback: difyResult.usedFallback,
-    reviewStatus,
+    usedFallback: Boolean(difyResult.usedFallback),
     mode,
   }
 }
 
 async function saveFallbackAndFinish(
-  admin: ReturnType<typeof createServiceClient>,
+  admin: AdminClient,
   opts: {
     documentId: string
     organizationId: string
     skipReview: boolean
     reason: string
     rulesSnapshot?: ReturnType<typeof toAppliedRulesSnapshot>
+    extraFindings?: DifyFindingItem[]
+    deferReviewed?: boolean
   }
 ) {
   void opts.reason
   const reviewStatus = opts.skipReview ? "approved" : "pending"
   const { buildFallbackFinding } = await import("@/lib/dify/parse")
   const { anonymizeFindingFields } = await import("@/lib/privacy/anonymize")
+  const extra = opts.extraFindings ?? []
+
+  await admin
+    .from("findings")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("document_id", opts.documentId)
+    .is("deleted_at", null)
+
+  const extraRows = extra.map((f, index) => {
+    const anon = anonymizeFindingFields({
+      title: (f.title ?? "ご確認ください").slice(0, 200),
+      description: (f.description ?? "内容をご確認ください。").slice(0, 4000),
+      basis: f.basis?.slice(0, 1000) ?? null,
+      suggestion: f.suggestion?.slice(0, 4000) ?? null,
+    })
+    return {
+      document_id: opts.documentId,
+      organization_id: opts.organizationId,
+      severity: normalizeSeverity(f.severity),
+      title: anon.title,
+      description: anon.description,
+      basis: anon.basis,
+      suggestion: anon.suggestion,
+      status: "open" as const,
+      review_status: reviewStatus,
+      is_fallback: false,
+      source_kind: "alignment" as const,
+      sort_order: index,
+    }
+  })
+
   const fb = buildFallbackFinding()
   const anon = anonymizeFindingFields({
     title: fb.title ?? "ご確認ください",
@@ -303,38 +585,39 @@ async function saveFallbackAndFinish(
     suggestion: fb.suggestion ?? null,
   })
 
-  await admin
-    .from("findings")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("document_id", opts.documentId)
-    .is("deleted_at", null)
+  await admin.from("findings").insert([
+    ...extraRows,
+    {
+      document_id: opts.documentId,
+      organization_id: opts.organizationId,
+      severity: "mid",
+      title: anon.title,
+      description: anon.description,
+      basis: anon.basis,
+      suggestion: anon.suggestion,
+      status: "open",
+      review_status: reviewStatus,
+      is_fallback: true,
+      source_kind: "ai",
+      sort_order: extraRows.length + 100,
+    },
+  ])
 
-  await admin.from("findings").insert({
-    document_id: opts.documentId,
-    organization_id: opts.organizationId,
-    severity: "mid",
-    title: anon.title,
-    description: anon.description,
-    basis: anon.basis,
-    suggestion: anon.suggestion,
-    status: "open",
-    review_status: reviewStatus,
-    is_fallback: true,
-    sort_order: 0,
-  })
-
-  const docPatch: Record<string, unknown> = {
-    status: "reviewed" satisfies DocumentStatus,
+  const docPatch: Record<string, unknown> = {}
+  if (!opts.deferReviewed) {
+    docPatch.status = "reviewed" satisfies DocumentStatus
   }
   if (opts.rulesSnapshot) {
     docPatch.check_as_of = opts.rulesSnapshot.asOf
-    docPatch.applied_rule_version_ids = opts.rulesSnapshot.rules.map(
-      (r) => r.versionId
-    )
+    docPatch.applied_rule_version_ids = opts.rulesSnapshot.rules
+      .map((r) => r.versionId)
+      .filter((id) => UUID_RE.test(id))
     docPatch.applied_rules_snapshot = opts.rulesSnapshot
   }
 
-  await admin.from("documents").update(docPatch).eq("id", opts.documentId)
+  if (Object.keys(docPatch).length > 0) {
+    await admin.from("documents").update(docPatch).eq("id", opts.documentId)
+  }
 
   const { data: docMeta } = await admin
     .from("documents")
@@ -356,7 +639,7 @@ async function saveFallbackAndFinish(
 }
 
 async function applyOriginalRetentionAfterCheck(
-  admin: ReturnType<typeof createServiceClient>,
+  admin: AdminClient,
   opts: {
     documentId: string
     organizationId: string
@@ -374,7 +657,6 @@ async function applyOriginalRetentionAfterCheck(
     .eq("id", opts.documentId)
     .eq("organization_id", opts.organizationId)
 
-  // 0日保持＝完了直後に削除。7日は Cron 待ち。
   if (opts.keepOriginalDays <= 0) {
     await purgeDocumentOriginal(
       opts.documentId,

@@ -29,6 +29,7 @@ import {
   isFindingAddressed,
   sortFindings,
 } from "@/lib/check/findings-sort"
+import { isAlignmentFinding } from "@/lib/check/findings-sort"
 import type { Finding, FindingSeverity, FindingStatus } from "@/types/database"
 import { cn } from "@/lib/utils"
 
@@ -91,6 +92,7 @@ function FindingCard({
   const isDone = isFindingAddressed(finding.status)
   const showLaterButton = finding.status === "open"
   const showActions = finding.status === "open" || finding.status === "later"
+  const isAlignment = finding.source_kind === "alignment"
 
   function run(action: "fixed" | "later" | "dismissed") {
     startTransition(async () => {
@@ -139,11 +141,21 @@ function FindingCard({
       <CardHeader className="gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <RiskBadge level={toRiskLevel(finding.severity)} />
+          {isAlignment ? (
+            <span className="inline-flex items-center rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-sm font-medium text-primary-dark">
+              {CHECK_UI.alignmentBadge}
+            </span>
+          ) : null}
           <StatusBadge status={finding.status} />
           {finding.is_fallback ? (
             <span className="text-sm text-muted-foreground">自動確認不可</span>
           ) : null}
         </div>
+        {finding.sourceFileName ? (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {finding.sourceFileName}
+          </p>
+        ) : null}
         <CardTitle className="text-lg font-bold leading-snug text-primary-dark">
           {annotateTerms(anonymizeText(finding.title).text)}
         </CardTitle>
@@ -288,10 +300,18 @@ export function FindingsResultView({
   }, [initialFindings, initialAllAddressed])
 
   const groups = useMemo(() => groupFindingsByStatus(findings), [findings])
+  const openAlignment = groups.open.filter(isAlignmentFinding)
+  const openAi = groups.open.filter((f) => !isAlignmentFinding(f))
 
   function handleLocalUpdate(updated: Finding, done: boolean) {
     setFindings((prev) =>
-      sortFindings(prev.map((f) => (f.id === updated.id ? updated : f)))
+      sortFindings(
+        prev.map((f) =>
+          f.id === updated.id
+            ? { ...updated, sourceFileName: f.sourceFileName }
+            : f
+        )
+      )
     )
     if (done) setAllAddressed(true)
     router.refresh()
@@ -334,10 +354,23 @@ export function FindingsResultView({
       </p>
 
       <FindingSection
-        title={CHECK_UI.sectionOpen}
-        count={groups.open.length}
+        title={CHECK_UI.alignmentSection}
+        count={openAlignment.length}
       >
-        {groups.open.map((f) => (
+        {openAlignment.map((f) => (
+          <FindingCard
+            key={f.id}
+            finding={f}
+            onLocalUpdate={handleLocalUpdate}
+          />
+        ))}
+      </FindingSection>
+
+      <FindingSection
+        title={CHECK_UI.sectionOpen}
+        count={openAi.length}
+      >
+        {openAi.map((f) => (
           <FindingCard
             key={f.id}
             finding={f}

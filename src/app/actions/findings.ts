@@ -7,12 +7,24 @@ import {
   isFindingAddressed,
   sortFindings,
 } from "@/lib/check/findings-sort"
+import { pickCheckSetPrimaryId } from "@/lib/check/alignment-catalog"
 import type {
   Document,
   Finding,
   FindingActionType,
   FindingStatus,
 } from "@/types/database"
+
+export type CheckSetMember = {
+  id: string
+  original_name: string
+  status: string
+  created_at: string
+}
+
+export type FindingView = Finding & {
+  sourceFileName?: string | null
+}
 
 export type ActionResult<T = undefined> = {
   ok: boolean
@@ -59,10 +71,13 @@ export async function getDocumentWithFindingsAction(
 ): Promise<
   ActionResult<{
     document: Document
-    findings: Finding[]
+    findings: FindingView[]
     pendingReviewCount: number
     allAddressed: boolean
     setupHint?: string
+    setMembers: CheckSetMember[]
+    primaryDocumentId: string
+    isSetPrimary: boolean
   }>
 > {
   const ctx = await requireOrgContext()
@@ -83,12 +98,42 @@ export async function getDocumentWithFindingsAction(
     }
   }
 
+  const setId = (document.check_set_id as string | null | undefined)?.trim()
+  let setMembers: CheckSetMember[] = [
+    {
+      id: document.id as string,
+      original_name: document.original_name as string,
+      status: document.status as string,
+      created_at: document.created_at as string,
+    },
+  ]
+  if (setId) {
+    const { data: members } = await ctx.supabase
+      .from("documents")
+      .select("id, original_name, status, created_at")
+      .eq("organization_id", ctx.organizationId)
+      .eq("check_set_id", setId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true })
+    if (members && members.length > 0) {
+      setMembers = members as CheckSetMember[]
+    }
+  }
+
+  const primaryDocumentId =
+    pickCheckSetPrimaryId(setMembers) ?? (document.id as string)
+  const isSetPrimary = document.id === primaryDocumentId
+  const findingDocIds = isSetPrimary
+    ? setMembers.map((m) => m.id)
+    : [document.id as string]
+  const nameById = new Map(setMembers.map((m) => [m.id, m.original_name]))
+
   // 承認済み findings（RLS）
   // マイグレーション未適用時はテーブル不在 → 空配列で続行（404にしない）
   const { data: findings, error: findError } = await ctx.supabase
     .from("findings")
     .select("*")
-    .eq("document_id", documentId)
+    .in("document_id", findingDocIds)
     .is("deleted_at", null)
     .order("sort_order", { ascending: true })
 
@@ -117,7 +162,7 @@ export async function getDocumentWithFindingsAction(
       const { count } = await admin
         .from("findings")
         .select("id", { count: "exact", head: true })
-        .eq("document_id", documentId)
+        .in("document_id", findingDocIds)
         .eq("review_status", "pending")
         .is("deleted_at", null)
       pendingReviewCount = count ?? 0
@@ -126,7 +171,11 @@ export async function getDocumentWithFindingsAction(
     }
   }
 
-  const list = sortFindings((findings ?? []) as Finding[])
+  const list = sortFindings((findings ?? []) as Finding[]).map((f) => ({
+    ...f,
+    sourceFileName:
+      setMembers.length > 1 ? (nameById.get(f.document_id) ?? null) : null,
+  }))
   const allAddressed =
     list.length > 0 &&
     list.every((f) => isFindingAddressed(f.status)) &&
@@ -140,6 +189,9 @@ export async function getDocumentWithFindingsAction(
       pendingReviewCount,
       allAddressed,
       setupHint,
+      setMembers,
+      primaryDocumentId,
+      isSetPrimary,
     },
   }
 }
@@ -228,10 +280,29 @@ export async function updateFindingAction(input: {
   }
 
   // 全件対応済み（open / later が無い）なら documents.status = done
+  const { data: findingDoc } = await ctx.supabase
+    .from("documents")
+    .select("id, check_set_id")
+    .eq("id", finding.document_id)
+    .maybeSingle()
+  const setId = (findingDoc?.check_set_id as string | null | undefined)?.trim()
+  let addressedDocIds = [finding.document_id as string]
+  if (setId) {
+    const { data: members } = await ctx.supabase
+      .from("documents")
+      .select("id")
+      .eq("organization_id", ctx.organizationId)
+      .eq("check_set_id", setId)
+      .is("deleted_at", null)
+    if (members && members.length > 0) {
+      addressedDocIds = members.map((m) => m.id as string)
+    }
+  }
+
   const { data: siblings } = await ctx.supabase
     .from("findings")
     .select("id, status")
-    .eq("document_id", finding.document_id)
+    .in("document_id", addressedDocIds)
     .is("deleted_at", null)
 
   const trulyAllAddressed =
@@ -242,7 +313,7 @@ export async function updateFindingAction(input: {
     await ctx.supabase
       .from("documents")
       .update({ status: "done" })
-      .eq("id", finding.document_id)
+      .in("id", addressedDocIds)
       .eq("organization_id", ctx.organizationId)
   }
 
@@ -252,7 +323,9 @@ export async function updateFindingAction(input: {
     .eq("id", input.findingId)
     .maybeSingle()
 
-  revalidatePath(`/check/${finding.document_id}`)
+  for (const id of addressedDocIds) {
+    revalidatePath(`/check/${id}`)
+  }
   revalidatePath("/documents")
   revalidatePath("/later")
   revalidatePath("/reports")

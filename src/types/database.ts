@@ -65,6 +65,10 @@ export type Finding = {
   status: FindingStatus
   review_status: FindingReviewStatus
   is_fallback: boolean
+  /** ai=ルールブック経由 / alignment=書類同士の標準観点 */
+  source_kind?: "ai" | "alignment"
+  /** セット表示用（この指摘の元ファイル名） */
+  sourceFileName?: string | null
   sort_order: number
   created_at: string
   updated_at: string
@@ -153,6 +157,8 @@ export type Document = {
   retention_consent_at?: string | null
   original_purge_after?: string | null
   original_purged_at?: string | null
+  /** 同じアップロードで開始した書類のまとまり */
+  check_set_id?: string | null
   created_at: string
   deleted_at: string | null
 }

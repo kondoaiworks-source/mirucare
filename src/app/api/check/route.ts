@@ -6,7 +6,7 @@ import { decideMockMode, isProductionRuntime } from "@/lib/dify/env"
 import type { MockScenario } from "@/lib/dify/types"
 
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 120
 
 const ALLOWED_MOCK: MockScenario[] = ["success", "parse_error", "empty"]
 

@@ -20,8 +20,6 @@ export function CheckRunner({
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!autoStart) return
-
     let cancelled = false
     let pollTimer: ReturnType<typeof setInterval> | null = null
 
@@ -37,7 +35,6 @@ export function CheckRunner({
           ok?: boolean
         } | null
 
-        // Strict Mode で一度 unmount されても、結果反映のため refresh は必ず行う
         router.refresh()
 
         if (!res.ok && !cancelled) {
@@ -55,7 +52,9 @@ export function CheckRunner({
       }
     }
 
-    void run()
+    if (autoStart) {
+      void run()
+    }
 
     pollTimer = setInterval(() => {
       router.refresh()

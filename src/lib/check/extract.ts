@@ -1,15 +1,13 @@
 /**
  * アップロードファイルからテキスト抽出。
- * PDF本文: unpdf（Vercel向け。ワーカー内蔵）
- * スキャンPDF: pdf-parse で1ページ目を画像化してビジョンへ
+ * PDF本文: pdf-parse.getText（日本語 CMap をファイルパスで読む）
+ * 文字がほぼ無いときだけ: 1ページ目を画像化してビジョンへ
  * CSV・テキスト: UTF-8 / 画像: テキストなし（ビジョンへ委譲）
  */
 
-import { extractText, getDocumentProxy } from "unpdf"
 import {
   loadPdfParse,
   pdfParseLoadOptions,
-  unpdfDocumentOptions,
 } from "@/lib/check/pdfjs-node-assets"
 
 export type ExtractResult = {
@@ -26,8 +24,6 @@ const MIN_USEFUL_TEXT_CHARS = 30
 export const PDF_TEXT_PAGE_CHUNK = 8
 /** 抽出テキストのソフト上限（UTF-8 バイト）。スナップショット保存上限と揃える */
 export const PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES = 2 * 1024 * 1024
-/** これ以下は一括抽出を先に試す（介護報酬Q&A Vol.1 は約1.2MB / 113ページ） */
-const PDF_FULL_EXTRACT_MAX_BYTES = 8 * 1024 * 1024
 
 /** スキャンPDFは先頭ページのみ画像化（ペイロード肥大を防ぐ） */
 const SCAN_PDF_MAX_PAGES = 1
@@ -108,7 +104,7 @@ async function extractScanPdfAsImage(
     return {
       kind: "image",
       text:
-        "（スキャンPDFのため1ページ目を画像として送信しています。画像を読み取って点検してください）",
+        "（本文の文字が十分に取れなかったため、1ページ目を画像として送信しています。画像を読み取って点検してください）",
       imageBase64,
       imageMimeType: "image/png",
     }
@@ -146,68 +142,45 @@ export function joinPdfTextChunks(chunks: string[]): string {
     .trim()
 }
 
-/**
- * PDF本文テキストのみ抽出（スキャン画像化なし）。
- * ナレッジ差分用スナップショットで使用。
- * 中規模の公式PDFは一括、大きいもの・一括失敗は数ページずつつなぐ。
- * 本番で途中例外になっても、空文字を返して呼び出し側で案内する。
- */
-export async function extractPdfPlainText(buffer: Buffer): Promise<string> {
-  try {
-    const pdf = await getDocumentProxy(
-      Uint8Array.from(buffer),
-      unpdfDocumentOptions()
-    )
-    try {
-      if (buffer.byteLength <= PDF_FULL_EXTRACT_MAX_BYTES) {
-        try {
-          const { text } = await extractText(pdf, { mergePages: true })
-          const merged = text.trim()
-          if (!isMostlyNoisePdfText(merged)) {
-            return merged
-          }
-        } catch (err) {
-          console.error("[extract] pdf_full_failed", {
-            error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
-            bytes: buffer.byteLength,
-          })
-        }
-      }
+function capExtractedText(text: string): string {
+  const buf = Buffer.from(text, "utf8")
+  if (buf.byteLength <= PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES) return text
+  return buf.subarray(0, PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES).toString("utf8")
+}
 
-      const { totalPages, text: pages } = await extractText(pdf, {
-        mergePages: false,
-      })
-      const parts: string[] = []
-      let textBytes = 0
-      for (const page of pages) {
-        const chunk = page.trim()
-        if (chunk) {
-          parts.push(chunk)
-          textBytes += Buffer.byteLength(chunk, "utf8")
-        }
-        if (textBytes >= PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES) {
-          break
-        }
-      }
-      const text = joinPdfTextChunks(parts)
-      if (totalPages >= 40) {
-        console.error("[extract] pdf_plain_text", {
-          totalPages,
-          pagesUsed: parts.length,
-          textBytes: Buffer.byteLength(text, "utf8"),
-        })
-      }
-      return text
+/**
+ * pdf-parse で本文を抜く。unpdf と同時に使うと pdf.js の worker 版が食い違う。
+ */
+async function extractPdfTextWithPdfParse(buffer: Buffer): Promise<string> {
+  try {
+    const { PDFParse } = loadPdfParse()
+    const parser = new PDFParse(pdfParseLoadOptions(buffer))
+    try {
+      const result = await parser.getText({ pageJoiner: "\n" })
+      return capExtractedText((result.text ?? "").trim())
     } finally {
-      await pdf.loadingTask.destroy().catch(() => undefined)
+      await parser.destroy().catch(() => undefined)
     }
   } catch (err) {
-    console.error("[extract] pdf_plain_text_failed", {
-      error: err instanceof Error ? err.message.slice(0, 200) : "unknown",
-      name: err instanceof Error ? err.name : "unknown",
+    console.error("[extract] pdf_parse_text_failed", {
+      error: err instanceof Error ? err.name : "unknown",
+      message: err instanceof Error ? err.message.slice(0, 160) : "unknown",
     })
     return ""
   }
+}
+
+/**
+ * PDF本文テキストのみ抽出（スキャン画像化なし）。
+ * ナレッジ差分用スナップショットでも使用。
+ * 本番で途中例外になっても、空文字を返して呼び出し側で案内する。
+ */
+export async function extractPdfPlainText(buffer: Buffer): Promise<string> {
+  const text = await extractPdfTextWithPdfParse(buffer)
+  if (isMostlyNoisePdfText(text)) {
+    console.error("[extract] pdf_text_empty", { bytes: buffer.byteLength })
+  }
+  return text
 }
 
 export async function extractDocumentContent(
@@ -236,7 +209,7 @@ export async function extractDocumentContent(
       const { PDFParse } = loadPdfParse()
       const parser = new PDFParse(pdfParseLoadOptions(buffer))
       try {
-        // 文字がほぼ無い → スキャンPDFとして画像化
+        // 本文が空 → 画像PDFの可能性。1ページ目を送る
         return await extractScanPdfAsImage(parser, text)
       } finally {
         await parser.destroy().catch(() => undefined)
@@ -244,7 +217,7 @@ export async function extractDocumentContent(
     } catch {
       return {
         kind: "text",
-        text: "（PDFのテキスト抽出に失敗しました。画像スキャンの可能性があります）",
+        text: "（PDFのテキスト抽出に失敗しました。文字の入ったPDFか、画像が鮮明かご確認ください）",
       }
     }
   }
