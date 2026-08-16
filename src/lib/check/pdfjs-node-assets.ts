@@ -1,7 +1,7 @@
 /**
- * 本番（Vercel）で日本語PDFを抜くための Node 側準備。
- * カスタム Factory クラスを渡すとワーカー側で「s is not a function」になるため、
- * CMap/フォントはファイルパスだけ渡し、Node 既定の読み込みに任せる。
+ * Node 上の pdfjs-dist 資産（日本語 CMap / 標準フォント）。
+ * Factory クラスは渡さない（本番ワーカーで TypeError になるためパスだけ使う）。
+ * pdf-parse の読み込みはスキャンPDFの画像化だけに使う。
  */
 
 import { existsSync } from "node:fs"
@@ -9,17 +9,13 @@ import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 
 export type PdfParseInstance = {
-  getText: (params?: Record<string, unknown>) => Promise<{ text?: string }>
-  getInfo: () => Promise<{ total?: number }>
   getScreenshot: (opts?: Record<string, unknown>) => Promise<unknown>
   destroy: () => Promise<void>
 }
 
-export type PdfParseCtor = (new (
+export type PdfParseCtor = new (
   options: Record<string, unknown>
-) => PdfParseInstance) & {
-  setWorker?: (src: string) => string
-}
+) => PdfParseInstance
 
 const requireFromProject = createRequire(join(process.cwd(), "package.json"))
 
@@ -58,21 +54,6 @@ export function resolvePdfjsAssetDir(
   return null
 }
 
-function resolvePdfWorkerPath(): string | null {
-  const roots: string[] = []
-  try {
-    roots.push(dirname(requireFromProject.resolve("pdfjs-dist/package.json")))
-  } catch {
-    // トレース漏れ時は cwd 側を試す
-  }
-  roots.push(join(process.cwd(), "node_modules", "pdfjs-dist"))
-  for (const root of roots) {
-    const worker = join(root, "legacy", "build", "pdf.worker.mjs")
-    if (existsSync(worker)) return worker
-  }
-  return null
-}
-
 function readPdfParseCtor(): PdfParseCtor {
   const pkgDir = pdfParsePackageDir()
   const cjsPath = pkgDir
@@ -99,21 +80,14 @@ function readPdfParseCtor(): PdfParseCtor {
 let cachedCtor: PdfParseCtor | null = null
 let loggedRuntime = false
 
-/**
- * pdf-parse の browser 向けエントリを避け、Node の CJS を読む。
- */
+/** スキャン画像化用。本文抽出では使わない。 */
 export function loadPdfParse(): { PDFParse: PdfParseCtor } {
   if (cachedCtor) return { PDFParse: cachedCtor }
-  const PDFParse = readPdfParseCtor()
-  const workerSrc = resolvePdfWorkerPath()
-  if (workerSrc && typeof PDFParse.setWorker === "function") {
-    PDFParse.setWorker(workerSrc)
-  }
-  cachedCtor = PDFParse
-  return { PDFParse }
+  cachedCtor = readPdfParseCtor()
+  return { PDFParse: cachedCtor }
 }
 
-export function pdfParseLoadOptions(buffer: Buffer): Record<string, unknown> {
+function pdfjsPathOptions(): Record<string, unknown> {
   const cMapUrl = resolvePdfjsAssetDir("cmaps")
   const standardFontDataUrl = resolvePdfjsAssetDir("standard_fonts")
   if (!loggedRuntime) {
@@ -122,20 +96,9 @@ export function pdfParseLoadOptions(buffer: Buffer): Record<string, unknown> {
       node: process.version,
       hasCMapDir: Boolean(cMapUrl),
       hasFontDir: Boolean(standardFontDataUrl),
-      hasWorker: Boolean(resolvePdfWorkerPath()),
     })
   }
-
-  const options: Record<string, unknown> = {
-    data: Uint8Array.from(buffer),
-    stopAtErrors: false,
-    useWorkerFetch: false,
-    useWasm: false,
-    useSystemFonts: false,
-    disableFontFace: true,
-    isOffscreenCanvasSupported: false,
-  }
-
+  const options: Record<string, unknown> = {}
   if (cMapUrl) {
     options.cMapUrl = cMapUrl
     options.cMapPacked = true
@@ -143,6 +106,32 @@ export function pdfParseLoadOptions(buffer: Buffer): Record<string, unknown> {
   if (standardFontDataUrl) {
     options.standardFontDataUrl = standardFontDataUrl
   }
-
   return options
+}
+
+/** unpdf 本文抽出用。file:// や Factory クラスは渡さない。 */
+export function unpdfDocumentOptions(): Record<string, unknown> {
+  return {
+    stopAtErrors: false,
+    useWorkerFetch: false,
+    useWasm: false,
+    useSystemFonts: false,
+    disableFontFace: true,
+    isOffscreenCanvasSupported: false,
+    ...pdfjsPathOptions(),
+  }
+}
+
+/** スキャン画像化用。本文抽出では使わない。 */
+export function pdfParseLoadOptions(buffer: Buffer): Record<string, unknown> {
+  return {
+    data: Uint8Array.from(buffer),
+    stopAtErrors: false,
+    useWorkerFetch: false,
+    useWasm: false,
+    useSystemFonts: false,
+    disableFontFace: true,
+    isOffscreenCanvasSupported: false,
+    ...pdfjsPathOptions(),
+  }
 }

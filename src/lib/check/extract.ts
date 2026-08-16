@@ -1,12 +1,15 @@
 /**
  * アップロードファイルからテキスト抽出。
- * PDF: pdf-parse（文字が少ないスキャンPDFは1ページ目を画像化してビジョンへ）
+ * PDF本文: unpdf（Vercel向け。ワーカー内蔵）
+ * スキャンPDF: pdf-parse で1ページ目を画像化してビジョンへ
  * CSV・テキスト: UTF-8 / 画像: テキストなし（ビジョンへ委譲）
  */
 
+import { extractText, getDocumentProxy } from "unpdf"
 import {
   loadPdfParse,
   pdfParseLoadOptions,
+  unpdfDocumentOptions,
 } from "@/lib/check/pdfjs-node-assets"
 
 export type ExtractResult = {
@@ -146,20 +149,22 @@ export function joinPdfTextChunks(chunks: string[]): string {
 /**
  * PDF本文テキストのみ抽出（スキャン画像化なし）。
  * ナレッジ差分用スナップショットで使用。
- * 中規模の公式PDFは一括、大きいもの・一括失敗は数ページずつ抜く。
+ * 中規模の公式PDFは一括、大きいもの・一括失敗は数ページずつつなぐ。
  * 本番で途中例外になっても、空文字を返して呼び出し側で案内する。
  */
 export async function extractPdfPlainText(buffer: Buffer): Promise<string> {
   try {
-    const { PDFParse } = loadPdfParse()
-    const parser = new PDFParse(pdfParseLoadOptions(buffer))
+    const pdf = await getDocumentProxy(
+      Uint8Array.from(buffer),
+      unpdfDocumentOptions()
+    )
     try {
       if (buffer.byteLength <= PDF_FULL_EXTRACT_MAX_BYTES) {
         try {
-          const data = await parser.getText()
-          const text = (data.text ?? "").trim()
-          if (!isMostlyNoisePdfText(text)) {
-            return text
+          const { text } = await extractText(pdf, { mergePages: true })
+          const merged = text.trim()
+          if (!isMostlyNoisePdfText(merged)) {
+            return merged
           }
         } catch (err) {
           console.error("[extract] pdf_full_failed", {
@@ -169,69 +174,32 @@ export async function extractPdfPlainText(buffer: Buffer): Promise<string> {
         }
       }
 
-      let totalPages = 0
-      try {
-        const info = await parser.getInfo()
-        totalPages = Math.max(0, Number(info.total) || 0)
-      } catch (err) {
-        console.error("[extract] pdf_info_failed", {
-          error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
-        })
-      }
-
-      if (totalPages <= 0) {
-        try {
-          const data = await parser.getText()
-          return (data.text ?? "").trim()
-        } catch (err) {
-          console.error("[extract] pdf_retry_failed", {
-            error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
-          })
-          return ""
-        }
-      }
-
+      const { totalPages, text: pages } = await extractText(pdf, {
+        mergePages: false,
+      })
       const parts: string[] = []
       let textBytes = 0
-      let chunksOk = 0
-      let chunksFailed = 0
-      const ranges = pdfPageRanges(totalPages, PDF_TEXT_PAGE_CHUNK)
-
-      for (const [first, last] of ranges) {
-        try {
-          const data = await parser.getText({ first, last })
-          const chunk = (data.text ?? "").trim()
-          if (chunk) {
-            parts.push(chunk)
-            textBytes += Buffer.byteLength(chunk, "utf8")
-          }
-          chunksOk += 1
-        } catch (err) {
-          chunksFailed += 1
-          console.error("[extract] pdf_chunk_failed", {
-            first,
-            last,
-            totalPages,
-            error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
-          })
+      for (const page of pages) {
+        const chunk = page.trim()
+        if (chunk) {
+          parts.push(chunk)
+          textBytes += Buffer.byteLength(chunk, "utf8")
         }
         if (textBytes >= PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES) {
           break
         }
       }
-
       const text = joinPdfTextChunks(parts)
-      if (chunksFailed > 0 || totalPages >= 40) {
+      if (totalPages >= 40) {
         console.error("[extract] pdf_plain_text", {
           totalPages,
-          chunksOk,
-          chunksFailed,
+          pagesUsed: parts.length,
           textBytes: Buffer.byteLength(text, "utf8"),
         })
       }
       return text
     } finally {
-      await parser.destroy().catch(() => undefined)
+      await pdf.loadingTask.destroy().catch(() => undefined)
     }
   } catch (err) {
     console.error("[extract] pdf_plain_text_failed", {
