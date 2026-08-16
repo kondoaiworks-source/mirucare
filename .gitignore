@@ -31,6 +31,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# pdf.js CMaps（postinstall でコピー）
+/public/pdfjs/cmaps
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

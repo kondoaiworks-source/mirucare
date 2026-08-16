@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest"
 import {
   extractPdfPlainText,
+  isFailedExtractPlaceholder,
+  isMostlyNoisePdfText,
   joinPdfTextChunks,
   pdfPageRanges,
   PDF_TEXT_PAGE_CHUNK,
+  shouldSkipDifyForExtract,
 } from "@/lib/check/extract"
 
 function buildTextPdf(pages: string[]): Buffer {
@@ -74,26 +77,8 @@ describe("extractPdfPlainText", () => {
   })
 })
 
-describe("pdf-parse getText", () => {
-  it("Node 側でも本文を取れる", async () => {
-    const { loadPdfParse, pdfParseLoadOptions } = await import(
-      "@/lib/check/pdfjs-node-assets"
-    )
-    const buf = buildTextPdf(["Care plan update date 2026-04-01"])
-    const { PDFParse } = loadPdfParse()
-    const parser = new PDFParse(pdfParseLoadOptions(buf))
-    try {
-      const result = await parser.getText({ pageJoiner: "\n" })
-      expect(result.text ?? "").toContain("Care plan update date 2026-04-01")
-    } finally {
-      await parser.destroy()
-    }
-  })
-})
-
 describe("isMostlyNoisePdfText", () => {
-  it("ページ番号だけならノイズ", async () => {
-    const { isMostlyNoisePdfText } = await import("@/lib/check/extract")
+  it("ページ番号だけならノイズ", () => {
     expect(isMostlyNoisePdfText("-- 1 of 1 --")).toBe(true)
     expect(
       isMostlyNoisePdfText(
@@ -103,15 +88,51 @@ describe("isMostlyNoisePdfText", () => {
   })
 })
 
-describe("resolvePdfjsAssetDir", () => {
-  it("cmaps ディレクトリを解決できる", async () => {
-    const { resolvePdfjsAssetDir, toPdfjsDirUrl } = await import(
+describe("shouldSkipDifyForExtract", () => {
+  it("失敗定型文は Dify に渡さない", () => {
+    const placeholder =
+      "（PDFのテキスト抽出に失敗しました。文字の入ったPDFか、画像が鮮明かご確認ください）"
+    expect(isFailedExtractPlaceholder(placeholder)).toBe(true)
+    expect(
+      shouldSkipDifyForExtract({ kind: "text", text: placeholder })
+    ).toBe(true)
+  })
+
+  it("empty は Dify に渡さない", () => {
+    expect(shouldSkipDifyForExtract({ kind: "empty", text: "" })).toBe(true)
+  })
+
+  it("本文があるときは渡す", () => {
+    expect(
+      shouldSkipDifyForExtract({
+        kind: "text",
+        text: "訪問介護計画の作成日がケアプランの更新日より前になっていないかご確認ください",
+      })
+    ).toBe(false)
+  })
+
+  it("画像があるときは渡す", () => {
+    expect(
+      shouldSkipDifyForExtract({
+        kind: "image",
+        imageBase64: "abc",
+        text: "",
+      })
+    ).toBe(false)
+  })
+})
+
+describe("resolvePublicPdfjsCmapUrl", () => {
+  it("VERCEL_URL があるとき末尾スラッシュの https URL", async () => {
+    const prev = process.env.VERCEL_URL
+    process.env.VERCEL_URL = "mirucare.vercel.app"
+    const { resolvePublicPdfjsCmapUrl } = await import(
       "@/lib/check/pdfjs-node-assets"
     )
-    const dir = resolvePdfjsAssetDir("cmaps")
-    expect(dir).toMatch(/cmaps\/$/)
-    const url = toPdfjsDirUrl(dir)
-    expect(url).toMatch(/^file:\/\//)
-    expect(url).toMatch(/cmaps\/$/)
+    expect(resolvePublicPdfjsCmapUrl()).toBe(
+      "https://mirucare.vercel.app/pdfjs/cmaps/"
+    )
+    if (prev === undefined) delete process.env.VERCEL_URL
+    else process.env.VERCEL_URL = prev
   })
 })

@@ -1,14 +1,12 @@
 /**
  * アップロードファイルからテキスト抽出。
- * PDF本文: pdf-parse.getText（日本語 CMap をファイルパスで読む）
- * 文字がほぼ無いときだけ: 1ページ目を画像化してビジョンへ
+ * PDF本文: unpdf（Vercel向け。ワーカーに Factory を渡さない）
+ * 日本語 CMap: 本番は HTTP（/pdfjs/cmaps）
  * CSV・テキスト: UTF-8 / 画像: テキストなし（ビジョンへ委譲）
  */
 
-import {
-  loadPdfParse,
-  pdfParseLoadOptions,
-} from "@/lib/check/pdfjs-node-assets"
+import { extractText, getDocumentProxy } from "unpdf"
+import { unpdfDocumentOptions } from "@/lib/check/pdfjs-node-assets"
 
 export type ExtractResult = {
   kind: "text" | "image" | "empty"
@@ -24,15 +22,15 @@ const MIN_USEFUL_TEXT_CHARS = 30
 export const PDF_TEXT_PAGE_CHUNK = 8
 /** 抽出テキストのソフト上限（UTF-8 バイト）。スナップショット保存上限と揃える */
 export const PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES = 2 * 1024 * 1024
+/** これ以下は一括抽出を先に試す（介護報酬Q&A Vol.1 は約1.2MB / 113ページ） */
+const PDF_FULL_EXTRACT_MAX_BYTES = 8 * 1024 * 1024
 
-/** スキャンPDFは先頭ページのみ画像化（ペイロード肥大を防ぐ） */
-const SCAN_PDF_MAX_PAGES = 1
-const SCAN_PDF_TARGET_WIDTH = 900
+/** 以前 pdf-parse 失敗時に Dify へ渡していた定型（44文字） */
+export const PDF_EXTRACT_FAILED_HINT = "PDFのテキスト抽出に失敗しました"
 
 function isImageMime(mime: string | null | undefined, fileName: string): boolean {
   const m = (mime ?? "").toLowerCase()
   const n = fileName.toLowerCase()
-  // `.webp.pdf` は PDF として扱う（拡張子は末尾優先）
   if (n.endsWith(".pdf")) return false
   return (
     m.startsWith("image/") ||
@@ -73,51 +71,23 @@ export function isMostlyNoisePdfText(text: string): boolean {
   return stripped.length < MIN_USEFUL_TEXT_CHARS
 }
 
-async function extractScanPdfAsImage(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  parser: { getScreenshot: (opts: Record<string, unknown>) => Promise<any>; destroy: () => Promise<void> },
-  existingText: string
-): Promise<ExtractResult> {
-  try {
-    const shot = await parser.getScreenshot({
-      first: SCAN_PDF_MAX_PAGES,
-      desiredWidth: SCAN_PDF_TARGET_WIDTH,
-      imageBuffer: true,
-      imageDataUrl: false,
-    })
-    const page = shot?.pages?.[0]
-    const data = page?.data as Uint8Array | Buffer | undefined
-    if (!data || (data as Uint8Array).length === 0) {
-      return {
-        kind: "empty",
-        text: existingText || "",
-      }
-    }
-    const imageBase64 = Buffer.from(data).toString("base64")
-    console.error("[check] pdf_scan_as_image", {
-      page: page.pageNumber ?? 1,
-      width: page.width,
-      height: page.height,
-      imageBytes: (data as Uint8Array).length,
-      textLength: existingText.length,
-    })
-    return {
-      kind: "image",
-      text:
-        "（本文の文字が十分に取れなかったため、1ページ目を画像として送信しています。画像を読み取って点検してください）",
-      imageBase64,
-      imageMimeType: "image/png",
-    }
-  } catch (err) {
-    console.error("[check] pdf_screenshot_failed", {
-      errorKind: err instanceof Error ? err.name : "unknown",
-      message: err instanceof Error ? err.message.slice(0, 200) : "unknown",
-    })
-    return {
-      kind: "empty",
-      text: existingText || "",
-    }
-  }
+export function isFailedExtractPlaceholder(text: string): boolean {
+  const t = text.trim()
+  return t.includes(PDF_EXTRACT_FAILED_HINT) && t.length < 80
+}
+
+/** 画像が無く本文も使えないときは Dify に渡さない */
+export function shouldSkipDifyForExtract(input: {
+  kind?: ExtractResult["kind"]
+  text?: string
+  imageBase64?: string
+}): boolean {
+  if (input.imageBase64) return false
+  if (input.kind === "image") return false
+  if (input.kind === "empty") return true
+  const text = input.text ?? ""
+  if (isFailedExtractPlaceholder(text)) return true
+  return isMostlyNoisePdfText(text)
 }
 
 /** 1..total を chunkSize 件ずつのページ範囲に分ける */
@@ -149,38 +119,66 @@ function capExtractedText(text: string): string {
 }
 
 /**
- * pdf-parse で本文を抜く。unpdf と同時に使うと pdf.js の worker 版が食い違う。
- */
-async function extractPdfTextWithPdfParse(buffer: Buffer): Promise<string> {
-  try {
-    const { PDFParse } = loadPdfParse()
-    const parser = new PDFParse(pdfParseLoadOptions(buffer))
-    try {
-      const result = await parser.getText({ pageJoiner: "\n" })
-      return capExtractedText((result.text ?? "").trim())
-    } finally {
-      await parser.destroy().catch(() => undefined)
-    }
-  } catch (err) {
-    console.error("[extract] pdf_parse_text_failed", {
-      error: err instanceof Error ? err.name : "unknown",
-      message: err instanceof Error ? err.message.slice(0, 160) : "unknown",
-    })
-    return ""
-  }
-}
-
-/**
  * PDF本文テキストのみ抽出（スキャン画像化なし）。
  * ナレッジ差分用スナップショットでも使用。
  * 本番で途中例外になっても、空文字を返して呼び出し側で案内する。
  */
 export async function extractPdfPlainText(buffer: Buffer): Promise<string> {
-  const text = await extractPdfTextWithPdfParse(buffer)
-  if (isMostlyNoisePdfText(text)) {
-    console.error("[extract] pdf_text_empty", { bytes: buffer.byteLength })
+  try {
+    const pdf = await getDocumentProxy(
+      Uint8Array.from(buffer),
+      unpdfDocumentOptions()
+    )
+    try {
+      if (buffer.byteLength <= PDF_FULL_EXTRACT_MAX_BYTES) {
+        try {
+          const { text } = await extractText(pdf, { mergePages: true })
+          const merged = text.trim()
+          if (!isMostlyNoisePdfText(merged)) {
+            return capExtractedText(merged)
+          }
+        } catch (err) {
+          console.error("[extract] pdf_full_failed", {
+            error: err instanceof Error ? err.message.slice(0, 120) : "unknown",
+            bytes: buffer.byteLength,
+          })
+        }
+      }
+
+      const { totalPages, text: pages } = await extractText(pdf, {
+        mergePages: false,
+      })
+      const parts: string[] = []
+      let textBytes = 0
+      for (const page of pages) {
+        const chunk = page.trim()
+        if (chunk) {
+          parts.push(chunk)
+          textBytes += Buffer.byteLength(chunk, "utf8")
+        }
+        if (textBytes >= PDF_EXTRACT_TEXT_SOFT_LIMIT_BYTES) {
+          break
+        }
+      }
+      const text = joinPdfTextChunks(parts)
+      if (totalPages >= 40) {
+        console.error("[extract] pdf_plain_text", {
+          totalPages,
+          pagesUsed: parts.length,
+          textBytes: Buffer.byteLength(text, "utf8"),
+        })
+      }
+      return text
+    } finally {
+      await pdf.loadingTask.destroy().catch(() => undefined)
+    }
+  } catch (err) {
+    console.error("[extract] pdf_plain_text_failed", {
+      error: err instanceof Error ? err.message.slice(0, 200) : "unknown",
+      name: err instanceof Error ? err.name : "unknown",
+    })
+    return ""
   }
-  return text
 }
 
 export async function extractDocumentContent(
@@ -201,25 +199,12 @@ export async function extractDocumentContent(
   }
 
   if (isPdf(mimeType, fileName)) {
-    try {
-      const text = await extractPdfPlainText(buffer)
-      if (!isMostlyNoisePdfText(text)) {
-        return { kind: "text", text }
-      }
-      const { PDFParse } = loadPdfParse()
-      const parser = new PDFParse(pdfParseLoadOptions(buffer))
-      try {
-        // 本文が空 → 画像PDFの可能性。1ページ目を送る
-        return await extractScanPdfAsImage(parser, text)
-      } finally {
-        await parser.destroy().catch(() => undefined)
-      }
-    } catch {
-      return {
-        kind: "text",
-        text: "（PDFのテキスト抽出に失敗しました。文字の入ったPDFか、画像が鮮明かご確認ください）",
-      }
+    const text = await extractPdfPlainText(buffer)
+    if (!isMostlyNoisePdfText(text) && !isFailedExtractPlaceholder(text)) {
+      return { kind: "text", text }
     }
+    console.error("[extract] pdf_text_empty", { bytes: buffer.byteLength })
+    return { kind: "empty", text: "" }
   }
 
   if (isTextLike(mimeType, fileName)) {
@@ -227,7 +212,6 @@ export async function extractDocumentContent(
     return { kind: "text", text }
   }
 
-  // Excel 等は当面ファイル名のみヒント
   return {
     kind: "text",
     text: `（バイナリ形式のため本文抽出をスキップしました。ファイル名: ${fileName.replace(/[^\w.\-一-龥ぁ-んァ-ン]/g, "_")}）`,

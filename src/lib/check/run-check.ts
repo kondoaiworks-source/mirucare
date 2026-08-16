@@ -1,5 +1,8 @@
 import { createServiceClient } from "@/lib/supabase/server"
-import { extractDocumentContent } from "@/lib/check/extract"
+import {
+  extractDocumentContent,
+  shouldSkipDifyForExtract,
+} from "@/lib/check/extract"
 import { runDifyCheck } from "@/lib/dify/client"
 import { decideMockMode } from "@/lib/dify/env"
 import {
@@ -46,8 +49,8 @@ export type RunCheckResult = {
   findingCount?: number
   usedFallback?: boolean
   reviewStatus?: "pending" | "approved"
-  /** live=本物の Dify / mock=ローカルモック / skipped_no_file|dify_error=未呼び出し */
-  mode?: "live" | "mock" | "skipped_no_file" | "dify_error"
+  /** live=本物の Dify / mock=ローカルモック / skipped_no_file|dify_error|unreadable=未呼び出し */
+  mode?: "live" | "mock" | "skipped_no_file" | "dify_error" | "unreadable"
 }
 
 type AdminClient = ReturnType<typeof createServiceClient>
@@ -68,6 +71,7 @@ type SetDoc = {
 
 type ExtractedDoc = {
   doc: SetDoc
+  kind?: "text" | "image" | "empty"
   text?: string
   imageBase64?: string
   imageMimeType?: string
@@ -158,6 +162,8 @@ export async function runDocumentCheck(
   let usedFallback = false
   let skippedAll = true
   let anyDifyError = false
+  let anyUnreadable = false
+  let calledDify = false
 
   for (const item of extracted) {
     const isPrimary = item.doc.id === primaryId
@@ -186,6 +192,8 @@ export async function runDocumentCheck(
     if (one.usedFallback) usedFallback = true
     if (!item.downloadFailed) skippedAll = false
     if (one.mode === "dify_error") anyDifyError = true
+    if (one.mode === "unreadable") anyUnreadable = true
+    if (one.mode === "live" || one.mode === "mock") calledDify = true
   }
 
   await admin
@@ -200,11 +208,13 @@ export async function runDocumentCheck(
   const mock = decideMockMode({ mockScenario: options.mockScenario }).mock
   const mode: RunCheckResult["mode"] = skippedAll
     ? "skipped_no_file"
-    : anyDifyError && totalFindings === catalogFindings.length + setDocs.length
-      ? "dify_error"
-      : mock
-        ? "mock"
-        : "live"
+    : anyUnreadable && !calledDify
+      ? "unreadable"
+      : anyDifyError && totalFindings === catalogFindings.length + setDocs.length
+        ? "dify_error"
+        : mock
+          ? "mock"
+          : "live"
 
   console.error("[check] finished", {
     documentId: primaryId,
@@ -278,6 +288,7 @@ async function extractSetMember(
   })
   return {
     doc,
+    kind: extracted.kind,
     text: extracted.text,
     imageBase64: extracted.imageBase64,
     imageMimeType: extracted.imageMimeType,
@@ -345,6 +356,30 @@ async function finishSetMember(
     basisCount: rulesResolution.regulatoryBasis.length,
     truncated: rulesSnapshot.truncated,
   })
+
+  if (shouldSkipDifyForExtract(item)) {
+    console.error("[check] skip_dify_unreadable", {
+      documentId: doc.id,
+      kind: item.kind ?? "text",
+      textLength: item.text?.length ?? 0,
+    })
+    await saveFallbackAndFinish(admin, {
+      documentId: doc.id,
+      organizationId: opts.organizationId,
+      skipReview: opts.skipReview,
+      reason: "extract_unreadable",
+      rulesSnapshot,
+      extraFindings: catalogFindings,
+      deferReviewed: opts.deferReviewed,
+      unreadable: true,
+    })
+    return {
+      ok: true,
+      findingCount: 1 + catalogFindings.length,
+      usedFallback: true,
+      mode: "unreadable",
+    }
+  }
 
   let difyResult
   try {
@@ -540,11 +575,14 @@ async function saveFallbackAndFinish(
     rulesSnapshot?: ReturnType<typeof toAppliedRulesSnapshot>
     extraFindings?: DifyFindingItem[]
     deferReviewed?: boolean
+    unreadable?: boolean
   }
 ) {
   void opts.reason
   const reviewStatus = opts.skipReview ? "approved" : "pending"
-  const { buildFallbackFinding } = await import("@/lib/dify/parse")
+  const { buildFallbackFinding, buildUnreadableFinding } = await import(
+    "@/lib/dify/parse"
+  )
   const { anonymizeFindingFields } = await import("@/lib/privacy/anonymize")
   const extra = opts.extraFindings ?? []
 
@@ -577,7 +615,9 @@ async function saveFallbackAndFinish(
     }
   })
 
-  const fb = buildFallbackFinding()
+  const fb = opts.unreadable
+    ? buildUnreadableFinding()
+    : buildFallbackFinding()
   const anon = anonymizeFindingFields({
     title: fb.title ?? "ご確認ください",
     description: fb.description ?? "内容をご確認ください。",

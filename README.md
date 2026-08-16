@@ -185,6 +185,7 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
    - `mode: "live"` → 本物の Dify を呼んだ
    - `mode: "mock"` → モック（本番では出ない想定）
    - `mode: "skipped_no_file"` → Storage 取得失敗で **Dify 未呼び出し**
+   - `mode: "unreadable"` → 本文が取れず **Dify 未呼び出し**（画面は「本文を読み取れませんでした」）
    - `mode: "dify_error"` → キー未設定 / `DIFY_MOCK=1` などで拒否
 3. 「AIが確認できませんでした…」ではなく、具体的な指摘タイトルが出れば連携成功
 4. Vercel → Deployments → Runtime Logs で検索
@@ -195,7 +196,8 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
 6. **スキャンPDF（画像のみのPDF）**: 文字がほぼ無い場合、アプリが1ページ目を PNG 化し File Upload → top-level `files`（variable=`document_image`）で送ります。Vercel Logs に `[dify] file_uploaded` / `hasVisionFile: true` が出ること
 7. Dify ログで FAILURE かつ `messages: at least one message is required` のときは、Vision が LEGACY `files` のままか、`document_image` 未接続です。開始に `document_image`（ファイルリスト）を追加し Vision に接続して再公開。アプリは同エラー時に `files` なしで1回再試行します（ログ: `[dify] retry_without_files`）
 8. Dify が `meta.unreadable: true` を返した場合、画面に「本文を読み取れませんでした」と出ること
-9. **手元で文字をコピーできる日本語PDF** を上げたとき、`kind: "text"` かつ `textLength` が数十以上であること（`[check] extracted`）。`[extract] pdf_runtime` の `hasCMapDir: true` が出ること。スキャン扱い（`pdf_scan_as_image`）にしないこと
+9. **手元で文字をコピーできる日本語PDF** を上げたとき、`kind: "text"` かつ `[check] extracted` の `textLength` が数十以上であること（失敗定型の **44ではない**）。`[extract] pdf_runtime` の `cMapUrlKind: "http"` が出ること。`[extract] pdf_parse_text_failed` は出ないこと
+10. 本文が空のときは Dify を呼ばず、`[check] skip_dify_unreadable` のあと画面が「本文を読み取れませんでした」になること（指摘0件にしない）
 
 ### 本番 Dify への切替
 

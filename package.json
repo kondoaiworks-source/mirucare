@@ -18,7 +18,8 @@
     "backfill:knowledge-snapshots": "tsx --env-file=.env.local scripts/backfill-knowledge-snapshots.ts",
     "seed:rule-sources": "tsx --env-file=.env.local scripts/seed-rule-source-urls.ts",
     "seed:phase1-ai-rules": "tsx --env-file=.env.local scripts/seed-phase1-ai-rules.ts",
-    "unlock-user": "tsx --env-file=.env.local scripts/unlock-user.ts"
+    "unlock-user": "tsx --env-file=.env.local scripts/unlock-user.ts",
+    "postinstall": "node scripts/copy-pdfjs-cmaps.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
