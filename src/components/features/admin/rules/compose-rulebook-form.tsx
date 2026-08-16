@@ -169,7 +169,7 @@ export function ComposeRulebookForm({
           {RULES_UI.composeRulebook}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          ①領域を選び、②国・県の資料から共通の下書き、③自治体の資料から市の下書き、の順です。確定するまでチェックには使いません。
+          ①領域を選び、②{RULES_UI.composeNationalPrefectureRules}、③{RULES_UI.composeCityRules}、の順です。確定するまでチェックには使いません。
         </p>
       </div>
 
@@ -181,8 +181,8 @@ export function ComposeRulebookForm({
           </AlertTitle>
           <AlertDescription className="text-base leading-relaxed">
             {initialCitySlug
-              ? "原文を確認したうえで、この市の下書きを作り直してください。"
-              : "原文を確認したうえで、国・県の下書きを作り直してください。市の資料なら、③で自治体を選んでください。"}
+              ? "原文を確認したうえで、上記自治体のルール案を生成し直してください。"
+              : "原文を確認したうえで、国・県のルール案を生成し直してください。市の資料なら、③で自治体を選んでください。"}
             確定するまでチェックには使いません。
           </AlertDescription>
         </Alert>
@@ -282,7 +282,7 @@ export function ComposeRulebookForm({
           ② 国・県の資料を確認する
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          全市で使う共通ルールです。読むPDFが無ければここで置きます。参考リンクはリンク集です。下書きを作ったあと、直して確定してください。
+          全市で使う共通ルールです。読むPDFが無ければここで置きます。参考リンクはリンク集です。ルール案を生成したあと、直して確定してください。
         </p>
         {bookLoading && !book ? (
           <p className="text-base text-muted-foreground">読み込み中です。</p>
@@ -334,7 +334,7 @@ export function ComposeRulebookForm({
               資料を読んでいます…
             </>
           ) : (
-            "国・県の下書きを作る"
+            {RULES_UI.composeNationalPrefectureRules}
           )}
         </Button>
       </section>
@@ -402,7 +402,7 @@ export function ComposeRulebookForm({
               資料を読んでいます…
             </>
           ) : (
-            "この市の下書きを作る"
+            {RULES_UI.composeCityRules}
           )}
         </Button>
       </section>
