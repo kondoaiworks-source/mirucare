@@ -235,7 +235,8 @@ export async function extractPdfPlainText(buffer: Buffer): Promise<string> {
     }
   } catch (err) {
     console.error("[extract] pdf_plain_text_failed", {
-      error: err instanceof Error ? err.message.slice(0, 160) : "unknown",
+      error: err instanceof Error ? err.message.slice(0, 200) : "unknown",
+      name: err instanceof Error ? err.name : "unknown",
     })
     return ""
   }

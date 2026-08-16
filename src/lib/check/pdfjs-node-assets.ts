@@ -1,24 +1,39 @@
 /**
- * 本番（Vercel）で日本語PDFのCIDフォントを読むための Node 側資産。
- * pdf.js 既定の file:// / fetch はサーバーレスで例外になるため、fs で読む。
+ * 本番（Vercel）で日本語PDFを抜くための Node 側準備。
+ * カスタム Factory クラスを渡すとワーカー側で「s is not a function」になるため、
+ * CMap/フォントはファイルパスだけ渡し、Node 既定の読み込みに任せる。
  */
 
 import { existsSync } from "node:fs"
-import { readFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 
-export type PdfParseCtor = new (options: Record<string, unknown>) => {
+export type PdfParseInstance = {
   getText: (params?: Record<string, unknown>) => Promise<{ text?: string }>
   getInfo: () => Promise<{ total?: number }>
   getScreenshot: (opts?: Record<string, unknown>) => Promise<unknown>
   destroy: () => Promise<void>
 }
 
+export type PdfParseCtor = (new (
+  options: Record<string, unknown>
+) => PdfParseInstance) & {
+  setWorker?: (src: string) => string
+}
+
 const requireFromProject = createRequire(join(process.cwd(), "package.json"))
 
 function withTrailingSlash(dir: string): string {
   return dir.endsWith("/") ? dir : `${dir}/`
+}
+
+function pdfParsePackageDir(): string | null {
+  try {
+    return dirname(requireFromProject.resolve("pdf-parse/package.json"))
+  } catch {
+    const fallback = join(process.cwd(), "node_modules", "pdf-parse")
+    return existsSync(fallback) ? fallback : null
+  }
 }
 
 export function resolvePdfjsAssetDir(
@@ -43,61 +58,60 @@ export function resolvePdfjsAssetDir(
   return null
 }
 
-class NodeFsCMapReaderFactory {
-  baseUrl: string | null
-  isCompressed: boolean
-
-  constructor(opts: { baseUrl?: string | null; isCompressed?: boolean }) {
-    this.baseUrl = opts.baseUrl ?? null
-    this.isCompressed = opts.isCompressed !== false
+function resolvePdfWorkerPath(): string | null {
+  const roots: string[] = []
+  try {
+    roots.push(dirname(requireFromProject.resolve("pdfjs-dist/package.json")))
+  } catch {
+    // トレース漏れ時は cwd 側を試す
   }
-
-  async fetch({ name }: { name: string }) {
-    if (!this.baseUrl) {
-      throw new Error("cMapUrl がありません。")
-    }
-    if (!name) {
-      throw new Error("CMap 名がありません。")
-    }
-    const file = join(
-      this.baseUrl,
-      this.isCompressed ? `${name}.bcmap` : name
-    )
-    const buf = await readFile(file)
-    return {
-      cMapData: new Uint8Array(buf),
-      isCompressed: this.isCompressed,
-    }
+  roots.push(join(process.cwd(), "node_modules", "pdfjs-dist"))
+  for (const root of roots) {
+    const worker = join(root, "legacy", "build", "pdf.worker.mjs")
+    if (existsSync(worker)) return worker
   }
+  return null
 }
 
-class NodeFsStandardFontDataFactory {
-  baseUrl: string | null
-
-  constructor(opts: { baseUrl?: string | null }) {
-    this.baseUrl = opts.baseUrl ?? null
+function readPdfParseCtor(): PdfParseCtor {
+  const pkgDir = pdfParsePackageDir()
+  const cjsPath = pkgDir
+    ? join(pkgDir, "dist", "pdf-parse", "cjs", "index.cjs")
+    : null
+  const loaded: unknown = cjsPath
+    ? requireFromProject(cjsPath)
+    : requireFromProject("pdf-parse")
+  const mod = loaded as {
+    PDFParse?: PdfParseCtor
+    default?: { PDFParse?: PdfParseCtor } | PdfParseCtor
   }
-
-  async fetch({ filename }: { filename: string }) {
-    if (!this.baseUrl) {
-      throw new Error("standardFontDataUrl がありません。")
-    }
-    if (!filename) {
-      throw new Error("フォントファイル名がありません。")
-    }
-    const buf = await readFile(join(this.baseUrl, filename))
-    return new Uint8Array(buf)
+  const ctor =
+    mod.PDFParse ??
+    (typeof mod.default === "function"
+      ? (mod.default as PdfParseCtor)
+      : mod.default?.PDFParse)
+  if (typeof ctor !== "function") {
+    throw new Error("pdf-parse の読み込みに失敗しました。")
   }
+  return ctor
 }
+
+let cachedCtor: PdfParseCtor | null = null
+let loggedRuntime = false
 
 /**
  * pdf-parse の browser 向けエントリを避け、Node の CJS を読む。
  */
 export function loadPdfParse(): { PDFParse: PdfParseCtor } {
-  return requireFromProject("pdf-parse") as { PDFParse: PdfParseCtor }
+  if (cachedCtor) return { PDFParse: cachedCtor }
+  const PDFParse = readPdfParseCtor()
+  const workerSrc = resolvePdfWorkerPath()
+  if (workerSrc && typeof PDFParse.setWorker === "function") {
+    PDFParse.setWorker(workerSrc)
+  }
+  cachedCtor = PDFParse
+  return { PDFParse }
 }
-
-let loggedRuntime = false
 
 export function pdfParseLoadOptions(buffer: Buffer): Record<string, unknown> {
   const cMapUrl = resolvePdfjsAssetDir("cmaps")
@@ -108,6 +122,7 @@ export function pdfParseLoadOptions(buffer: Buffer): Record<string, unknown> {
       node: process.version,
       hasCMapDir: Boolean(cMapUrl),
       hasFontDir: Boolean(standardFontDataUrl),
+      hasWorker: Boolean(resolvePdfWorkerPath()),
     })
   }
 
@@ -124,11 +139,9 @@ export function pdfParseLoadOptions(buffer: Buffer): Record<string, unknown> {
   if (cMapUrl) {
     options.cMapUrl = cMapUrl
     options.cMapPacked = true
-    options.CMapReaderFactory = NodeFsCMapReaderFactory
   }
   if (standardFontDataUrl) {
     options.standardFontDataUrl = standardFontDataUrl
-    options.StandardFontDataFactory = NodeFsStandardFontDataFactory
   }
 
   return options
