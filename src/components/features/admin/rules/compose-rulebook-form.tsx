@@ -334,7 +334,7 @@ export function ComposeRulebookForm({
               資料を読んでいます…
             </>
           ) : (
-            {RULES_UI.composeNationalPrefectureRules}
+            RULES_UI.composeNationalPrefectureRules
           )}
         </Button>
       </section>
@@ -402,7 +402,7 @@ export function ComposeRulebookForm({
               資料を読んでいます…
             </>
           ) : (
-            {RULES_UI.composeCityRules}
+            RULES_UI.composeCityRules
           )}
         </Button>
       </section>
