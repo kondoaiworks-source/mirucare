@@ -19,7 +19,8 @@
     "seed:rule-sources": "tsx --env-file=.env.local scripts/seed-rule-source-urls.ts",
     "seed:phase1-ai-rules": "tsx --env-file=.env.local scripts/seed-phase1-ai-rules.ts",
     "unlock-user": "tsx --env-file=.env.local scripts/unlock-user.ts",
-    "postinstall": "node scripts/copy-pdfjs-cmaps.mjs"
+    "postinstall": "node scripts/copy-pdfjs-cmaps.mjs",
+    "generate:sample-check-pdf": "tsx scripts/generate-sample-check-pdf.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
@@ -48,6 +49,7 @@
     "unpdf": "^1.8.1"
   },
   "devDependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
     "@types/heic-convert": "^2.1.1",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
@@ -56,6 +58,7 @@
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
+    "pdf-lib": "^1.17.1",
     "postcss": "^8",
     "tailwindcss": "^4.3.2",
     "tsx": "^4.23.0",

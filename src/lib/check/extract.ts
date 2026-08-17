@@ -2,7 +2,10 @@
  * アップロードファイルからテキスト抽出。
  * PDF本文: unpdf（Vercel向け。ワーカーに Factory を渡さない）
  * 日本語 CMap: 本番は HTTP（/pdfjs/cmaps）
- * CSV・テキスト: UTF-8 / 画像: テキストなし（ビジョンへ委譲）
+ * CSV・テキスト: UTF-8 → document_text（Dify の document_image は付けない）
+ * 文字入りPDF: テキスト抽出 → document_text
+ * 画像: テキストなし（有効な Dify ファイルがあるときだけ document_image）
+ * スキャンPDF: 本文が取れなければ empty（OCR 未実装。画像として無理に送らない）
  */
 
 import { extractText, getDocumentProxy } from "unpdf"

@@ -193,11 +193,12 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
    - `[dify] check` で `parseOk: true` → 成功
    - `[dify] using_mock` / `[check] storage_download_failed` → **Dify は呼ばれていない**
 5. Dify の「ログ」に `kansatsu-check` の実行が増えていれば API 到達成功（「監視」のメッセージ数は Workflow では増えにくいことがあります）
-6. **スキャンPDF（画像のみのPDF）**: 文字がほぼ無い場合、アプリが1ページ目を PNG 化し File Upload → top-level `files`（variable=`document_image`）で送ります。Vercel Logs に `[dify] file_uploaded` / `hasVisionFile: true` が出ること
-7. Dify ログで FAILURE かつ `messages: at least one message is required` のときは、Vision が LEGACY `files` のままか、`document_image` 未接続です。開始に `document_image`（ファイルリスト）を追加し Vision に接続して再公開。アプリは同エラー時に `files` なしで1回再試行します（ログ: `[dify] retry_without_files`）
-8. Dify が `meta.unreadable: true` を返した場合、画面に「本文を読み取れませんでした」と出ること
-9. **手元で文字をコピーできる日本語PDF** を上げたとき、`kind: "text"` かつ `[check] extracted` の `textLength` が数十以上であること（失敗定型の **44ではない**）。`[extract] pdf_runtime` の `cMapUrlKind: "http"` が出ること。`[extract] pdf_parse_text_failed` は出ないこと
-10. 本文が空のときは Dify を呼ばず、`[check] skip_dify_unreadable` のあと画面が「本文を読み取れませんでした」になること（指摘0件にしない）
+6. **スキャンPDF（画像のみのPDF）**: 本文が取れない場合は Dify にファイルを無理に送らず、`[check] skip_dify_unreadable` のあと「本文を読み取れませんでした」になります。文字入りPDFにして出し直してください
+7. Vercel Logs の `[dify] check` は `errorHint` だけでなく `errorCode` / `errorMessage` も確認する。`invalid_param` はファイル以外（例: `Model is not configured`）でも返ります。LLM ノードでモデル未設定のときは `errorHint: "model_not_configured"`
+8. Dify ログで FAILURE かつ `messages: at least one message is required` のときは、Vision が LEGACY `files` のままか、`document_image` 未接続です。開始の `document_image` は任意のファイルリストにし Vision に接続して再公開。有効な画像を送ったあと同エラーなら、アプリは `document_image` なしで1回再試行します（ログ: `[dify] retry_without_files`）
+9. Dify が `meta.unreadable: true` を返した場合、画面に「本文を読み取れませんでした」と出ること
+10. **サンプルPDF** `public/samples/check-text-readable.pdf`（再生成: `npm run generate:sample-check-pdf`）を上げたとき、`kind: "text"` かつ `[check] extracted` の `textLength` が数十以上であること（失敗定型の **44ではない**）。`[extract] pdf_runtime` の `cMapUrlKind: "http"` が出ること。`[extract] pdf_parse_text_failed` は出ないこと。プレビューで文字を選択できること
+11. 本文が空のときは Dify を呼ばず、`[check] skip_dify_unreadable` のあと画面が「本文を読み取れませんでした」になること（指摘0件にしない）
 
 ### 本番 Dify への切替
 
@@ -206,14 +207,28 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
 3. **`DIFY_MOCK=0`** にして開発サーバー再起動（本番は Vercel 再デプロイ）。`DIFY_MOCK=1` のままだと本物の Dify は呼ばれません
 4. 本番ではモックを黙って使わずエラーにします（監視が 0 のまま成功する事故を防ぐ）
 5. Workflow 入力変数は次を想定:
-   - `document_text` / `prefecture` / `municipality` / `doc_type` / `national`（`"1"`=国基準・`"0"`=自治体基準）
+   - **必須テキスト**: `document_text` / `prefecture` / `municipality` / `doc_type` / `national`（`"1"`=国基準・`"0"`=自治体基準）。アプリは互換のため `document_type`（`doc_type` と同値）も送ります
    - `approved_rules_json` / `regulatory_basis_json` / `check_as_of`（承認済みルール・根拠資料タイトル・基準日。未定義でも Workflow は動く想定）
-   - 画像・スキャンPDF時: File Upload API のあと、**リクエスト top-level の `files`** に `variable: "document_image"` で載せる（`inputs` 内に File を埋め込まない）
-   - **Dify 開始ノード**: ファイルリスト変数 **`document_image`** を追加（必須オフ）。LLM Vision には LEGACY `files` ではなく **`document_image`** を接続して公開
+   - **`document_image`（ファイルリスト・必須オフ）**: 画像を File Upload したあと、**有効なファイルがあるときだけ** `inputs.document_image` に `{ type, transfer_method: "local_file", upload_file_id }` の配列を載せる。CSV・文字入りPDFではキーごと送らない（`[]` / `null` / `""` も送らない）
+   - 開始ノードに `document_image` がある場合は必須オフ。テキストだけで実行できることを Dify 上で確認して再公開する
+   - LLM ノードでモデルが未設定だと HTTP 400 `Model is not configured` になります（ファイル有無とは別）
    - 変数名が違う場合は Vercel / `.env.local` の `DIFY_FILE_INPUT_KEY` を合わせる（既定: `document_image`）
 6. Workflow 出力は JSON（例: `{ "findings": [{ "severity", "title", "description", "basis", "suggestion" }] }`）。出力変数名は `check_result` / `result` / `text` / `answer` / `output` / `findings` などに対応。パースできないと「AIが確認できませんでした…」になります
 7. 読めない場合は `{ "findings": [], "meta": { "unreadable": true, "model_notes": "…" } }` を返すと、アプリが「本文を読み取れませんでした」と表示します
-8. 失敗時は Vercel Runtime Logs の `[dify] check` / `[dify] file_uploaded` / `[dify] retry_without_files` を確認（個人情報は含めません）
+8. 失敗時は Vercel Runtime Logs の `[dify] request payload check` / `[dify] check` / `[dify] file_uploaded` / `[dify] retry_without_files` を確認（個人情報は含めません）
+
+## 動作確認手順（Dify payload: CSV / 文字PDF / 画像）
+
+CSV・文字入りPDFは `document_text` で点検し、`document_image` は有効な画像があるときだけ送ります。
+
+1. `npx vitest run src/lib/dify/workflow-payload.test.ts src/lib/dify/errors.test.ts src/lib/dify/client.test.ts src/lib/check/extract.test.ts` が PASS すること
+2. 開発サーバーのログ `[dify] request payload check` で次を確認する
+   - CSV / 文字入りPDF: `hasDocumentImage: false`、`documentImageCount: 0`、`inputKeys` に `document_text` / `doc_type` / `document_type` / `national` があり `document_image` が無い
+   - 画像: File Upload 成功時のみ `hasDocumentImage: true`、空配列は付かない
+3. `/check/upload` から `public/samples/attendance-service-records.csv`（提供記録）を上げ、本文が取れ `document_image` が送られないこと
+4. `/check/upload` から `public/samples/check-text-readable.pdf` を上げ、本文抽出のあと `document_image` が送られないこと
+5. 画像を上げたときは `[dify] file_uploaded` のあと `inputs.document_image` に `upload_file_id` があること。空や不正なオブジェクトは送らない
+6. `[dify] check` の `errorHint` がかつての `invalid_file_param` でも、`errorMessage` が `Model is not configured` ならファイルではなく Dify の LLM ノードでモデルを設定して再公開する
 
 ## 動作確認手順（書類同士：ケアプラン更新日と計画書の日付）
 
@@ -221,7 +236,7 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
 
 1. SQL Editor で `supabase/migrations/20260816090000_document_check_set.sql` を実行する
 2. `npx vitest run src/lib/check/plan-date-alignment.test.ts src/lib/check/alignment-catalog.test.ts` が PASS すること
-3. 文字入りPDF（スキャン画像のみは対象外）に、次が読める形で入っていること
+3. 文字入りPDF（スキャン画像のみは対象外）に、次が読める形で入っていること。確認用は `public/samples/check-text-readable.pdf`
    - ケアプラン（または居宅サービス計画）の更新日／変更日
    - 訪問介護計画の作成日／更新日が、それより前
    - 同じPDFでも、別PDFをまとめて上げてもよい
@@ -230,6 +245,17 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
 6. 日付が片方しか無い、または計画の日付が同じ／新しい場合は、この指摘が出ないこと
 7. 「このチェックで使った基準」に「計画の更新日の確認」が出ること（標準観点。ルールブック未確定でも載る）
 8. 複数ファイルのときは「今回一緒に入れた N件」と出ること。Vercel / 開発ログに `[check] plan_date_alignment` と `setSize` / `mismatched` が出ること（日付・氏名は出さない）
+
+## 動作確認手順（抽出確認用サンプルPDF）
+
+スキャンではなく、日本語フォントを埋め込んだ文字入りPDFです。CMap が無くても unpdf が本文を抜けます。
+
+1. `npx vitest run src/lib/check/extract.test.ts` が PASS すること（埋め込み日本語サンプルから本文と日付整合を拾う）
+2. `public/samples/check-text-readable.pdf` をプレビューで開き、文字を選択・コピーできること
+3. `/check/upload` で「ケアプランをチェックする」を選び、このPDFをアップロードしてチェックする
+4. ログ `[check] extracted` が `kind: "text"` かつ `textLength` が数十以上であること（「本文を読み取れませんでした」にならないこと）
+5. 結果の「書類同士のご確認」に、訪問介護計画の日付がケアプラン更新に追いついていない指摘が出ること
+6. 再生成する場合は `npm run generate:sample-check-pdf`（macOS は Arial Unicode、無い環境は Noto Sans JP を取得）
 
 ## 動作確認手順（STEP 5：ダッシュボードと期限アラート）
 

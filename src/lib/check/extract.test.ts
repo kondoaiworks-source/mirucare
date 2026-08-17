@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
   extractPdfPlainText,
+  extractDocumentContent,
   isFailedExtractPlaceholder,
   isMostlyNoisePdfText,
   joinPdfTextChunks,
@@ -8,6 +11,11 @@ import {
   PDF_TEXT_PAGE_CHUNK,
   shouldSkipDifyForExtract,
 } from "@/lib/check/extract"
+import { findPlanDateAlignmentFinding } from "@/lib/check/plan-date-alignment"
+import {
+  SAMPLE_CHECK_PDF_MUST_CONTAIN,
+  SAMPLE_CHECK_PDF_RELATIVE_PATH,
+} from "@/lib/check/sample-check-pdf"
 
 function buildTextPdf(pages: string[]): Buffer {
   const fontId = 3 + pages.length * 2
@@ -75,6 +83,19 @@ describe("extractPdfPlainText", () => {
     expect(text).toContain("Visit care page 1")
     expect(text).toContain("Visit care page 12")
   })
+
+  it("埋め込み日本語のサンプルPDFから本文と日付整合を拾う", async () => {
+    const pdf = readFileSync(join(process.cwd(), SAMPLE_CHECK_PDF_RELATIVE_PATH))
+    const text = await extractPdfPlainText(pdf)
+    for (const phrase of SAMPLE_CHECK_PDF_MUST_CONTAIN) {
+      expect(text).toContain(phrase)
+    }
+    expect(isMostlyNoisePdfText(text)).toBe(false)
+    expect(shouldSkipDifyForExtract({ kind: "text", text })).toBe(false)
+    expect(findPlanDateAlignmentFinding(text)?.title).toContain(
+      "ケアプラン更新に追いついていない可能性"
+    )
+  })
 })
 
 describe("isMostlyNoisePdfText", () => {
@@ -119,6 +140,36 @@ describe("shouldSkipDifyForExtract", () => {
         text: "",
       })
     ).toBe(false)
+  })
+})
+
+describe("extractDocumentContent の経路", () => {
+  it("CSVはテキスト抽出し、画像は付けない", async () => {
+    const csv = readFileSync(
+      join(process.cwd(), "public/samples/attendance-service-records.csv")
+    )
+    const extracted = await extractDocumentContent(
+      csv,
+      "text/csv",
+      "service-records.csv"
+    )
+    expect(extracted.kind).toBe("text")
+    expect(extracted.imageBase64).toBeUndefined()
+    expect(extracted.text).toContain("ヘルパー名")
+    expect(extracted.text).toContain("山田花子")
+    expect(shouldSkipDifyForExtract(extracted)).toBe(false)
+  })
+
+  it("画像は Dify ファイル渡し用に base64 だけ返す", async () => {
+    const extracted = await extractDocumentContent(
+      Buffer.from("fake-image-bytes"),
+      "image/jpeg",
+      "record.jpg"
+    )
+    expect(extracted.kind).toBe("image")
+    expect(extracted.imageBase64).toBeTruthy()
+    expect(extracted.text).toBeUndefined()
+    expect(shouldSkipDifyForExtract(extracted)).toBe(false)
   })
 })
 
