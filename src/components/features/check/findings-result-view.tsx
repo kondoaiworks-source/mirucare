@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { CHECK_UI } from "@/lib/copy/check-ui"
 import {
   groupFindingsByStatus,
-  isFindingAddressed,
   sortFindings,
 } from "@/lib/check/findings-sort"
 import {
