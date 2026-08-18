@@ -6,6 +6,14 @@ import { isRuleInMunicipalityCheckScope } from "@/lib/rule-engine/check-rule-sco
 import { prefectureFromMunicipality } from "@/lib/municipalities"
 import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
 import type { DocType, FindingSeverity } from "@/types/database"
+import {
+  APPROVED_RULES_JSON_MAX_CHARS,
+  DB_GUIDANCE_LOAD_MAX_CHARS,
+  extractPriorityGuidance,
+  GUIDANCE_MIN_CHARS,
+  hashGuidanceText,
+  perRuleGuidanceBudget,
+} from "@/lib/rule-engine/guidance-for-dify"
 
 /** Dify 入力・書類スナップショット用のコンパクトなルール要約 */
 export type ResolvedCheckRule = {
@@ -37,21 +45,31 @@ export type CheckRulesResolution = {
   truncated: boolean
 }
 
+export type AppliedRulesSnapshotRule = {
+  versionId: string
+  code: string
+  title: string
+  versionNo: number
+  severity: FindingSeverity
+  effectiveFrom: string
+  effectiveTo: string | null
+  auditItemTitle: string | null
+  sourceTitle: string | null
+  /** 元 guidance の SHA-256 先頭 */
+  guidanceHash?: string
+  guidanceLength?: number
+  guidanceSentLength?: number
+  guidanceTruncated?: boolean
+  /** Dify へ実際に渡した本文（ルール。個人情報は含めない） */
+  guidanceSent?: string
+}
+
 export type AppliedRulesSnapshot = {
   asOf: string
   ruleCount: number
   truncated: boolean
-  rules: Array<{
-    versionId: string
-    code: string
-    title: string
-    versionNo: number
-    severity: FindingSeverity
-    effectiveFrom: string
-    effectiveTo: string | null
-    auditItemTitle: string | null
-    sourceTitle: string | null
-  }>
+  approvedRulesJsonLength?: number
+  rules: AppliedRulesSnapshotRule[]
   regulatoryBasis: Array<{
     id: string
     title: string
@@ -61,9 +79,27 @@ export type AppliedRulesSnapshot = {
   }>
 }
 
+export type SerializedRuleForDify = {
+  code: string
+  title: string
+  version_no: number
+  version_id: string
+  severity: FindingSeverity
+  guidance: string
+  effective_from: string
+  audit_item: string | null
+  guidance_truncated: boolean
+}
+
+export type SerializedRulesPayload = {
+  json: string
+  items: SerializedRuleForDify[]
+  approvedRulesJsonLength: number
+  budgetPerRule: number
+}
+
 const MAX_RULES = 40
 const MAX_BASIS = 12
-const MAX_GUIDANCE = 400
 
 type AdminClient = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -275,7 +311,10 @@ export async function resolveApprovedRulesForCheck(
       code: (rule.code as string) || "",
       title: (rule.title as string) || "",
       versionNo: Number(ver.version_no) || 1,
-      guidanceText: String(ver.guidance_text ?? "").slice(0, MAX_GUIDANCE),
+      guidanceText: String(ver.guidance_text ?? "").slice(
+        0,
+        DB_GUIDANCE_LOAD_MAX_CHARS
+      ),
       severity: (ver.severity as FindingSeverity) || "mid",
       effectiveFrom: ver.effective_from as string,
       effectiveTo: (ver.effective_to as string | null) ?? null,
@@ -362,21 +401,90 @@ async function loadRegulatoryBasis(
   }))
 }
 
-/** Dify 入力用の短い JSON 文字列（個人情報なし） */
-export function serializeRulesForDify(rules: ResolvedCheckRule[]): string {
-  if (rules.length === 0) return "[]"
-  return JSON.stringify(
-    rules.map((r) => ({
-      code: r.code,
-      title: r.title,
-      version_no: r.versionNo,
-      version_id: r.versionId,
-      severity: r.severity,
-      guidance: r.guidanceText,
-      effective_from: r.effectiveFrom,
-      audit_item: r.auditItemTitle,
+function toDifyRuleItem(
+  rule: ResolvedCheckRule,
+  budget: number
+): SerializedRuleForDify {
+  const extracted = extractPriorityGuidance(rule.guidanceText ?? "", budget)
+  return {
+    code: rule.code,
+    title: rule.title,
+    version_no: rule.versionNo,
+    version_id: rule.versionId,
+    severity: rule.severity,
+    guidance: extracted.text,
+    effective_from: rule.effectiveFrom,
+    audit_item: rule.auditItemTitle,
+    guidance_truncated: extracted.truncated,
+  }
+}
+
+/**
+ * Dify 入力用 JSON。1ルール 400 文字の先頭切り捨てはしない。
+ * 全体 60,000 文字以内に収まるよう、ルール数に応じた予算で優先箇所を残す。
+ */
+export function buildSerializedRulesPayload(
+  rules: ResolvedCheckRule[]
+): SerializedRulesPayload {
+  if (rules.length === 0) {
+    return {
+      json: "[]",
+      items: [],
+      approvedRulesJsonLength: 2,
+      budgetPerRule: GUIDANCE_PREFERRED_FALLBACK,
+    }
+  }
+
+  let budget = perRuleGuidanceBudget(rules.length)
+  let items = rules.map((r) => toDifyRuleItem(r, budget))
+  let json = JSON.stringify(items)
+
+  for (let i = 0; i < 6 && json.length > APPROVED_RULES_JSON_MAX_CHARS; i++) {
+    budget = Math.max(GUIDANCE_MIN_CHARS, Math.floor(budget * 0.82))
+    items = rules.map((r) => toDifyRuleItem(r, budget))
+    json = JSON.stringify(items)
+  }
+
+  if (json.length > APPROVED_RULES_JSON_MAX_CHARS) {
+    items = items.map((item) => ({
+      ...item,
+      guidance: item.guidance.slice(
+        0,
+        Math.max(200, Math.floor((APPROVED_RULES_JSON_MAX_CHARS / items.length) * 0.6))
+      ),
+      guidance_truncated: true,
     }))
-  ).slice(0, 60000)
+    json = JSON.stringify(items)
+  }
+
+  while (
+    json.length > APPROVED_RULES_JSON_MAX_CHARS &&
+    items.some((item) => item.guidance.length > 0)
+  ) {
+    items = items.map((item) => ({
+      ...item,
+      guidance: item.guidance.slice(
+        0,
+        Math.max(0, Math.floor(item.guidance.length * 0.7))
+      ),
+      guidance_truncated: true,
+    }))
+    json = JSON.stringify(items)
+  }
+
+  return {
+    json,
+    items,
+    approvedRulesJsonLength: json.length,
+    budgetPerRule: budget,
+  }
+}
+
+const GUIDANCE_PREFERRED_FALLBACK = 3_000
+
+/** Dify 入力用の JSON 文字列（個人情報なし） */
+export function serializeRulesForDify(rules: ResolvedCheckRule[]): string {
+  return buildSerializedRulesPayload(rules).json
 }
 
 export function serializeRegulatoryBasisForDify(
@@ -394,23 +502,41 @@ export function serializeRegulatoryBasisForDify(
 }
 
 export function toAppliedRulesSnapshot(
-  resolution: CheckRulesResolution
+  resolution: CheckRulesResolution,
+  sent?: SerializedRulesPayload
 ): AppliedRulesSnapshot {
+  const sentByVersion = new Map(
+    (sent?.items ?? []).map((item) => [item.version_id, item] as const)
+  )
   return {
     asOf: resolution.asOf,
     ruleCount: resolution.rules.length,
     truncated: resolution.truncated,
-    rules: resolution.rules.map((r) => ({
-      versionId: r.versionId,
-      code: r.code,
-      title: r.title,
-      versionNo: r.versionNo,
-      severity: r.severity,
-      effectiveFrom: r.effectiveFrom,
-      effectiveTo: r.effectiveTo,
-      auditItemTitle: r.auditItemTitle,
-      sourceTitle: r.sourceTitle,
-    })),
+    approvedRulesJsonLength: sent?.approvedRulesJsonLength,
+    rules: resolution.rules.map((r) => {
+      const item = sentByVersion.get(r.versionId)
+      const extracted = item
+        ? {
+            guidanceHash: hashGuidanceText(r.guidanceText ?? ""),
+            guidanceLength: (r.guidanceText ?? "").length,
+            guidanceSentLength: item.guidance.length,
+            guidanceTruncated: item.guidance_truncated,
+            guidanceSent: item.guidance,
+          }
+        : {}
+      return {
+        versionId: r.versionId,
+        code: r.code,
+        title: r.title,
+        versionNo: r.versionNo,
+        severity: r.severity,
+        effectiveFrom: r.effectiveFrom,
+        effectiveTo: r.effectiveTo,
+        auditItemTitle: r.auditItemTitle,
+        sourceTitle: r.sourceTitle,
+        ...extracted,
+      }
+    }),
     regulatoryBasis: resolution.regulatoryBasis.map((b) => ({
       id: b.id,
       title: b.title,

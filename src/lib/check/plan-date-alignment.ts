@@ -168,6 +168,17 @@ export function findPlanDateAlignmentFinding(
     basis: "書類同士の日付整合（計画の更新日の確認）",
     suggestion:
       "ケアプラン変更後に訪問介護計画を見直し、作成日・更新日がケアプランに追いついているかご確認ください。最終判断・提出は貴施設の責任で行ってください。",
+    checkType: "consistency",
+    comparison: [
+      {
+        source: "居宅サービス計画（ケアプラン）",
+        detail: `更新日：${care}`,
+      },
+      {
+        source: "訪問介護計画",
+        detail: `作成・更新日：${visit}`,
+      },
+    ],
   }
 }
 

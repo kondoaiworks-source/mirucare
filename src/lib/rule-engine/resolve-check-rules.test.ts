@@ -41,6 +41,7 @@ describe("resolve-check-rules serializers", () => {
     expect(json).toContain("HC_PLAN_01")
     expect(json).toContain("version_no")
     expect(json).toContain("v1")
+    expect(json).toContain("guidance_truncated")
   })
 
   it("行政根拠JSONにタイトルを含める", () => {

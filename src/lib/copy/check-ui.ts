@@ -62,6 +62,33 @@ export const CHECK_UI = {
     `これから確認 ${open}件 · あとで ${later}件 / 全${total}件`,
   alignmentSection: "書類同士のご確認",
   alignmentBadge: "書類同士",
+  checkResultsHeading: "AIチェック結果",
+  checkResultsTotal: (count: number) =>
+    `${count}件の確認事項があります`,
+  checkTypeConsistency: "記録の整合性チェック",
+  checkTypeConsistencyShort: "整合性",
+  checkTypeConsistencyHint:
+    "アップロードした書類やCSV同士の記載を比べた結果です。法令違反の判定ではありません。ご確認ください。",
+  checkTypeRule: "ルール適合チェック",
+  checkTypeRuleShort: "ルール",
+  checkTypeRuleHint:
+    "今回使った判定ルール（または根拠資料）との不適合の可能性があります。断定ではありません。",
+  checkTypeUnset: "分類未設定",
+  checkTypeUnsetHint:
+    "この指摘には分類情報がありません。書類間の不整合か、ルール適合かの区別が記録されていません。",
+  filterAll: (count: number) => `すべて ${count}`,
+  filterConsistency: (count: number) => `整合性 ${count}`,
+  filterRule: (count: number) => `ルール ${count}`,
+  filterUnset: (count: number) => `未設定 ${count}`,
+  filterEmpty: "この分類の指摘はありません",
+  comparisonLabel: "比較内容",
+  appliedRuleLabel: "適用ルール",
+  ruleBasisLabel: "ルールの根拠",
+  ruleCodeLabel: "ルールコード",
+  ruleNameLabel: "ルール名",
+  ruleVersionLabel: "ルールバージョン",
+  auditItemLabel: "監査項目",
+  checkAsOfLabel: "適用基準日",
   setTogetherHint: (count: number) =>
     `今回一緒に入れた ${count}件をまとめて見ています。`,
   setPrimaryLink: "今回一緒に入れた分の結果を見る",

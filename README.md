@@ -178,6 +178,24 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
 8. 設定 →「人間レビューをスキップ」をオフにすると、承認前は指摘が非表示になること
 9. 「対応した」操作が `finding_action_logs` に残ること（月次レポート集計用）
 
+## 動作確認手順（指摘の分類とルール本文の渡し方）
+
+書類同士の不整合と、適用ルール根拠の指摘を混ぜない。1ルール 400 文字の先頭切り捨てはしない。
+
+1. SQL Editor で `supabase/migrations/20260818090000_findings_check_type.sql` を実行する
+2. Dify Workflow のプロンプト／出力 JSON を [docs/dify-check-workflow.md](docs/dify-check-workflow.md) に合わせて再公開する（アプリの入力変数は増やさない）
+3. `npx vitest run src/lib/check/check-type.test.ts src/lib/rule-engine/guidance-for-dify.test.ts src/lib/rule-engine/resolve-check-rules.test.ts` が PASS すること
+4. `npm run test:check` が PASS すること（モックに `consistency` と `rule` が混在）
+5. `/check/demo/success` を開き、次を確認する
+   - 「AIチェック結果」に整合性・ルールの件数が分かれて出ること
+   - フィルター「すべて / 整合性 / ルール」で表示が切り替わること
+   - 整合性カードは「比較内容を表示」、ルールカードは「適用ルールを表示」があること
+6. 実チェック後の Vercel / 開発ログに `[dify] rules payload check` が出ること（`guidanceLength` / `guidanceTruncated` のみ。`document_text` や guidance 全文は出ない）
+7. 結果の「このチェックで使った基準」に、渡した本文の字数と（抜粋時は）その旨が出ること
+8. マイグレーション前の過去結果は画面エラーにならず「分類未設定」になること
+
+## 動作確認手順（STEP 4：Dify 接続）
+
 ### Dify が動いているか確かめる
 
 1. 本番で**新しい**書類をアップロードしてチェックする（古い結果は残るので新規が確実）
@@ -213,7 +231,7 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
    - 開始ノードに `document_image` がある場合は必須オフ。テキストだけで実行できることを Dify 上で確認して再公開する
    - LLM ノードでモデルが未設定だと HTTP 400 `Model is not configured` になります（ファイル有無とは別）
    - 変数名が違う場合は Vercel / `.env.local` の `DIFY_FILE_INPUT_KEY` を合わせる（既定: `document_image`）
-6. Workflow 出力は JSON（例: `{ "findings": [{ "severity", "title", "description", "basis", "suggestion" }] }`）。出力変数名は `check_result` / `result` / `text` / `answer` / `output` / `findings` などに対応。パースできないと「AIが確認できませんでした…」になります
+6. Workflow 出力は JSON（例: `{ "findings": [{ "check_type", "severity", "title", "description", "basis", "suggestion" }] }`）。`check_type` は `consistency`（書類同士）または `rule`（適用ルール）。詳細は [docs/dify-check-workflow.md](docs/dify-check-workflow.md)。出力変数名は `check_result` / `result` / `text` / `answer` / `output` / `findings` などに対応。パースできないと「AIが確認できませんでした…」になります
 7. 読めない場合は `{ "findings": [], "meta": { "unreadable": true, "model_notes": "…" } }` を返すと、アプリが「本文を読み取れませんでした」と表示します
 8. 失敗時は Vercel Runtime Logs の `[dify] request payload check` / `[dify] check` / `[dify] file_uploaded` / `[dify] retry_without_files` を確認（個人情報は含めません）
 

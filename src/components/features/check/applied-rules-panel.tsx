@@ -140,6 +140,13 @@ export function AppliedRulesPanel({
                         カテゴリ: {r.auditItemTitle}
                       </p>
                     ) : null}
+                    {typeof r.guidanceSentLength === "number" ? (
+                      <p className="mt-1 text-sm tabular-nums text-muted-foreground">
+                        渡した本文 {r.guidanceSentLength.toLocaleString("ja-JP")}字
+                        {r.guidanceTruncated ? "（容量のため一部抜粋）" : ""}
+                        {r.guidanceHash ? ` · 照合 ${r.guidanceHash}` : ""}
+                      </p>
+                    ) : null}
                     <p className="mt-1 text-sm tabular-nums text-muted-foreground">
                       適用開始 {formatDate(r.effectiveFrom)}
                       {r.effectiveTo

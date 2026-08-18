@@ -1,4 +1,8 @@
 import type { FindingSeverity } from "@/types/database"
+import type {
+  FindingCheckType,
+  FindingComparisonItem,
+} from "@/lib/check/check-type"
 
 /** Dify が返す想定の指摘1件 */
 export type DifyFindingItem = {
@@ -7,6 +11,14 @@ export type DifyFindingItem = {
   description?: string
   basis?: string
   suggestion?: string
+  checkType?: FindingCheckType
+  ruleCode?: string
+  ruleVersionId?: string
+  ruleTitle?: string
+  ruleVersionNo?: number
+  auditItem?: string
+  checkAsOf?: string
+  comparison?: FindingComparisonItem[]
 }
 
 export type DifyCheckResult = {

@@ -94,4 +94,74 @@ export function logDifyRequestPayloadCheck(options: {
     "[dify] request payload check",
     summarizeDifyRequestPayload(options)
   )
+  logDifyRulesPayloadCheck(options.inputs)
+}
+
+type ApprovedRuleLogItem = {
+  code: unknown
+  title: unknown
+  versionNo: unknown
+  versionId: unknown
+  severity: unknown
+  auditItem: unknown
+  guidanceLength: number
+  guidanceTruncated: boolean
+}
+
+/** 個人情報・guidance 全文は出さない */
+export function summarizeApprovedRulesForLog(inputs: DifyWorkflowInputs): {
+  inputKeys: string[]
+  checkAsOf: string
+  approvedRuleCount: number
+  approvedRules: ApprovedRuleLogItem[]
+  regulatoryBasisCount: number
+  approvedRulesJsonLength: number
+} {
+  const json =
+    typeof inputs.approved_rules_json === "string"
+      ? inputs.approved_rules_json
+      : "[]"
+  let parsed: unknown = []
+  try {
+    parsed = JSON.parse(json)
+  } catch {
+    parsed = []
+  }
+  const rows = Array.isArray(parsed) ? parsed : []
+  const approvedRules: ApprovedRuleLogItem[] = rows.map((row) => {
+    const r = row && typeof row === "object" ? (row as Record<string, unknown>) : {}
+    const guidance = typeof r.guidance === "string" ? r.guidance : ""
+    return {
+      code: r.code,
+      title: r.title,
+      versionNo: r.version_no,
+      versionId: r.version_id,
+      severity: r.severity,
+      auditItem: r.audit_item,
+      guidanceLength: guidance.length,
+      guidanceTruncated: r.guidance_truncated === true,
+    }
+  })
+  let basisCount = 0
+  if (typeof inputs.regulatory_basis_json === "string") {
+    try {
+      const basis = JSON.parse(inputs.regulatory_basis_json) as unknown
+      basisCount = Array.isArray(basis) ? basis.length : 0
+    } catch {
+      basisCount = 0
+    }
+  }
+  return {
+    inputKeys: Object.keys(inputs),
+    checkAsOf:
+      typeof inputs.check_as_of === "string" ? inputs.check_as_of : "",
+    approvedRuleCount: approvedRules.length,
+    approvedRules,
+    regulatoryBasisCount: basisCount,
+    approvedRulesJsonLength: json.length,
+  }
+}
+
+export function logDifyRulesPayloadCheck(inputs: DifyWorkflowInputs): void {
+  console.error("[dify] rules payload check", summarizeApprovedRulesForLog(inputs))
 }

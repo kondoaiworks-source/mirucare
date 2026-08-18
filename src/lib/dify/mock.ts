@@ -5,6 +5,13 @@ import { decideMockMode, isProductionRuntime } from "./env"
 const SUCCESS_JSON = JSON.stringify({
   findings: [
     {
+      check_type: "rule",
+      rule_code: "HC_CONSENT_DATE",
+      rule_version_id: "mock-version-consent",
+      rule_title: "同意日付の確認",
+      rule_version_no: 1,
+      audit_item: "利用者契約",
+      check_as_of: "2026-08-18",
       severity: "high",
       title: "同意欄の日付が空欄の可能性があります",
       description:
@@ -14,20 +21,34 @@ const SUCCESS_JSON = JSON.stringify({
         "同意を得た日付を記入し、署名または記名押印があるかご確認ください。電子同意の場合は同意日時の記録をご確認ください。",
     },
     {
+      check_type: "consistency",
       severity: "mid",
       title: "サービス提供日と計画の整合をご確認ください",
       description:
         "提供記録の日付と、ケアプラン上の予定日にずれがある可能性があります。記録の転記ミスがないかご確認ください。",
-      basis: "サービス提供記録の記載に関する留意事項",
+      comparison: [
+        {
+          source: "サービス提供記録",
+          detail: "2026/08/01 13:00～14:00",
+        },
+        {
+          source: "日報",
+          detail: "2026/08/01 13:30～14:30",
+        },
+      ],
       suggestion:
         "提供日・サービス内容・担当者を計画と突き合わせ、相違があれば理由をメモに残すことをおすすめします。",
     },
     {
+      check_type: "consistency",
       severity: "low",
       title: "書類名の表記ゆれがある可能性があります",
       description:
         "ファイル名と帳票タイトルの表記が一致していない可能性があります。参照時の混乱を防ぐため、統一をご検討ください。",
-      basis: "事業所内の帳票管理の推奨事項",
+      comparison: [
+        { source: "ファイル名", detail: "提供記録_8月.pdf" },
+        { source: "帳票タイトル", detail: "サービス実施記録" },
+      ],
       suggestion:
         "帳票タイトルと保存ファイル名を揃えると、後からの確認がしやすくなります。",
     },

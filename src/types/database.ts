@@ -67,6 +67,18 @@ export type Finding = {
   is_fallback: boolean
   /** ai=ルールブック経由 / alignment=書類同士の標準観点 */
   source_kind?: "ai" | "alignment"
+  /** consistency=書類同士 / rule=適用ルール / null=旧データ・未分類 */
+  check_type?: "consistency" | "rule" | null
+  rule_code?: string | null
+  rule_version_id?: string | null
+  rule_title?: string | null
+  rule_version_no?: number | null
+  audit_item?: string | null
+  finding_check_as_of?: string | null
+  check_meta?: {
+    schemaVersion?: number
+    comparison?: Array<{ source: string; detail: string }>
+  } | null
   /** セット表示用（この指摘の元ファイル名） */
   sourceFileName?: string | null
   sort_order: number
@@ -168,6 +180,7 @@ export type AppliedRulesSnapshot = {
   asOf: string
   ruleCount: number
   truncated: boolean
+  approvedRulesJsonLength?: number
   rules: Array<{
     versionId: string
     code: string
@@ -178,6 +191,11 @@ export type AppliedRulesSnapshot = {
     effectiveTo: string | null
     auditItemTitle: string | null
     sourceTitle: string | null
+    guidanceHash?: string
+    guidanceLength?: number
+    guidanceSentLength?: number
+    guidanceTruncated?: boolean
+    guidanceSent?: string
   }>
   regulatoryBasis: Array<{
     id: string

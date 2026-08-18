@@ -24,7 +24,7 @@ import {
 import {
   resolveApprovedRulesForCheck,
   serializeRegulatoryBasisForDify,
-  serializeRulesForDify,
+  buildSerializedRulesPayload,
   toAppliedRulesSnapshot,
 } from "@/lib/rule-engine/resolve-check-rules"
 import {
@@ -33,6 +33,11 @@ import {
 } from "@/lib/documents/retention"
 import { purgeDocumentOriginal } from "@/lib/documents/purge-originals"
 import type { DocumentStatus } from "@/types/database"
+import {
+  buildFindingCheckFields,
+  isMissingCheckTypeColumnError,
+  stripFindingCheckTypeColumns,
+} from "@/lib/check/finding-from-dify"
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -340,14 +345,18 @@ async function finishSetMember(
     docType: doc.doc_type,
   })
   const rulesForCheck = withBuiltinPlanDateAlignmentRule(rulesResolution.rules)
-  const rulesSnapshot = toAppliedRulesSnapshot({
-    ...rulesResolution,
-    rules: rulesForCheck,
-    truncated:
-      rulesResolution.truncated ||
-      rulesResolution.rules.filter((r) => r.code !== PLAN_DATE_ALIGNMENT_CODE)
-        .length >= 40,
-  })
+  const serializedRules = buildSerializedRulesPayload(rulesForCheck)
+  const rulesSnapshot = toAppliedRulesSnapshot(
+    {
+      ...rulesResolution,
+      rules: rulesForCheck,
+      truncated:
+        rulesResolution.truncated ||
+        rulesResolution.rules.filter((r) => r.code !== PLAN_DATE_ALIGNMENT_CODE)
+          .length >= 40,
+    },
+    serializedRules
+  )
 
   console.error("[check] applied_rules", {
     documentId: doc.id,
@@ -391,7 +400,7 @@ async function finishSetMember(
       documentText: item.text,
       imageBase64: item.imageBase64,
       imageMimeType: item.imageMimeType,
-      approvedRulesJson: serializeRulesForDify(rulesForCheck),
+      approvedRulesJson: serializedRules.json,
       regulatoryBasisJson: serializeRegulatoryBasisForDify(
         rulesResolution.regulatoryBasis
       ),
@@ -444,14 +453,24 @@ async function finishSetMember(
       })
       const isAlignment =
         catalogFindings.length > 0 && isSimilarPlanDateFinding(f)
+      const checkFields = buildFindingCheckFields(f, {
+        isAlignment,
+        checkAsOf: rulesSnapshot.asOf,
+      })
+      const basisAnon = anonymizeFindingFields({
+        title: anon.title,
+        description: anon.description,
+        basis: checkFields.basis,
+        suggestion: anon.suggestion,
+      })
       return {
         document_id: doc.id,
         organization_id: opts.organizationId,
         severity: normalizeSeverity(f.severity),
-        title: anon.title,
-        description: anon.description,
-        basis: anon.basis,
-        suggestion: anon.suggestion,
+        title: basisAnon.title,
+        description: basisAnon.description,
+        basis: basisAnon.basis,
+        suggestion: basisAnon.suggestion,
         status: "open" as const,
         review_status: reviewStatus,
         is_fallback:
@@ -460,6 +479,14 @@ async function finishSetMember(
         sort_order: isAlignment
           ? index
           : 100 + severityOrder[normalizeSeverity(f.severity)] * 100 + index,
+        check_type: checkFields.check_type,
+        rule_code: checkFields.rule_code,
+        rule_version_id: checkFields.rule_version_id,
+        rule_title: checkFields.rule_title,
+        rule_version_no: checkFields.rule_version_no,
+        audit_item: checkFields.audit_item,
+        finding_check_as_of: checkFields.finding_check_as_of,
+        check_meta: checkFields.check_meta,
       }
     })
     .sort((a, b) => a.sort_order - b.sort_order)
@@ -476,34 +503,40 @@ async function finishSetMember(
       .from("findings")
       .insert(rows)
       .select("id, title, description, suggestion")
-    if (
-      first.error &&
-      String(first.error.message ?? "").includes("source_kind")
-    ) {
-      const fallbackRows = rows.map((row) => {
-        const { source_kind: _sourceKind, ...rest } = row
-        void _sourceKind
-        return rest
-      })
-      const retry = await admin
-        .from("findings")
-        .insert(fallbackRows)
-        .select("id, title, description, suggestion")
-      if (retry.error) {
+    if (first.error) {
+      const msg = String(first.error.message ?? "")
+      let retryRows: Record<string, unknown>[] = rows.map((row) => ({ ...row }))
+      if (msg.includes("source_kind")) {
+        retryRows = retryRows.map((row) => {
+          const { source_kind: _sourceKind, ...rest } = row
+          void _sourceKind
+          return rest
+        })
+      }
+      if (isMissingCheckTypeColumnError(msg)) {
+        retryRows = retryRows.map((row) => stripFindingCheckTypeColumns(row))
+      }
+      if (msg.includes("source_kind") || isMissingCheckTypeColumnError(msg)) {
+        const retry = await admin
+          .from("findings")
+          .insert(retryRows)
+          .select("id, title, description, suggestion")
+        if (retry.error) {
+          return {
+            ok: false,
+            error: "チェック結果の保存に失敗しました。",
+            findingCount: 0,
+            usedFallback: false,
+          }
+        }
+        inserted = (retry.data ?? []) as InsertedFinding[]
+      } else {
         return {
           ok: false,
           error: "チェック結果の保存に失敗しました。",
           findingCount: 0,
           usedFallback: false,
         }
-      }
-      inserted = (retry.data ?? []) as InsertedFinding[]
-    } else if (first.error) {
-      return {
-        ok: false,
-        error: "チェック結果の保存に失敗しました。",
-        findingCount: 0,
-        usedFallback: false,
       }
     } else {
       inserted = (first.data ?? []) as InsertedFinding[]
@@ -593,10 +626,14 @@ async function saveFallbackAndFinish(
     .is("deleted_at", null)
 
   const extraRows = extra.map((f, index) => {
+    const checkFields = buildFindingCheckFields(f, {
+      isAlignment: true,
+      checkAsOf: opts.rulesSnapshot?.asOf ?? "",
+    })
     const anon = anonymizeFindingFields({
       title: (f.title ?? "ご確認ください").slice(0, 200),
       description: (f.description ?? "内容をご確認ください。").slice(0, 4000),
-      basis: f.basis?.slice(0, 1000) ?? null,
+      basis: checkFields.basis,
       suggestion: f.suggestion?.slice(0, 4000) ?? null,
     })
     return {
@@ -612,6 +649,14 @@ async function saveFallbackAndFinish(
       is_fallback: false,
       source_kind: "alignment" as const,
       sort_order: index,
+      check_type: checkFields.check_type,
+      rule_code: checkFields.rule_code,
+      rule_version_id: checkFields.rule_version_id,
+      rule_title: checkFields.rule_title,
+      rule_version_no: checkFields.rule_version_no,
+      audit_item: checkFields.audit_item,
+      finding_check_as_of: checkFields.finding_check_as_of,
+      check_meta: checkFields.check_meta,
     }
   })
 

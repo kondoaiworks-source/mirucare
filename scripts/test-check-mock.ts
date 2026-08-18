@@ -27,7 +27,8 @@ async function testSuccess() {
   assert.equal(result.parseOk, true)
   assert.equal(result.usedFallback, false)
   assert.ok(result.findings.length >= 2)
-  assert.ok(result.findings.some((f) => f.severity === "high"))
+  assert.ok(result.findings.some((f) => f.checkType === "consistency"))
+  assert.ok(result.findings.some((f) => f.checkType === "rule" && f.ruleCode))
   for (const f of result.findings) {
     const blob = `${f.title}${f.description}${f.suggestion}`
     assert.equal(

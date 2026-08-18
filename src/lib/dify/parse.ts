@@ -1,5 +1,10 @@
 import type { DifyCheckResult, DifyFindingItem } from "./types"
 import { CHECK_UI } from "@/lib/copy/check-ui"
+import {
+  formatComparisonText,
+  parseComparisonItems,
+  parseFindingCheckType,
+} from "@/lib/check/check-type"
 
 const MAX_PARSE_RETRIES = 2
 
@@ -57,13 +62,60 @@ function normalizeFindingItem(raw: unknown): DifyFindingItem {
     return {}
   }
   const f = raw as Record<string, unknown>
+  const comparison = parseComparisonFromFinding(f)
+  const basisText =
+    comparison.length > 0
+      ? formatComparisonText(comparison) ?? fieldToText(f.basis)
+      : fieldToText(f.basis)
+  const versionNo = parseOptionalNumber(f.rule_version_no ?? f.ruleVersionNo)
   return {
     severity: typeof f.severity === "string" ? f.severity : undefined,
     title: typeof f.title === "string" ? f.title : undefined,
     description: typeof f.description === "string" ? f.description : undefined,
-    basis: fieldToText(f.basis),
+    basis: basisText,
     suggestion: fieldToText(f.suggestion),
+    checkType: parseFindingCheckType(f.check_type ?? f.checkType),
+    ruleCode: optionalString(f.rule_code ?? f.ruleCode),
+    ruleVersionId: optionalString(f.rule_version_id ?? f.ruleVersionId),
+    ruleTitle: optionalString(f.rule_title ?? f.ruleTitle),
+    ruleVersionNo: versionNo,
+    auditItem: optionalString(f.audit_item ?? f.auditItem),
+    checkAsOf: optionalString(f.check_as_of ?? f.checkAsOf),
+    comparison: comparison.length > 0 ? comparison : undefined,
   }
+}
+
+function optionalString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  const t = value.trim()
+  return t.length > 0 ? t : undefined
+}
+
+function parseOptionalNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string" && value.trim()) {
+    const n = Number(value)
+    if (Number.isFinite(n)) return n
+  }
+  return undefined
+}
+
+function parseComparisonFromFinding(
+  f: Record<string, unknown>
+): ReturnType<typeof parseComparisonItems> {
+  const direct = parseComparisonItems(f.comparison)
+  if (direct.length > 0) return direct
+  if (f.basis && typeof f.basis === "object" && !Array.isArray(f.basis)) {
+    const obj = f.basis as Record<string, unknown>
+    const nested = parseComparisonItems(obj.comparison)
+    if (nested.length > 0) return nested
+    const left = obj.left ?? obj.a ?? obj.source
+    const right = obj.right ?? obj.b ?? obj.target
+    if (left && right && typeof left === "object" && typeof right === "object") {
+      return parseComparisonItems([left, right])
+    }
+  }
+  return []
 }
 
 function fieldToText(value: unknown): string | undefined {
@@ -74,7 +126,9 @@ function fieldToText(value: unknown): string | undefined {
   }
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>
+    const comparison = formatComparisonText(parseComparisonItems(obj.comparison))
     const parts: string[] = []
+    if (comparison) parts.push(comparison)
     if (typeof obj.source_name === "string" && obj.source_name.trim()) {
       parts.push(obj.source_name.trim())
     }
