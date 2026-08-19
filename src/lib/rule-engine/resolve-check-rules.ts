@@ -98,7 +98,7 @@ export type SerializedRulesPayload = {
   budgetPerRule: number
 }
 
-const MAX_RULES = 40
+const MAX_RULES = 60
 const MAX_BASIS = 12
 
 type AdminClient = {
@@ -166,7 +166,7 @@ export async function resolveApprovedRulesForCheck(
     docType: DocType | string
     asOf?: string
     limit?: number
-    /** true=Phase1項目のみ（既定は CHECK_RULES_SCOPE） */
+    /** true=従来の基本突合のみ。既定は承認済み頻出観点ルールを使う */
     phase1Only?: boolean
   }
 ): Promise<CheckRulesResolution> {
@@ -338,6 +338,13 @@ export async function resolveApprovedRulesForCheck(
 
   if (phase1Only) {
     console.error("[check] phase1_rules_scope", {
+      asOf,
+      docType: options.docType,
+      ruleCount: rules.length,
+      truncated,
+    })
+  } else {
+    console.error("[check] frequent_guidance_rules_scope", {
       asOf,
       docType: options.docType,
       ruleCount: rules.length,

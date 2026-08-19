@@ -114,7 +114,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
               初回登録の手順
             </CardTitle>
             <CardDescription className="max-w-3xl text-base leading-relaxed text-foreground/85">
-              自治体ルール（国・県・市）を正として、Phase1向けルールブックを整えます。
+              自治体ルール（国・県・市）を正として、運営指導で見られやすい頻出観点のルールブックを整えます。
               各ステップの完了状況と、項目1・3・7・8の抜け漏れをこの画面で確認できます。
             </CardDescription>
           </div>
@@ -165,7 +165,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
               <span className="mx-2 text-muted-foreground/50" aria-hidden>
                 ·
               </span>
-              Phase1ルール{" "}
+              基本の頻出観点{" "}
               <span className="font-semibold tabular-nums text-primary-dark">
                 {phase1RuleApproved}
               </span>
@@ -365,7 +365,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
             id="phase1-coverage-heading"
             className="mb-1 text-lg font-bold text-primary-dark"
           >
-            Phase1突合の網羅（項目1・3・7・8）
+            頻出観点の基本確認（項目1・3・7・8）
           </h3>
           <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
             運用AI監査で見る4本の突合について、カテゴリ・了承済みルール・行政根拠の3点が揃っているか確認します。
@@ -396,7 +396,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
                         : "border-warning/40 bg-warning/10 text-warning"
                     )}
                   >
-                    {check.done ? "網羅OK" : "抜けあり"}
+                    {check.done ? "確認OK" : "抜けあり"}
                   </Badge>
                 </div>
                 <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
@@ -509,7 +509,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
           </summary>
           <div className="border-t border-dashed px-4 py-4">
             <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-              開発・検証用です。標準カテゴリセットとPhase1判定ルールを一括投入します（根拠は付きません）。
+              開発・検証用です。標準カテゴリセットと頻出観点ルールを一括投入します（根拠は付きません）。
               本番の初回登録は上記手順どおり、市ルールブックから進めてください。
             </p>
             <Button
@@ -536,7 +536,7 @@ export function RulebookSetupGuide({ readiness }: RulebookSetupGuideProps) {
               {seeding ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />
               ) : null}
-              テンプレ＋Phase1ルールを一括登録する
+              テンプレ＋頻出観点ルールを一括登録する
             </Button>
           </div>
         </details>

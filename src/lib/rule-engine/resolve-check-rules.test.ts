@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  resolveApprovedRulesForCheck,
   serializeRegulatoryBasisForDify,
   serializeRulesForDify,
   toAppliedRulesSnapshot,
@@ -55,5 +56,101 @@ describe("resolve-check-rules serializers", () => {
     expect(snap.asOf).toBe("2026-07-22")
     expect(snap.ruleCount).toBe(1)
     expect(snap.rules[0]?.versionNo).toBe(2)
+  })
+})
+
+describe("resolveApprovedRulesForCheck", () => {
+  function mockAdmin() {
+    const tables: Record<string, unknown[]> = {
+      ai_check_rules: [
+        {
+          id: "r-bcp",
+          code: "HC_BCP_INFECTION",
+          title: "感染症BCPの確認",
+          target_doc_types: ["その他"],
+          status: "active",
+          audit_item_id: "a-bcp",
+          scope_kind: "shared",
+          jurisdiction_id: null,
+          audit_items: {
+            id: "a-bcp",
+            title: "感染症BCP",
+            source_id: null,
+            status: "active",
+          },
+        },
+      ],
+      ai_check_rule_versions: [
+        {
+          id: "v-bcp",
+          rule_id: "r-bcp",
+          version_no: 1,
+          guidance_text:
+            "感染症BCP・研修記録・訓練記録で、整備や周知が不足している可能性がないかご確認ください。",
+          severity: "mid",
+          effective_from: "2026-01-01",
+          effective_to: null,
+          review_status: "approved",
+          change_summary: "頻出観点の初期シード",
+          check_logic: { type: "heuristic" },
+          knowledge_document_change_drafts: null,
+        },
+      ],
+      rule_jurisdictions: [{ id: "jid-yokohama", code: "JP-14-14100" }],
+      knowledge_documents: [],
+    }
+
+    return {
+      from(table: string) {
+        let rows = [...(tables[table] ?? [])] as Array<Record<string, unknown>>
+        const api = {
+          select() {
+            return api
+          },
+          eq(column: string, value: unknown) {
+            rows = rows.filter((r) => r[column] === value)
+            return api
+          },
+          in(column: string, values: unknown[]) {
+            rows = rows.filter((r) => values.includes(r[column]))
+            return api
+          },
+          or() {
+            return api
+          },
+          order() {
+            return api
+          },
+          limit() {
+            return Promise.resolve({ data: rows, error: null })
+          },
+          maybeSingle() {
+            return Promise.resolve({ data: rows[0] ?? null, error: null })
+          },
+        }
+        return api
+      },
+    }
+  }
+
+  it("includes approved frequent-guidance rules beyond Phase1 by default", async () => {
+    const resolution = await resolveApprovedRulesForCheck(mockAdmin(), {
+      municipality: "横浜市",
+      docType: "その他",
+      asOf: "2026-08-19",
+    })
+    expect(resolution.rules.map((r) => r.code)).toContain("HC_BCP_INFECTION")
+  })
+
+  it("can still narrow to the old Phase1 checks when requested", async () => {
+    const resolution = await resolveApprovedRulesForCheck(mockAdmin(), {
+      municipality: "横浜市",
+      docType: "その他",
+      asOf: "2026-08-19",
+      phase1Only: true,
+    })
+    expect(resolution.rules.map((r) => r.code)).not.toContain(
+      "HC_BCP_INFECTION"
+    )
   })
 })

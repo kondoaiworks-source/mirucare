@@ -5,7 +5,7 @@
 
 export const PRODUCT_CHARTER = {
   positionShort:
-    "合否・返還は保証しません。実務上の致命傷を未然に浮かび上がらせる予防装置です。",
+    "合否・返還の判断は本サービスだけでは行えません。実務上の致命傷を未然に浮かび上がらせる予防装置です。",
   positionTitle: "Wチェック支援（予防装置）",
   facilityJudgment:
     "最終判断・提出は貴施設の責任で行ってください。",

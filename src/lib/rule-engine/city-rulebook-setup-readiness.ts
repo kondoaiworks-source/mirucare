@@ -170,7 +170,7 @@ export function buildCityRulebookSetupReadiness(
       done: auditReady,
       detail: auditReady
         ? `Phase1必要 ${PHASE1_UNIQUE_AUDIT_CODES.length}件のカテゴリが揃っています`
-        : `登録 ${auditSet.size}件 — 不足あり（下の網羅表を確認）`,
+        : `登録 ${auditSet.size}件 — 不足あり（下の確認表を確認）`,
       anchorId: "city-setup-phase1",
     },
     {

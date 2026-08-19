@@ -3,6 +3,7 @@ import {
   isPhase1RuleCode,
   matchesPhase1RuleText,
   PHASE1_RULE_CODE_ALLOWLIST,
+  shouldScopeCheckRulesToPhase1,
 } from "@/lib/phase1-audit"
 
 describe("phase1 rule scope", () => {
@@ -28,5 +29,15 @@ describe("phase1 rule scope", () => {
     expect(PHASE1_RULE_CODE_ALLOWLIST).toContain(
       "HC_BILLING_SERVICE_RECORD_MATCH"
     )
+  })
+
+  it("既定では承認済み頻出観点ルールを使う", () => {
+    const prev = process.env.CHECK_RULES_SCOPE
+    delete process.env.CHECK_RULES_SCOPE
+    expect(shouldScopeCheckRulesToPhase1()).toBe(false)
+    process.env.CHECK_RULES_SCOPE = "phase1"
+    expect(shouldScopeCheckRulesToPhase1()).toBe(true)
+    if (prev === undefined) delete process.env.CHECK_RULES_SCOPE
+    else process.env.CHECK_RULES_SCOPE = prev
   })
 })
