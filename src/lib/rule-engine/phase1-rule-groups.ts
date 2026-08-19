@@ -28,13 +28,13 @@ export type Phase1ExpectedRule = {
 }
 
 export function getPhase1ExpectedRules(): Phase1ExpectedRule[] {
-  return PHASE1_AI_RULE_SEEDS.map((seed) => ({
+  return PHASE1_AI_RULE_SEEDS.filter((seed) =>
+    Boolean(CODE_TO_OPERATION_CHECK[seed.code])
+  ).map((seed) => ({
     code: seed.code,
     title: seed.title,
     auditItemCode: seed.auditItemCode,
-    operationCheckNo:
-      CODE_TO_OPERATION_CHECK[seed.code] ??
-      (1 as const),
+    operationCheckNo: CODE_TO_OPERATION_CHECK[seed.code] ?? (1 as const),
   }))
 }
 

@@ -216,6 +216,9 @@ export type PerDocExtractOutcome = {
   attempted: number
   succeeded: number
   failed: number
+  emptyResponses: number
+  duplicateSkipped: number
+  thinSkipped: number
   created: number
   timedOut: boolean
   unavailable: boolean
@@ -226,6 +229,9 @@ export function emptyPerDocExtractOutcome(): PerDocExtractOutcome {
     attempted: 0,
     succeeded: 0,
     failed: 0,
+    emptyResponses: 0,
+    duplicateSkipped: 0,
+    thinSkipped: 0,
     created: 0,
     timedOut: false,
     unavailable: false,
@@ -257,17 +263,31 @@ export function extraForPerDocExtract(
     outcome.failed > 0
       ? `本文 ${outcome.failed}件は観点を出せませんでした。`
       : ""
+  const duplicatePart =
+    outcome.duplicateSkipped > 0
+      ? `既存ルールに含まれている可能性がある候補 ${outcome.duplicateSkipped}件があります。`
+      : ""
+  const thinPart =
+    outcome.thinSkipped > 0
+      ? `今回は使わない候補 ${outcome.thinSkipped}件があります。`
+      : ""
+  const emptyPart =
+    outcome.emptyResponses > 0
+      ? `本文 ${outcome.emptyResponses}件は、新しく追加する候補がありませんでした。`
+      : ""
   const timePart = outcome.timedOut
     ? "時間の都合で一部の資料は読んでいません。下書きを作り直すと再度読みます。"
     : ""
-  const tail = [failedPart, timePart].filter(Boolean).join(" ")
+  const tail = [duplicatePart, thinPart, emptyPart, failedPart, timePart]
+    .filter(Boolean)
+    .join(" ")
   if (!tail) return undefined
 
   if (status === "extracted") {
-    return `${label}の公式資料から ${outcome.created}件を載せました。 ${tail}`
+    return `${label}の公式資料から新しく追加する候補 ${outcome.created}件を載せました。 ${tail}`
   }
   if (status === "empty") {
-    return `${label}の資料は確認しましたが、新たに出す観点はありませんでした。 ${tail}`
+    return `${label}の資料を確認しました。新しく追加する候補はありませんでした。 ${tail}`
   }
   if (status === "ai_failed") {
     return `${label}の資料は確認しましたが、観点を自動で出せませんでした。 ${tail}`

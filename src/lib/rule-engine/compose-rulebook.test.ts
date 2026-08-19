@@ -176,6 +176,9 @@ describe("compose-rulebook", () => {
         attempted: 3,
         succeeded: 2,
         failed: 1,
+        emptyResponses: 0,
+        duplicateSkipped: 0,
+        thinSkipped: 0,
         created: 5,
         timedOut: false,
         unavailable: false,
@@ -188,6 +191,9 @@ describe("compose-rulebook", () => {
           attempted: 3,
           succeeded: 2,
           failed: 1,
+          emptyResponses: 0,
+          duplicateSkipped: 0,
+          thinSkipped: 0,
           created: 5,
           timedOut: false,
           unavailable: false,
@@ -202,6 +208,9 @@ describe("compose-rulebook", () => {
           attempted: 3,
           succeeded: 2,
           failed: 1,
+          emptyResponses: 0,
+          duplicateSkipped: 0,
+          thinSkipped: 0,
           created: 5,
           timedOut: false,
           unavailable: false,
@@ -217,6 +226,9 @@ describe("compose-rulebook", () => {
         attempted: 3,
         succeeded: 0,
         failed: 3,
+        emptyResponses: 0,
+        duplicateSkipped: 0,
+        thinSkipped: 0,
         created: 0,
         timedOut: false,
         unavailable: false,
@@ -227,10 +239,34 @@ describe("compose-rulebook", () => {
         attempted: 0,
         succeeded: 0,
         failed: 0,
+        emptyResponses: 0,
+        duplicateSkipped: 0,
+        thinSkipped: 0,
         created: 0,
         timedOut: true,
         unavailable: false,
       })
     ).toBe("ai_failed")
+  })
+
+  it("explains why no new official-source candidates were added", () => {
+    const message = extraForPerDocExtract(
+      "横浜市",
+      {
+        attempted: 2,
+        succeeded: 2,
+        failed: 0,
+        emptyResponses: 1,
+        duplicateSkipped: 3,
+        thinSkipped: 1,
+        created: 0,
+        timedOut: false,
+        unavailable: false,
+      },
+      "empty"
+    )
+    expect(message).toContain("新しく追加する候補はありませんでした")
+    expect(message).toContain("既存ルールに含まれている可能性")
+    expect(message).toContain("今回は使わない候補 1件")
   })
 })

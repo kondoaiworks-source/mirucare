@@ -97,7 +97,7 @@ export function CityRulebookSetupPanel({ readiness, citySlug }: Props) {
           </div>
         </div>
         <p className="text-sm tabular-nums text-muted-foreground">
-          手順 {stepsDone}/{stepsTotal} · Phase1ルール {phase1Approved}/
+          手順 {stepsDone}/{stepsTotal} · 基本の頻出観点 {phase1Approved}/
           {phase1Total}
         </p>
       </CardHeader>
@@ -157,7 +157,7 @@ export function CityRulebookSetupPanel({ readiness, citySlug }: Props) {
             id="city-phase1-heading"
             className="mb-3 text-base font-bold text-primary-dark"
           >
-            Phase1突合の網羅（この市）
+            頻出観点の基本確認（この市）
           </h3>
           <div className="space-y-3">
             {phase1Checks.map((check) => (

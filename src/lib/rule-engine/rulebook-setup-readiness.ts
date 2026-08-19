@@ -283,7 +283,7 @@ export function buildRulebookSetupReadiness(
         "判定ルール保存用の内部データです。運営が事前登録する必要はありません。",
       howTo: [
         "根拠URLからルール案を生成すると自動で用意されます",
-        "不足があれば下の網羅表で確認できます",
+        "不足があれば下の確認表で確認できます",
       ],
       href: "/admin/rules/services/homecare",
       actionLabel: "判定ルール管理を開く",
@@ -325,14 +325,14 @@ export function buildRulebookSetupReadiness(
         "ルール管理を開く",
         "根拠・引用・対象書類を目視確認する",
         "問題なければ了承する",
-        "下の「Phase1突合の網羅」ですべて✓になるか確認する",
+        "下の「頻出観点の基本確認」ですべて✓になるか確認する",
       ],
       href: "/admin/rules/services/homecare",
       actionLabel: "ルール管理を開く",
       done: allPhase1Approved,
       required: true,
       detail: allPhase1Approved
-        ? `Phase1向け ${phase1RuleTotal}件すべて了承済み`
+        ? `基本の頻出観点 ${phase1RuleTotal}件すべて了承済み`
         : `了承済み ${phase1RuleApproved}/${phase1RuleTotal} — 未了承 ${phase1RuleTotal - phase1RuleApproved}件`,
     },
     {
@@ -383,11 +383,11 @@ export function buildRulebookSetupReadiness(
     statusLabel = allPhase1Approved && !allPhase1Evidence ? "要確認" : "準備中"
     statusHint = allPhase1Approved && !allPhase1Evidence
       ? "ルールは了承済みですが、公開情報監視の資料に紐づく根拠が不足している項目があります。市ルールブックから案を再生成してください。"
-      : "手順の途中です。次のステップから進め、Phase1突合の表で抜け漏れがないか目視してください。"
+      : "手順の途中です。次のステップから進め、頻出観点の基本確認で抜け漏れがないか目視してください。"
   } else {
     statusLabel = "完了"
     statusHint =
-      "Phase1向けの初回登録が整いました。法改正時は更新アラートからルールブックを更新してください。"
+      "頻出観点チェックの初回登録が整いました。法改正時は更新アラートからルールブックを更新してください。"
   }
 
   const nextStep =

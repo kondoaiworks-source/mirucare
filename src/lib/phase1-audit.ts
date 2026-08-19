@@ -99,10 +99,10 @@ export function matchesPhase1RuleText(
 }
 
 /**
- * 施設向けチェックは既定で Phase1 に絞る。
- * CHECK_RULES_SCOPE=all で全承認ルールを渡せる（検証用）。
+ * 施設向けチェックは既定で、承認済みルールブックの頻出観点を使う。
+ * CHECK_RULES_SCOPE=phase1 のときだけ、従来の基本突合（1・3・7・8）に絞る。
  */
 export function shouldScopeCheckRulesToPhase1(): boolean {
   const raw = process.env.CHECK_RULES_SCOPE?.trim().toLowerCase()
-  return raw !== "all"
+  return raw === "phase1"
 }

@@ -1,5 +1,5 @@
 /**
- * Phase1 AI 判定ルールをシードする（運営向け CLI）
+ * 運営指導で見られやすい頻出観点の AI 判定ルールをシードする（運営向け CLI）
  *
  * 前提: .env.local / 訪問介護テンプレート監査項目が投入済み
  *   npm run seed:phase1-ai-rules
@@ -106,8 +106,8 @@ async function main() {
         severity: seed.severity,
         effective_from: effectiveFrom,
         review_status: "approved",
-        change_summary: "Phase1初期シード（CLI）",
-        review_reason: "Phase1運用開始のための初期シード（CLI）",
+        change_summary: "頻出観点の初期シード（CLI）",
+        review_reason: "運営指導で見られやすい頻出観点の初期シード（CLI）",
         reviewed_at: new Date().toISOString(),
         reviewed_by: operatorId,
       })

@@ -931,7 +931,7 @@ export async function createHomeVisitAuditTemplateAction(input: {
 }
 
 /**
- * Phase1（1・3・7・8）の AI 判定ルールを一括登録し、初版を承認済みにする。
+ * 運営指導で見られやすい頻出観点の AI 判定ルールを一括登録し、初版を承認済みにする。
  * 前提: 訪問介護テンプレートの監査項目が登録済みであること。
  */
 export async function seedPhase1AiRulesAction(input?: {
@@ -1033,9 +1033,9 @@ export async function seedPhase1AiRulesAction(input?: {
         effective_from: effectiveFrom,
         review_status: "approved",
         change_summary:
-          "Phase1初期シード（要目視確認。必要なら版を増やして差し替えてください）",
+          "頻出観点の初期シード（要目視確認。必要なら版を増やして差し替えてください）",
         review_reason:
-          "Phase1運用開始のための初期シード。内容は運営が後日見直し可能です。",
+          "運営指導で見られやすい頻出観点の初期シード。内容は運営が後日見直し可能です。",
         reviewed_at: new Date().toISOString(),
         reviewed_by: op.userId,
       })
@@ -1064,7 +1064,7 @@ export async function seedPhase1AiRulesAction(input?: {
 }
 
 /**
- * 初回セットアップ: 訪問介護ルールセットへ監査項目テンプレを入れ、Phase1判定ルールを承認済みで載せる。
+ * 初回セットアップ: 訪問介護ルールセットへ監査項目テンプレを入れ、頻出観点ルールを承認済みで載せる。
  */
 export async function seedPhase1RulebookBasicsAction(): Promise<
   ActionResult<{

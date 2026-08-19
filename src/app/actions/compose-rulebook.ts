@@ -339,7 +339,7 @@ function noteForPack(input: {
     no_text: `${input.label}の資料本文がまだありません。${COMPOSE_NO_TEXT_HINT}`,
     ai_unavailable: `${input.label}の資料はありますが、AI設定がないため観点を出せませんでした。`,
     ai_failed: `${input.label}の資料は確認しましたが、観点を自動で出せませんでした。`,
-    empty: `${input.label}の資料は確認しましたが、新たに出す観点はありませんでした。`,
+    empty: `${input.label}の資料を確認しました。新しく追加する候補はありませんでした。`,
     gap_filled: `${input.label}の資料が無いため、書類と見比べる標準の観点で穴埋めしました。`,
   }
   return {
@@ -541,11 +541,23 @@ async function attachOfficialSourceRules(input: {
     }>,
     sourceTitle: string,
     forceScope: "shared" | "city"
-  ): Promise<number> => {
+  ): Promise<{
+    created: number
+    duplicateSkipped: number
+    thinSkipped: number
+  }> => {
     let created = 0
+    let duplicateSkipped = 0
+    let thinSkipped = 0
     for (const proposal of proposals) {
-      if (isDuplicateCityProposalTitle(proposal.title, existingTitles)) continue
-      if (isThinComposeGuidance(proposal.guidanceText)) continue
+      if (isDuplicateCityProposalTitle(proposal.title, existingTitles)) {
+        duplicateSkipped += 1
+        continue
+      }
+      if (isThinComposeGuidance(proposal.guidanceText)) {
+        thinSkipped += 1
+        continue
+      }
       const domainId = pickDomainForCityProposal(proposal, domainInputs)
       const scopeKind = forceScope
       const code = await allocateAiCheckRuleCode(input.service, {
@@ -629,7 +641,7 @@ async function attachOfficialSourceRules(input: {
       if (scopeKind === "city") cityCreated += 1
       else sharedCreated += 1
     }
-    return created
+    return { created, duplicateSkipped, thinSkipped }
   }
 
   const extractDeadline = Date.now() + COMPOSE_EXTRACT_BUDGET_MS
@@ -686,11 +698,17 @@ async function attachOfficialSourceRules(input: {
         continue
       }
       outcome.succeeded += 1
-      outcome.created += await saveProposals(
+      if (proposed.proposals.length === 0) {
+        outcome.emptyResponses += 1
+      }
+      const saved = await saveProposals(
         proposed.proposals,
         doc.title,
         opts.forceScope
       )
+      outcome.created += saved.created
+      outcome.duplicateSkipped += saved.duplicateSkipped
+      outcome.thinSkipped += saved.thinSkipped
     }
     return outcome
   }
