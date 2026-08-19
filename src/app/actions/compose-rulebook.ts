@@ -716,7 +716,7 @@ async function attachOfficialSourceRules(input: {
         continue
       }
       outcome.succeeded += 1
-      let proposals = proposed.proposals
+      let proposals: OfficialProposal[] = proposed.proposals
       let usedCitySupplement = false
       if (proposed.proposals.length === 0) {
         outcome.emptyResponses += 1
