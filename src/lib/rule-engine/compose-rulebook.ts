@@ -219,6 +219,7 @@ export type PerDocExtractOutcome = {
   emptyResponses: number
   duplicateSkipped: number
   thinSkipped: number
+  supplementCreated: number
   created: number
   timedOut: boolean
   unavailable: boolean
@@ -232,6 +233,7 @@ export function emptyPerDocExtractOutcome(): PerDocExtractOutcome {
     emptyResponses: 0,
     duplicateSkipped: 0,
     thinSkipped: 0,
+    supplementCreated: 0,
     created: 0,
     timedOut: false,
     unavailable: false,
@@ -275,15 +277,41 @@ export function extraForPerDocExtract(
     outcome.emptyResponses > 0
       ? `本文 ${outcome.emptyResponses}件は、新しく追加する候補がありませんでした。`
       : ""
+  const supplementPart =
+    outcome.supplementCreated > 0
+      ? `自治体だけの補足候補 ${outcome.supplementCreated}件を載せました。`
+      : ""
   const timePart = outcome.timedOut
     ? "時間の都合で一部の資料は読んでいません。下書きを作り直すと再度読みます。"
     : ""
-  const tail = [duplicatePart, thinPart, emptyPart, failedPart, timePart]
+  const tail = [
+    supplementPart,
+    duplicatePart,
+    thinPart,
+    emptyPart,
+    failedPart,
+    timePart,
+  ]
     .filter(Boolean)
     .join(" ")
   if (!tail) return undefined
 
   if (status === "extracted") {
+    if (
+      outcome.supplementCreated > 0 &&
+      outcome.created === outcome.supplementCreated
+    ) {
+      const supplementTail = [
+        duplicatePart,
+        thinPart,
+        emptyPart,
+        failedPart,
+        timePart,
+      ]
+        .filter(Boolean)
+        .join(" ")
+      return `${label}の資料から自治体だけの補足候補 ${outcome.supplementCreated}件を載せました。 ${supplementTail}`
+    }
     return `${label}の公式資料から新しく追加する候補 ${outcome.created}件を載せました。 ${tail}`
   }
   if (status === "empty") {
