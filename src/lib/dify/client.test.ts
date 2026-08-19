@@ -45,7 +45,7 @@ describe("runDifyCheck の実payload", () => {
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     const payload = JSON.parse(String(init.body)) as {
       inputs: Record<string, unknown>
       files?: unknown
@@ -67,7 +67,8 @@ describe("runDifyCheck の実payload", () => {
     vi.stubEnv("DIFY_FILE_INPUT_KEY", "document_image")
     vi.stubEnv("VERCEL_ENV", "preview")
 
-    const fetchMock = vi.fn(async (url: string | URL) => {
+    const fetchMock = vi.fn(async (...args: [string | URL, RequestInit?]) => {
+      const [url] = args
       const href = String(url)
       if (href.endsWith("/v1/files/upload")) {
         return jsonResponse({ id: "upload-ok-1", mime_type: "image/jpeg" })
@@ -96,7 +97,8 @@ describe("runDifyCheck の実payload", () => {
       String(url).endsWith("/v1/workflows/run")
     )
     expect(runCall).toBeTruthy()
-    const payload = JSON.parse(String((runCall?.[1] as RequestInit).body)) as {
+    const [, runInit] = runCall as unknown as [string | URL, RequestInit]
+    const payload = JSON.parse(String(runInit.body)) as {
       inputs: Record<string, unknown>
       files?: unknown
     }
