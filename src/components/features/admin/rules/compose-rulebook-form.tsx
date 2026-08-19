@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState, useTransition } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "@/components/ui/sonner"
 import {
@@ -55,7 +54,6 @@ export function ComposeRulebookForm({
     []
   )
   const [error, setError] = useState<string | null>(null)
-  const [selectedDomainIds, setSelectedDomainIds] = useState<string[]>([])
   const [jurisdictionId, setJurisdictionId] = useState("")
   const [pending, startTransition] = useTransition()
   const [pendingLayer, setPendingLayer] = useState<"shared" | "city" | null>(
@@ -80,7 +78,6 @@ export function ComposeRulebookForm({
       }
       setDomains(result.data.domains)
       setMunicipalities(result.data.municipalities)
-      setSelectedDomainIds(result.data.domains.map((d) => d.id))
       const fromQuery = initialCitySlug?.trim()
       const matched = fromQuery
         ? result.data.municipalities.find((m) => m.slug === fromQuery)
@@ -113,23 +110,8 @@ export function ComposeRulebookForm({
     }
   }, [previewSlug])
 
-  const domainValue = encodeDomainSelection(
-    selectedDomainIds,
-    domains.map((d) => d.id)
-  )
-  const allSelected =
-    domains.length > 0 && selectedDomainIds.length === domains.length
-
-  function toggleAll() {
-    if (allSelected) setSelectedDomainIds([])
-    else setSelectedDomainIds(domains.map((d) => d.id))
-  }
-
-  function toggleDomain(id: string) {
-    setSelectedDomainIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
-  }
+  const activeDomainIds = domains.map((d) => d.id)
+  const domainValue = encodeDomainSelection(activeDomainIds, activeDomainIds)
 
   function onGenerate(layer: "shared" | "city") {
     setPendingLayer(layer)
@@ -169,7 +151,7 @@ export function ComposeRulebookForm({
           {RULES_UI.composeRulebook}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          ①領域を選び、②{RULES_UI.composeNationalPrefectureRules}、③{RULES_UI.composeCityRules}、の順です。確定するまでチェックには使いません。
+          共通ルールを作ってから、自治体ルールを作ります。確定するまでチェックには使いません。
         </p>
       </div>
 
@@ -182,7 +164,7 @@ export function ComposeRulebookForm({
           <AlertDescription className="text-base leading-relaxed">
             {initialCitySlug
               ? "原文を確認したうえで、上記自治体のルール案を生成し直してください。"
-              : "原文を確認したうえで、国・県のルール案を生成し直してください。市の資料なら、③で自治体を選んでください。"}
+              : "原文を確認したうえで、共通ルール案を生成し直してください。市の資料なら、2で自治体を選んでください。"}
             確定するまでチェックには使いません。
           </AlertDescription>
         </Alert>
@@ -197,77 +179,6 @@ export function ComposeRulebookForm({
       ) : null}
 
       <section
-        id="compose-domains"
-        className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
-        aria-labelledby="compose-domain-heading"
-      >
-        <h2
-          id="compose-domain-heading"
-          className="text-lg font-semibold text-primary-dark"
-        >
-          ① 領域を選ぶ
-        </h2>
-        <ul className="grid gap-2 sm:grid-cols-2">
-          <li>
-            <label
-              className={cn(
-                "flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-left text-base focus-within:ring-2 focus-within:ring-ring",
-                allSelected
-                  ? "border-primary bg-primary/5 font-semibold text-primary-dark"
-                  : "border-border"
-              )}
-            >
-              <input
-                type="checkbox"
-                className="size-5 shrink-0 accent-primary"
-                checked={allSelected}
-                onChange={toggleAll}
-              />
-              全て
-            </label>
-          </li>
-          {domains.map((d) => {
-            const checked = selectedDomainIds.includes(d.id)
-            return (
-              <li key={d.id}>
-                <label
-                  className={cn(
-                    "flex min-h-11 w-full cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-left focus-within:ring-2 focus-within:ring-ring",
-                    checked ? "border-primary bg-primary/5" : "border-border"
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 size-5 shrink-0 accent-primary"
-                    checked={checked}
-                    onChange={() => toggleDomain(d.id)}
-                  />
-                  <span>
-                    <span className="block text-base font-semibold text-primary-dark">
-                      {d.title}
-                    </span>
-                    {d.description ? (
-                      <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
-                        {d.description}
-                      </span>
-                    ) : null}
-                  </span>
-                </label>
-              </li>
-            )
-          })}
-        </ul>
-        <p className="text-base">
-          <Link
-            href="/admin/rules/domains"
-            className="text-primary underline-offset-4 hover:underline"
-          >
-            領域マスタで追加する
-          </Link>
-        </p>
-      </section>
-
-      <section
         id="compose-shared"
         className={cn(
           "space-y-4 rounded-xl border bg-card p-4 shadow-subtle sm:p-5",
@@ -279,10 +190,10 @@ export function ComposeRulebookForm({
           id="compose-shared-heading"
           className="text-lg font-semibold text-primary-dark"
         >
-          ② 国・県の資料を確認する
+          1. 共通ルールを作る
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          全市で使う共通ルールです。読むPDFが無ければここで置きます。参考リンクはリンク集です。ルール案を生成したあと、直して確定してください。
+          国・県の公式資料から、全市で使う共通ルール案を作ります。読むPDFが無ければここで置きます。参考リンクはリンク集です。ルール案を生成したあと、直して確定してください。
         </p>
         {bookLoading && !book ? (
           <p className="text-base text-muted-foreground">読み込み中です。</p>
@@ -351,10 +262,10 @@ export function ComposeRulebookForm({
           id="compose-city-heading"
           className="text-lg font-semibold text-primary-dark"
         >
-          ③ 自治体を選ぶ
+          2. 自治体ルールを作る
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          市固有のルールです。国・県の確定後に進めてください。
+          市固有の公式資料から、自治体ルール案を作ります。共通ルールの確定後に進めてください。
         </p>
         <div className="space-y-2">
           <Label htmlFor="compose-city">自治体</Label>
