@@ -179,6 +179,7 @@ describe("compose-rulebook", () => {
         emptyResponses: 0,
         duplicateSkipped: 0,
         thinSkipped: 0,
+        supplementCreated: 0,
         created: 5,
         timedOut: false,
         unavailable: false,
@@ -194,6 +195,7 @@ describe("compose-rulebook", () => {
           emptyResponses: 0,
           duplicateSkipped: 0,
           thinSkipped: 0,
+          supplementCreated: 0,
           created: 5,
           timedOut: false,
           unavailable: false,
@@ -211,6 +213,7 @@ describe("compose-rulebook", () => {
           emptyResponses: 0,
           duplicateSkipped: 0,
           thinSkipped: 0,
+          supplementCreated: 0,
           created: 5,
           timedOut: false,
           unavailable: false,
@@ -229,6 +232,7 @@ describe("compose-rulebook", () => {
         emptyResponses: 0,
         duplicateSkipped: 0,
         thinSkipped: 0,
+        supplementCreated: 0,
         created: 0,
         timedOut: false,
         unavailable: false,
@@ -242,6 +246,7 @@ describe("compose-rulebook", () => {
         emptyResponses: 0,
         duplicateSkipped: 0,
         thinSkipped: 0,
+        supplementCreated: 0,
         created: 0,
         timedOut: true,
         unavailable: false,
@@ -259,6 +264,7 @@ describe("compose-rulebook", () => {
         emptyResponses: 1,
         duplicateSkipped: 3,
         thinSkipped: 1,
+        supplementCreated: 0,
         created: 0,
         timedOut: false,
         unavailable: false,
@@ -268,5 +274,26 @@ describe("compose-rulebook", () => {
     expect(message).toContain("新しく追加する候補はありませんでした")
     expect(message).toContain("既存ルールに含まれている可能性")
     expect(message).toContain("今回は使わない候補 1件")
+  })
+
+  it("summarizes municipality supplement candidates separately", () => {
+    const message = extraForPerDocExtract(
+      "横浜市",
+      {
+        attempted: 2,
+        succeeded: 2,
+        failed: 0,
+        emptyResponses: 2,
+        duplicateSkipped: 0,
+        thinSkipped: 0,
+        supplementCreated: 2,
+        created: 2,
+        timedOut: false,
+        unavailable: false,
+      },
+      "extracted"
+    )
+    expect(message).toContain("自治体だけの補足候補 2件")
+    expect(message).toContain("本文 2件は、新しく追加する候補がありませんでした")
   })
 })

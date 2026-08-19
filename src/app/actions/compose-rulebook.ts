@@ -528,17 +528,35 @@ async function attachOfficialSourceRules(input: {
   let sharedCreated = 0
   let cityCreated = 0
 
+  type OfficialProposal = {
+    title: string
+    guidanceText: string
+    targetDocTypes: string[]
+    auditItemId: string
+    severity: "high" | "mid" | "low"
+    evidenceSummary: string
+    evidenceQuotes: string[]
+    scopeKind?: "shared" | "city"
+  }
+
+  const buildCitySupplementProposal = (sourceTitle: string): OfficialProposal => {
+    const shortTitle = sourceTitle.trim().slice(0, 48) || "公式資料"
+    return {
+      title: `${cityName}の自治体補足確認（${shortTitle}）`,
+      guidanceText:
+        `${cityName}の資料「${shortTitle}」と、事業所の届出控え・運営規程・加算届・事故報告控えで、提出先・様式名・期限・記載欄が最新の案内とずれている可能性がないかご確認ください。`,
+      targetDocTypes: ["その他"],
+      auditItemId: input.auditItemId,
+      severity: "low",
+      evidenceSummary:
+        `${cityName}の公式資料から、市固有の提出先・様式名・期限・記載欄を人が確認するための補足候補です。`,
+      evidenceQuotes: [],
+      scopeKind: "city",
+    }
+  }
+
   const saveProposals = async (
-    proposals: Array<{
-      title: string
-      guidanceText: string
-      targetDocTypes: string[]
-      auditItemId: string
-      severity: "high" | "mid" | "low"
-      evidenceSummary: string
-      evidenceQuotes: string[]
-      scopeKind?: "shared" | "city"
-    }>,
+    proposals: OfficialProposal[],
     sourceTitle: string,
     forceScope: "shared" | "city"
   ): Promise<{
@@ -698,15 +716,24 @@ async function attachOfficialSourceRules(input: {
         continue
       }
       outcome.succeeded += 1
+      let proposals: OfficialProposal[] = proposed.proposals
+      let usedCitySupplement = false
       if (proposed.proposals.length === 0) {
         outcome.emptyResponses += 1
+        if (opts.forceScope === "city" && opts.cityUnique) {
+          proposals = [buildCitySupplementProposal(doc.title)]
+          usedCitySupplement = true
+        }
       }
       const saved = await saveProposals(
-        proposed.proposals,
+        proposals,
         doc.title,
         opts.forceScope
       )
       outcome.created += saved.created
+      if (usedCitySupplement) {
+        outcome.supplementCreated += saved.created
+      }
       outcome.duplicateSkipped += saved.duplicateSkipped
       outcome.thinSkipped += saved.thinSkipped
     }
