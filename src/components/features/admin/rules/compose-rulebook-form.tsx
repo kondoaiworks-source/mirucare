@@ -151,7 +151,7 @@ export function ComposeRulebookForm({
           {RULES_UI.composeRulebook}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          ルールの根拠にするPDFのURLを登録して、「ルール案を生成」をクリックしてください。表示されるルールを保存すると、ルールブックが完成します。確定するまでチェックには使いません。
+          ルールの根拠にするPDFのURLを登録して、「ルール案を生成」をクリックしてください。表示される下書きを確認し、確定するとルールブックが完成します。確定するまでチェックには使いません。
         </p>
       </div>
 

@@ -24,6 +24,10 @@ import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { sourceListPath } from "@/lib/rule-engine/rulebook-source-links"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { EvidenceCoveragePanel } from "@/components/features/admin/rules/evidence-coverage-panel"
+import {
+  RuleScopeBadge,
+  RulebookRuleCard,
+} from "@/components/features/admin/rules/rulebook-rule-card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -42,19 +46,6 @@ import { FileWarning, Loader2 } from "lucide-react"
 type Props = {
   service: RuleServiceDef
   initial: ComposeJobView
-}
-
-const ORIGIN_LABEL: Record<ComposeJobItemView["origin"], string> = {
-  existing: "既存",
-  template: "自動",
-  manual: "追加",
-  city_pdf: "市資料",
-  official: "公式資料",
-}
-
-const SCOPE_LABEL: Record<string, string> = {
-  shared: "国・県",
-  city: "市固有",
 }
 
 export function ComposeRulebookReview({ service, initial }: Props) {
@@ -311,47 +302,87 @@ export function ComposeRulebookReview({ service, initial }: Props) {
         <h2 className="text-lg font-semibold text-primary-dark">
           ルールの一覧
         </h2>
-        <ul className="space-y-3">
-          {data.items.map((item) => {
+        {data.items.length > 0 ? (
+          <ul className="space-y-3">
+            {data.items.map((item) => {
               const pendingReview =
                 item.version?.review_status === "pending_review"
+              const approved = item.version?.review_status === "approved"
               const guidance =
                 editing[item.id] ?? item.version?.guidance_text ?? ""
-              return (
-                <li
-                  key={item.id}
-                  className="rounded-xl border border-border p-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <p className="text-base font-semibold text-primary-dark">
-                        {item.rule?.title ?? "（名称なし）"}
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        <Badge variant="outline" className="rounded-md">
-                          {ORIGIN_LABEL[item.origin]}
-                        </Badge>
-                        <Badge variant="outline" className="rounded-md">
-                          {SCOPE_LABEL[item.rule?.scope_kind ?? "shared"] ??
-                            "国・県"}
-                        </Badge>
-                        {item.included ? null : (
-                          <Badge variant="outline" className="rounded-md">
-                            対象外
-                          </Badge>
-                        )}
-                        {pendingReview ? (
-                          <Badge className="rounded-md">承認待ち</Badge>
-                        ) : (
-                          <Badge variant="outline" className="rounded-md">
-                            登録済み
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+              const canEditPending = isDraft && item.included && pendingReview
+              const guidanceText = item.version?.guidance_text
 
-                  {item.included && pendingReview ? (
+              return (
+                <RulebookRuleCard
+                  key={item.id}
+                  title={item.rule?.title ?? "（名称なし）"}
+                  badges={
+                    <>
+                      <RuleScopeBadge scopeKind={item.rule?.scope_kind} />
+                      {item.included ? null : (
+                        <Badge variant="outline" className="rounded-md">
+                          対象外
+                        </Badge>
+                      )}
+                      {item.included && pendingReview ? (
+                        <Badge className="rounded-md">
+                          {RULES_UI.pendingApproval}
+                        </Badge>
+                      ) : null}
+                    </>
+                  }
+                  actions={
+                    isDraft ? (
+                      <>
+                        {canEditPending ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-11"
+                            disabled={pending}
+                            onClick={() => saveGuidance(item)}
+                          >
+                            ルールを保存する
+                          </Button>
+                        ) : null}
+                        {item.included ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-11"
+                            disabled={pending}
+                            onClick={() => exclude(item)}
+                          >
+                            下書きから外す
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-11"
+                            disabled={pending}
+                            onClick={() => restore(item)}
+                          >
+                            下書きに戻す
+                          </Button>
+                        )}
+                        {item.included && approved ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-11"
+                            disabled={pending}
+                            onClick={() => retire(item)}
+                          >
+                            ルールを停止する
+                          </Button>
+                        ) : null}
+                      </>
+                    ) : undefined
+                  }
+                >
+                  {canEditPending ? (
                     <div className="mt-3 space-y-2">
                       <Label htmlFor={`guidance-${item.id}`}>
                         {RULES_UI.ruleText}
@@ -360,7 +391,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                         id={`guidance-${item.id}`}
                         className="min-h-24 text-base"
                         value={guidance}
-                        disabled={!isDraft || pending}
+                        disabled={pending}
                         onChange={(e) =>
                           setEditing((prev) => ({
                             ...prev,
@@ -369,65 +400,21 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                         }
                       />
                     </div>
-                  ) : item.included && item.version?.guidance_text ? (
+                  ) : guidanceText ? (
                     <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-                      {item.version.guidance_text}
+                      {guidanceText}
                     </p>
                   ) : null}
-
-                  {isDraft ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {item.included && pendingReview ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11"
-                          disabled={pending}
-                          onClick={() => saveGuidance(item)}
-                        >
-                          ルールを保存する
-                        </Button>
-                      ) : null}
-                      {item.included ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11"
-                          disabled={pending}
-                          onClick={() => exclude(item)}
-                        >
-                          下書きから外す
-                        </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11"
-                          disabled={pending}
-                          onClick={() => restore(item)}
-                        >
-                          下書きに戻す
-                        </Button>
-                      )}
-                      {item.included &&
-                      item.version?.review_status === "approved" ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11"
-                          disabled={pending}
-                          onClick={() => retire(item)}
-                        >
-                          ルールを停止する
-                        </Button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </li>
+                </RulebookRuleCard>
               )
             })}
           </ul>
-        </section>
+        ) : (
+          <p className="text-base text-muted-foreground">
+            この下書きのルールはまだありません。下のフォームから追加するか、ルール案を生成し直してください。
+          </p>
+        )}
+      </section>
 
       {isDraft ? (
         <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">

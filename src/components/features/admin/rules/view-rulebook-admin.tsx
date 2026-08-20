@@ -23,8 +23,11 @@ import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { CityRulebookSetupPanel } from "@/components/features/admin/rules/city-rulebook-setup-panel"
 import { EvidenceCoveragePanel } from "@/components/features/admin/rules/evidence-coverage-panel"
+import {
+  RuleScopeBadge,
+  RulebookRuleCard,
+} from "@/components/features/admin/rules/rulebook-rule-card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -47,11 +50,6 @@ type MunicipalityOption = {
   id: string
   name: string
   slug: string | null
-}
-
-const SCOPE_LABEL: Record<string, string> = {
-  shared: "国・県",
-  city: "市固有",
 }
 
 export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
@@ -291,58 +289,51 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
               <ul className="space-y-3">
                 {visibleRules.map((rule) => {
                   return (
-                    <li
+                    <RulebookRuleCard
                       key={rule.ruleId}
-                      className="rounded-xl border border-border p-4"
-                    >
-                      <div className="space-y-1">
-                        <p className="text-base font-semibold text-primary-dark">
-                          {rule.title}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          <Badge variant="outline" className="rounded-md">
-                            {SCOPE_LABEL[rule.scopeKind] ?? "国・県"}
-                          </Badge>
-                        </div>
-                      </div>
-                      {rule.guidanceText ? (
-                        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-                          {rule.guidanceText}
-                        </p>
-                      ) : null}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11"
-                          disabled={pending}
-                          onClick={() => retire(rule)}
-                        >
-                          ルールを停止する
-                        </Button>
-                        {confirmDeleteId === rule.ruleId ? (
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            className="min-h-11"
-                            disabled={pending}
-                            onClick={() => remove(rule)}
-                          >
-                            削除する（取り消せません）
-                          </Button>
-                        ) : (
+                      title={rule.title}
+                      badges={<RuleScopeBadge scopeKind={rule.scopeKind} />}
+                      actions={
+                        <>
                           <Button
                             type="button"
                             variant="outline"
                             className="min-h-11"
                             disabled={pending}
-                            onClick={() => setConfirmDeleteId(rule.ruleId)}
+                            onClick={() => retire(rule)}
                           >
-                            削除する
+                            ルールを停止する
                           </Button>
-                        )}
-                      </div>
-                    </li>
+                          {confirmDeleteId === rule.ruleId ? (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              className="min-h-11"
+                              disabled={pending}
+                              onClick={() => remove(rule)}
+                            >
+                              削除する（取り消せません）
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="min-h-11"
+                              disabled={pending}
+                              onClick={() => setConfirmDeleteId(rule.ruleId)}
+                            >
+                              削除する
+                            </Button>
+                          )}
+                        </>
+                      }
+                    >
+                      {rule.guidanceText ? (
+                        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+                          {rule.guidanceText}
+                        </p>
+                      ) : null}
+                    </RulebookRuleCard>
                   )
                 })}
               </ul>
