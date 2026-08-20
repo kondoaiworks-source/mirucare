@@ -108,10 +108,11 @@ function classifyDateContext(
 ): "care_plan_update" | "visit_plan" | null {
   const visitPos = lastIndexOfAny(before, VISIT_PLAN_MARKERS)
   const carePos = lastIndexOfAny(before, CARE_PLAN_MARKERS)
+  const nearest = Math.max(visitPos, carePos)
+  // 日付直前のラベルのみ採用（セット結合時に遠い見出しを引きずらない）
+  if (nearest < 0 || before.length - nearest > 48) return null
 
   if (visitPos >= 0 && visitPos >= carePos) {
-    const tail = before.slice(visitPos)
-    if (/作成|更新|交付/.test(tail)) return "visit_plan"
     return "visit_plan"
   }
   if (carePos >= 0) {

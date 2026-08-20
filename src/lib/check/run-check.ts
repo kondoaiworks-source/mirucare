@@ -12,14 +12,12 @@ import {
 } from "@/lib/dify/types"
 import { prefectureFromMunicipality } from "@/lib/municipalities"
 import {
-  isSimilarPlanDateFinding,
-  PLAN_DATE_ALIGNMENT_CODE,
-  withBuiltinPlanDateAlignmentRule,
-} from "@/lib/check/plan-date-alignment"
-import {
+  BUILTIN_ALIGNMENT_CODES,
+  isCatalogAlignmentFinding,
   mergeAiFindingsWithCatalog,
   pickCheckSetPrimaryId,
   runAlignmentCatalog,
+  withBuiltinAlignmentRules,
 } from "@/lib/check/alignment-catalog"
 import {
   resolveApprovedRulesForCheck,
@@ -155,10 +153,10 @@ export async function runDocumentCheck(
 
   const texts = extracted.map((e) => e.text ?? "")
   const catalogFindings = runAlignmentCatalog(texts)
-  console.error("[check] plan_date_alignment", {
+  console.error("[check] set_alignment_catalog", {
     documentId: primaryId,
     setSize: setDocs.length,
-    mismatched: catalogFindings.length > 0,
+    catalogCount: catalogFindings.length,
   })
 
   const municipality = org.municipality?.trim() || ""
@@ -344,7 +342,7 @@ async function finishSetMember(
     municipality: opts.municipality,
     docType: doc.doc_type,
   })
-  const rulesForCheck = withBuiltinPlanDateAlignmentRule(rulesResolution.rules)
+  const rulesForCheck = withBuiltinAlignmentRules(rulesResolution.rules)
   const serializedRules = buildSerializedRulesPayload(rulesForCheck)
   const rulesSnapshot = toAppliedRulesSnapshot(
     {
@@ -352,8 +350,9 @@ async function finishSetMember(
       rules: rulesForCheck,
       truncated:
         rulesResolution.truncated ||
-        rulesResolution.rules.filter((r) => r.code !== PLAN_DATE_ALIGNMENT_CODE)
-          .length >= 60,
+        rulesResolution.rules.filter(
+          (r) => !BUILTIN_ALIGNMENT_CODES.has(r.code)
+        ).length >= 60,
     },
     serializedRules
   )
@@ -452,7 +451,7 @@ async function finishSetMember(
         suggestion: f.suggestion?.slice(0, 4000) ?? null,
       })
       const isAlignment =
-        catalogFindings.length > 0 && isSimilarPlanDateFinding(f)
+        catalogFindings.length > 0 && isCatalogAlignmentFinding(f)
       const checkFields = buildFindingCheckFields(f, {
         isAlignment,
         checkAsOf: rulesSnapshot.asOf,
