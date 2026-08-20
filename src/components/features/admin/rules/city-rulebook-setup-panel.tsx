@@ -48,15 +48,34 @@ function CoverageIcon({ ok }: { ok: boolean }) {
   )
 }
 
+function coverageStatusClass(status: string) {
+  if (status === "確認済み") {
+    return "border-primary/30 bg-primary/10 text-primary-dark"
+  }
+  if (status === "了承待ち") {
+    return "border-accent/40 bg-accent/10 text-accent"
+  }
+  if (status === "根拠確認待ち") {
+    return "border-warning/40 bg-warning/10 text-warning"
+  }
+  return "border-muted-foreground/20 bg-muted text-muted-foreground"
+}
+
 export function CityRulebookSetupPanel({ readiness, citySlug }: Props) {
   const {
     cityName,
     steps,
     phase1Checks,
+    frequentCoverage,
     stepsDone,
     stepsTotal,
     phase1Approved,
     phase1Total,
+    frequentApproved,
+    frequentTotal,
+    frequentWithEvidence,
+    frequentPending,
+    frequentMissing,
     statusLabel,
     nextStep,
     isComplete,
@@ -151,6 +170,104 @@ export function CityRulebookSetupPanel({ readiness, citySlug }: Props) {
             </li>
           ))}
         </ol>
+
+        <section
+          id="city-setup-frequent-coverage"
+          aria-labelledby="city-frequent-coverage-heading"
+          className="space-y-3 rounded-xl border border-border bg-white p-4"
+        >
+          <div className="space-y-1">
+            <h3
+              id="city-frequent-coverage-heading"
+              className="text-base font-bold text-primary-dark"
+            >
+              監査観点の確認状況
+            </h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              設定した頻出観点について、ルール化・根拠PDF・了承待ちの状態を確認します。出ていない項目は「問題なし」ではなく、未確認の範囲です。
+            </p>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-4">
+            <div className="rounded-lg border bg-muted/20 px-3 py-2">
+              <p className="text-xs text-muted-foreground">了承済み</p>
+              <p className="text-lg font-bold tabular-nums text-primary-dark">
+                {frequentApproved}/{frequentTotal}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/20 px-3 py-2">
+              <p className="text-xs text-muted-foreground">根拠あり</p>
+              <p className="text-lg font-bold tabular-nums text-primary-dark">
+                {frequentWithEvidence}/{frequentTotal}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/20 px-3 py-2">
+              <p className="text-xs text-muted-foreground">了承待ち</p>
+              <p className="text-lg font-bold tabular-nums text-primary-dark">
+                {frequentPending}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/20 px-3 py-2">
+              <p className="text-xs text-muted-foreground">未作成</p>
+              <p className="text-lg font-bold tabular-nums text-primary-dark">
+                {frequentMissing}
+              </p>
+            </div>
+          </div>
+
+          <details className="rounded-lg border bg-muted/20">
+            <summary className="cursor-pointer px-3 py-3 text-sm font-semibold text-primary-dark outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              観点ごとの不足理由を見る
+            </summary>
+            <div className="overflow-x-auto border-t bg-white">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/40 text-muted-foreground">
+                    <th className="px-3 py-2 font-semibold">観点</th>
+                    <th className="px-3 py-2 font-semibold">分類</th>
+                    <th className="px-3 py-2 font-semibold">根拠</th>
+                    <th className="px-3 py-2 font-semibold">状態</th>
+                    <th className="px-3 py-2 font-semibold">次にやること</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {frequentCoverage.map((row) => (
+                    <tr key={row.code} className="border-b last:border-b-0">
+                      <td className="px-3 py-2">
+                        <span className="font-medium text-primary-dark">
+                          {row.title}
+                        </span>
+                        <span className="mt-0.5 block font-mono text-xs text-muted-foreground">
+                          {row.code}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {row.category}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {row.sourceLabel}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "rounded-md",
+                            coverageStatusClass(row.statusLabel)
+                          )}
+                        >
+                          {row.statusLabel}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {row.nextAction}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </section>
 
         <section id="city-setup-phase1" aria-labelledby="city-phase1-heading">
           <h3

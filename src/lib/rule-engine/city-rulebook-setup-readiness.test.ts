@@ -17,12 +17,17 @@ describe("buildCityRulebookSetupReadiness", () => {
       cityDocumentCount: 0,
       phase1AuditItemCodes: [],
       approvedRules: [],
+      pendingRules: [],
       pendingRuleCount: 0,
       pendingDraftCount: 0,
       openAlertCount: 0,
     })
     expect(r.statusLabel).toBe("未着手")
     expect(r.phase1Checks.every((c) => !c.done)).toBe(true)
+    expect(r.frequentCoverage.length).toBeGreaterThan(
+      getPhase1ExpectedRules().length
+    )
+    expect(r.frequentMissing).toBe(r.frequentTotal)
   })
 
   it("marks complete when layers, audit, rules, and evidence are ready", () => {
@@ -61,6 +66,7 @@ describe("buildCityRulebookSetupReadiness", () => {
       cityDocumentCount: 1,
       phase1AuditItemCodes: auditCodes,
       approvedRules,
+      pendingRules: [],
       pendingRuleCount: 0,
       pendingDraftCount: 0,
       openAlertCount: 0,
@@ -68,5 +74,7 @@ describe("buildCityRulebookSetupReadiness", () => {
 
     expect(r.isComplete).toBe(true)
     expect(r.statusLabel).toBe("完了")
+    expect(r.frequentApproved).toBe(approvedRules.length)
+    expect(r.frequentWithEvidence).toBe(approvedRules.length)
   })
 })

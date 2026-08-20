@@ -429,6 +429,7 @@ export async function getCityRulebookAction(
     cityDocumentCount: cityDocuments.length,
     phase1AuditItemCodes,
     approvedRules: checkRules.approved,
+    pendingRules: checkRules.pending,
     pendingRuleCount: checkRules.pending.length,
     pendingDraftCount: pendingDrafts.length,
     openAlertCount: openAlerts.length,
