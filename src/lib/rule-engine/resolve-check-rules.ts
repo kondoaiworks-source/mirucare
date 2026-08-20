@@ -113,14 +113,6 @@ function todayIsoDate(now = new Date()): string {
   return `${y}-${m}-${d}`
 }
 
-function matchesDocType(
-  targetDocTypes: string[] | null | undefined,
-  docType: string
-): boolean {
-  if (!targetDocTypes || targetDocTypes.length === 0) return true
-  return targetDocTypes.includes(docType)
-}
-
 function isEffectiveOn(
   effectiveFrom: string,
   effectiveTo: string | null,
@@ -158,12 +150,14 @@ async function loadCityJurisdictionId(
 /**
  * 承認済み判定ルールを解決する（Service Role 前提）。
  * 市のチェック ＝ 国・県で承認した共通ルール ＋ その市で承認したルール。
+ * 書類種別（target_doc_types）では絞らない（了承済みルールブック全体を渡す）。
  */
 export async function resolveApprovedRulesForCheck(
   admin: AdminClient,
   options: {
     municipality: string
-    docType: DocType | string
+    /** ログ用。ルール解決の絞り込みには使わない */
+    docType?: DocType | string
     asOf?: string
     limit?: number
     /** true=従来の基本突合のみ。既定は承認済み頻出観点ルールを使う */
@@ -202,8 +196,6 @@ export async function resolveApprovedRulesForCheck(
 
   const matchingRules = (ruleRows as Array<Record<string, unknown>>).filter(
     (row) => {
-      const targets = row.target_doc_types as string[] | null
-      if (!matchesDocType(targets, options.docType)) return false
       if (!phase1Only) return true
       const auditRaw = row.audit_items
       const audit = (

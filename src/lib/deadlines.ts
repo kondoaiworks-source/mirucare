@@ -9,7 +9,7 @@ export const DEADLINE_UI = {
   upcomingDeadlinesTitle: "まもなくの期限",
   upcomingDeadlinesHint:
     "同意日・更新期限などの期限アラートです（書類チェック一覧とは別です）。対応が終わったらアラート画面で「対応した」を押してください。",
-  uploadedTodo: "種類未設定：種類を選んでチェックを続ける",
+  uploadedTodo: "チェック未開始：続けてチェックする",
   checkingTodo: "チェック中：結果を確認する",
   reviewedTodo: "確認待ち：指摘への対応を続ける",
   daysLeft: (n: number) => (n === 0 ? "本日" : `残り${n}日`),

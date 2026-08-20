@@ -270,7 +270,7 @@ export function validateUploadFile(file: File): string | null {
 export function statusLabel(status: string): string {
   switch (status) {
     case "uploaded":
-      return "種類未設定"
+      return "チェック未開始"
     case "checking":
       return "チェック中"
     case "reviewed":
@@ -317,7 +317,7 @@ export function documentListBadgeLabel(
   if (doc.status === "checking") return "チェック中"
   if (doc.status === "done") return "完了"
   if (documentListBucket(doc) === "later") return "後で確認"
-  if (doc.status === "uploaded") return "種類未設定"
+  if (doc.status === "uploaded") return "チェック未開始"
   return "確認待ち"
 }
 

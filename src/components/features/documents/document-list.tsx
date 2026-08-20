@@ -177,10 +177,10 @@ function DocumentCard({ doc }: { doc: DocumentListItem }) {
       <div className="min-w-0">{meta}</div>
       <CardContent className="min-w-0 space-y-3 border-t border-border pt-3">
         <p className="text-sm leading-relaxed text-muted-foreground">
-          種類を選んでチェックを続けるか、下のボタンで取り消しできます。
+          チェックを続けるか、下のボタンで取り消しできます。
         </p>
         <Button asChild size="lg" className="relative z-10 min-h-11 w-full max-w-full">
-          <Link href={href}>種類を選んで続ける</Link>
+          <Link href={href}>続けてチェックする</Link>
         </Button>
         <Button
           type="button"

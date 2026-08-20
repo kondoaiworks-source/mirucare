@@ -11,7 +11,8 @@ export const PLAN_DATE_ALIGNMENT_CODE = "HC_PLAN_UPDATED_DATE"
 export const PLAN_DATE_ALIGNMENT_VERSION_ID = `builtin:${PLAN_DATE_ALIGNMENT_CODE}`
 
 const CONTEXT_CHARS = 96
-const MAX_RULES_AFTER_INJECT = 40
+/** 標準観点1件＋了承済みルール（resolve 上限60）が載る余裕 */
+const MAX_RULES_AFTER_INJECT = 61
 
 const ERA_BASE: Record<string, number> = {
   令和: 2018, // 元年=2019

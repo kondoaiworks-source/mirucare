@@ -353,7 +353,7 @@ async function finishSetMember(
       truncated:
         rulesResolution.truncated ||
         rulesResolution.rules.filter((r) => r.code !== PLAN_DATE_ALIGNMENT_CODE)
-          .length >= 40,
+          .length >= 60,
     },
     serializedRules
   )

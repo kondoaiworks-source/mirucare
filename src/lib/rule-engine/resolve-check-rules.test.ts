@@ -79,6 +79,22 @@ describe("resolveApprovedRulesForCheck", () => {
             status: "active",
           },
         },
+        {
+          id: "r-plan",
+          code: "HC_PLAN_CONSENT",
+          title: "計画同意の確認",
+          target_doc_types: ["ケアプラン"],
+          status: "active",
+          audit_item_id: "a-plan",
+          scope_kind: "shared",
+          jurisdiction_id: null,
+          audit_items: {
+            id: "a-plan",
+            title: "計画同意",
+            source_id: null,
+            status: "active",
+          },
+        },
       ],
       ai_check_rule_versions: [
         {
@@ -88,6 +104,20 @@ describe("resolveApprovedRulesForCheck", () => {
           guidance_text:
             "感染症BCP・研修記録・訓練記録で、整備や周知が不足している可能性がないかご確認ください。",
           severity: "mid",
+          effective_from: "2026-01-01",
+          effective_to: null,
+          review_status: "approved",
+          change_summary: "頻出観点の初期シード",
+          check_logic: { type: "heuristic" },
+          knowledge_document_change_drafts: null,
+        },
+        {
+          id: "v-plan",
+          rule_id: "r-plan",
+          version_no: 1,
+          guidance_text:
+            "計画書への同意・署名が不足している可能性がないかご確認ください。",
+          severity: "high",
           effective_from: "2026-01-01",
           effective_to: null,
           review_status: "approved",
@@ -140,6 +170,17 @@ describe("resolveApprovedRulesForCheck", () => {
       asOf: "2026-08-19",
     })
     expect(resolution.rules.map((r) => r.code)).toContain("HC_BCP_INFECTION")
+  })
+
+  it("does not filter approved rules by target_doc_types", async () => {
+    const resolution = await resolveApprovedRulesForCheck(mockAdmin(), {
+      municipality: "横浜市",
+      docType: "提供記録",
+      asOf: "2026-08-19",
+    })
+    const codes = resolution.rules.map((r) => r.code)
+    expect(codes).toContain("HC_BCP_INFECTION")
+    expect(codes).toContain("HC_PLAN_CONSENT")
   })
 
   it("can still narrow to the old Phase1 checks when requested", async () => {

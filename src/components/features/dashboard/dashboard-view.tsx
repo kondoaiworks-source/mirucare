@@ -73,7 +73,7 @@ function documentTodoCopy(doc: DashboardIncompleteDocument): {
     return {
       label: DEADLINE_UI.uploadedTodo,
       href: "/check/upload",
-      cta: "種類を選ぶ",
+      cta: "続けてチェックする",
     }
   }
   if (doc.status === "checking") {

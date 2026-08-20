@@ -49,9 +49,6 @@ type HydrateResult = { ok: true; localId: string } | { ok: false; error: string 
 type UploadContextValue = {
   items: UploadItem[]
   isUploading: boolean
-  /** アップロード前に選ぶ「何をチェックするか」＝全ファイル共通の doc_type */
-  selectedDocType: DocType
-  setSelectedDocType: (docType: DocType) => void
   addFiles: (files: FileList | File[]) => void
   removeItem: (localId: string) => void
   retryItem: (localId: string) => void
@@ -60,8 +57,6 @@ type UploadContextValue = {
   clearFinished: () => void
   clearAll: () => void
 }
-
-const DEFAULT_DOC_TYPE: DocType = "提供記録"
 
 const UploadContext = createContext<UploadContextValue | null>(null)
 
@@ -150,13 +145,6 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   const itemsRef = useRef(items)
   itemsRef.current = items
 
-  // アップロード前に選ぶ書類種類（全ファイル共通）。
-  // 選択直後にアップロードが走るため、最新値を ref で参照する。
-  const [selectedDocType, setSelectedDocTypeState] =
-    useState<DocType>(DEFAULT_DOC_TYPE)
-  const selectedDocTypeRef = useRef(selectedDocType)
-  selectedDocTypeRef.current = selectedDocType
-
   const updateItem = useCallback(
     (localId: string, patch: Partial<UploadItem>) => {
       setItems((prev) =>
@@ -178,8 +166,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
         })
 
         const current = itemsRef.current.find((i) => i.localId === localId)
-        const docType =
-          current?.docType ?? selectedDocTypeRef.current ?? guessDocType(file.name)
+        const docType = current?.docType ?? guessDocType(file.name)
 
         const { document, suggestedDocType } = await uploadViaApi(
           file,
@@ -232,10 +219,8 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       for (const file of list) {
         const validationError = validateUploadFile(file)
         const localId = crypto.randomUUID()
-        const suggested = guessDocType(file.name)
-        // 種類はアップロード前に選んだものを全ファイルに適用する。
-        // suggested はファイル名からの推定で、開始前の「別種の可能性」確認にのみ使う。
-        const docType = selectedDocTypeRef.current
+        // 種類選択UIは廃止。ファイル名から推定し、内部用 doc_type に保存する。
+        const docType = guessDocType(file.name)
 
         if (validationError) {
           nextItems.push({
@@ -244,7 +229,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
             progress: 0,
             status: "error",
             error: validationError,
-            suggestedDocType: suggested,
+            suggestedDocType: docType,
             docType,
           })
           continue
@@ -255,7 +240,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
           file,
           progress: 0,
           status: "queued",
-          suggestedDocType: suggested,
+          suggestedDocType: docType,
           docType,
         })
       }
@@ -274,8 +259,8 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   const removeItem = useCallback((localId: string) => {
     const item = itemsRef.current.find((i) => i.localId === localId)
     setItems((prev) => prev.filter((i) => i.localId !== localId))
-    // ローカルから外すだけでは DB に uploaded が残り「種類未設定」が増える
-    if (item?.documentId) {
+  // ローカルから外すだけでは DB に uploaded が残り「チェック未開始」が増える
+  if (item?.documentId) {
       void cancelUploadedDocumentAction(item.documentId)
     }
   }, [])
@@ -311,13 +296,6 @@ export function UploadProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  // 「何をチェックするか」を変更したら、選択済みの全ファイルにも反映する。
-  const setSelectedDocType = useCallback((docType: DocType) => {
-    selectedDocTypeRef.current = docType
-    setSelectedDocTypeState(docType)
-    setItems((prev) => prev.map((item) => ({ ...item, docType })))
-  }, [])
-
   const hydrateUploadedDocument = useCallback(
     async (documentId: string): Promise<HydrateResult> => {
       const existing = itemsRef.current.find((i) => i.documentId === documentId)
@@ -331,7 +309,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
           ok: false,
           error:
             result.error ??
-            "種類未設定の書類を読み込めませんでした。一覧から再度お試しください。",
+            "未開始の書類を読み込めませんでした。一覧から再度お試しください。",
         }
       }
 
@@ -341,10 +319,6 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       const stub = new File([], doc.original_name, {
         type: doc.mime_type ?? "",
       })
-
-      // 再開時は保存済みの種類を初期選択にする
-      selectedDocTypeRef.current = doc.doc_type
-      setSelectedDocTypeState(doc.doc_type)
 
       setItems((prev) => [
         ...prev,
@@ -382,8 +356,6 @@ export function UploadProvider({ children }: { children: ReactNode }) {
     () => ({
       items,
       isUploading,
-      selectedDocType,
-      setSelectedDocType,
       addFiles,
       removeItem,
       retryItem,
@@ -395,8 +367,6 @@ export function UploadProvider({ children }: { children: ReactNode }) {
     [
       items,
       isUploading,
-      selectedDocType,
-      setSelectedDocType,
       addFiles,
       removeItem,
       retryItem,
