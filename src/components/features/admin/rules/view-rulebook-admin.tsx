@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react"
+import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { toast } from "@/components/ui/sonner"
 import {
@@ -381,6 +382,20 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
                 追加する
               </Button>
             </form>
+          </section>
+
+          <section className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
+            <h2 className="text-lg font-semibold text-primary-dark">
+              作業を終わる
+            </h2>
+            <p className="text-base leading-relaxed text-muted-foreground">
+              見て問題なければ、ここで終わりです。
+            </p>
+            <Button asChild className="min-h-11">
+              <Link href={servicePath(service.slug)}>
+                {service.label}に戻る
+              </Link>
+            </Button>
           </section>
         </>
       ) : null}
