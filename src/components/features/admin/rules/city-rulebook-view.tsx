@@ -5,7 +5,6 @@ import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { CityRulebookAlertsPanel } from "@/components/features/admin/rules/city-rulebook-alerts-panel"
 import { CityRulebookBookToc } from "@/components/features/admin/rules/city-rulebook-book-toc"
 import { CityRulebookCheckRulesPanel } from "@/components/features/admin/rules/city-rulebook-check-rules-panel"
-import { CityRulebookSetupPanel } from "@/components/features/admin/rules/city-rulebook-setup-panel"
 import { RulebookServiceSelect } from "@/components/features/admin/rules/rulebook-service-select"
 import { Button } from "@/components/ui/button"
 import { PHASE1_CITIES } from "@/lib/rule-engine/phase1-cities"
@@ -70,11 +69,6 @@ export function CityRulebookView({ data }: Props) {
       </div>
 
       <RulebookServiceSelect showHeading={false} />
-
-      <CityRulebookSetupPanel
-        readiness={data.setupReadiness}
-        citySlug={city.slug}
-      />
 
       <CityRulebookCheckRulesPanel
         citySlug={city.slug}

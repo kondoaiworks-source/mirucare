@@ -21,7 +21,6 @@ import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import type { FindingSeverity } from "@/types/database"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
-import { CityRulebookSetupPanel } from "@/components/features/admin/rules/city-rulebook-setup-panel"
 import { EvidenceCoveragePanel } from "@/components/features/admin/rules/evidence-coverage-panel"
 import {
   RuleScopeBadge,
@@ -271,13 +270,6 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
                       .length
               }
               cityRuleCount={isSharedView ? 0 : visibleRules.length}
-            />
-          ) : null}
-
-          {!isSharedView ? (
-            <CityRulebookSetupPanel
-              readiness={data.setupReadiness}
-              citySlug={data.city.slug}
             />
           ) : null}
 
