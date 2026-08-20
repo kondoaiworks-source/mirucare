@@ -1602,6 +1602,8 @@ export async function addComposeManualRuleAction(input: {
 export async function confirmComposeJobAction(input: {
   jobId: string
   note?: string
+  /** 確定前に残す、承認待ち本文の修正 */
+  guidanceUpdates?: { versionId: string; guidanceText: string }[]
 }): Promise<ActionResult> {
   const op = await requireOperator()
   if ("error" in op) return { ok: false, error: op.error }
@@ -1617,14 +1619,66 @@ export async function confirmComposeJobAction(input: {
     return { ok: false, error: "この下書きはすでに確定または破棄されています。" }
   }
 
+  const pendingItems = loaded.data.items.filter(
+    (i) =>
+      i.included &&
+      i.version?.id &&
+      i.version.review_status === "pending_review"
+  )
+  const pendingByVersionId = new Map(
+    pendingItems.map((i) => [i.version!.id, i])
+  )
+
+  for (const update of input.guidanceUpdates ?? []) {
+    const versionId = update.versionId.trim()
+    const guidanceText = update.guidanceText.trim()
+    if (!versionId) {
+      return { ok: false, error: "直すルールが指定されていません。" }
+    }
+    if (!guidanceText) {
+      return { ok: false, error: "ルールを入力してください。" }
+    }
+    const item = pendingByVersionId.get(versionId)
+    if (!item?.version) {
+      return {
+        ok: false,
+        error: "この下書きの承認待ちルールだけを直せます。",
+      }
+    }
+    const { data: existing, error: fetchError } = await op.service
+      .from("ai_check_rule_versions")
+      .select("id, check_logic, review_status")
+      .eq("id", versionId)
+      .maybeSingle()
+    if (fetchError) return { ok: false, error: toUserErrorMessage(fetchError) }
+    if (!existing || existing.review_status !== "pending_review") {
+      return {
+        ok: false,
+        error: "この下書きの承認待ちルールだけを直せます。",
+      }
+    }
+    const prevLogic =
+      existing.check_logic && typeof existing.check_logic === "object"
+        ? (existing.check_logic as Record<string, unknown>)
+        : {}
+    const { error: guidanceError } = await op.service
+      .from("ai_check_rule_versions")
+      .update({
+        guidance_text: guidanceText,
+        check_logic: { ...prevLogic, notes: guidanceText },
+      })
+      .eq("id", versionId)
+      .eq("review_status", "pending_review")
+    if (guidanceError) {
+      return { ok: false, error: toUserErrorMessage(guidanceError) }
+    }
+  }
+
   const reason =
     input.note?.trim() ||
     "内容を確認し、このルールブックを確定します。"
 
-  const pending = loaded.data.items.filter(
-    (i) => i.included && i.version?.review_status === "pending_review"
-  )
-  for (const item of pending) {
+  for (const item of pendingItems) {
     if (!item.version) continue
     const { error } = await op.service
       .from("ai_check_rule_versions")

@@ -3,18 +3,18 @@
  * 画面文言はこの定義に合わせ、内部用語（rule_sets 等）は出さない。
  *
  * 階層の正:
- * 利用設定 → サービス設定／マスタ（領域・自治体）
- * サービス → ルールブックを作る／ルールブックを見る／資料庫
- * 作る: 1. 共通ルールを作る → 2. 自治体ルールを作る
- * 見る: 国・県（共通）／各市
- * 本線: 資料庫にPDF直URLを置く → 監視 → 作る → 人が直して確定 → 見る
- * 根拠: 資料庫（読むPDFとリンク集。領域の下には置かない）
+ * 利用設定 → サービス設定／マスタ管理（サービス・自治体）
+ * サービス → ルールブック作成／ルールブック閲覧／根拠情報
+ * 作成: 国・県のPDFを置いてルール案生成 → 市のPDFを置いてルール案生成
+ * 下書き: 件数・参照資料数・カバー率を見て直して確定
+ * 本線: 根拠情報（または作成画面）にPDF直URLを置く → 監視 → 作成 → 人が直して確定 → 閲覧
+ * 根拠: 根拠情報（読むPDFとリンク集。カバー率で不足を目視確認）
  * チェック: 国・県の共通ルール ＋ その市のルール
  * 欄: ルール名＝見出し、ルール＝見比べ本文（旧「案内文」）
  *
  * 動線ルール:
  * - 1画面1作業。横飛びリンクは置かない
- * - 例外: 了承画面で本文0件→資料庫。監視で差分あり→作る。監視でエラー→資料庫
+ * - 例外: 了承画面で本文0件→根拠情報。監視で差分あり→作成。監視でエラー→根拠情報
  * - 次の作業へは親へ戻ってから進む（パンくずに頼る）
  * - 説明文は必要最小限
  *
@@ -26,6 +26,8 @@ export const RULES_UI = {
   monitoring: "監視状況",
   serviceSettings: "サービス設定",
   service: "サービス",
+  masterManagement: "マスタ管理",
+  serviceMaster: "サービスマスタ",
   nationalPrefectureSettings: "国・県設定",
   municipalitySettings: "自治体設定",
   registeredMunicipalities: "登録自治体",
@@ -35,15 +37,20 @@ export const RULES_UI = {
   pendingApproval: "承認待ち",
   registeredRules: "登録ルール一覧",
   rulebook: "ルールブック",
+  /** @deprecated 領域はUIから外した。内部の紐づけ専用 */
   domainMaster: "領域マスタ",
+  /** @deprecated 領域はUIから外した。内部の紐づけ専用 */
   domain: "領域",
-  composeRulebook: "ルールブックを作る",
-  composeDraft: "ルールブック下書き",
-  composeNationalPrefectureRules: "国・県のルール案生成",
-  composeCityRules: "上記自治体のルール案を生成",
+  composeRulebook: "ルールブック作成",
+  composeDraft: "ルール下書き",
+  composeNationalPrefectureRules: "ルール案を生成",
+  composeCityRules: "ルール案を生成",
   confirmRulebook: "確定する",
-  viewRulebook: "ルールブックを見る",
-  sourceList: "資料庫",
+  discardAllDraft: "全て破棄する",
+  viewRulebook: "ルールブック閲覧",
+  sourceList: "根拠情報",
+  evidenceCategory: "根拠カテゴリ",
+  coverageRate: "カバー率",
   readableSource: "読む資料",
   linkCollection: "リンク集",
   ruleName: "ルール名",
@@ -58,6 +65,7 @@ export const RULES_UI = {
   approve: "承認する",
   publish: "運用する",
   unpublish: "停止する",
+  addToRulebook: "ルールブックへ追加",
   /** @deprecated 互換用。画面では judgmentRuleManage を使う */
   pendingPage: "判定ルール管理",
   pendingRules: "承認待ち",

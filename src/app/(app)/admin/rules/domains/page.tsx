@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
-import { DomainsAdmin } from "@/components/features/admin/rules/domains-admin"
-import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
+import { redirect } from "next/navigation"
 
-export const metadata: Metadata = { title: RULES_UI.domainMaster }
+export const metadata: Metadata = { title: "利用設定" }
 
+/** 領域マスタはUIから外した。利用設定（マスタ管理）へ戻す。 */
 export default function RuleDomainsPage() {
-  return <DomainsAdmin />
+  redirect("/admin/rules/setup")
 }

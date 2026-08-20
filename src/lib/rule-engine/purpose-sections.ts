@@ -43,11 +43,11 @@ export const PURPOSE_SECTIONS: PurposeSection[] = [
     label: RULES_UI.setup,
     navDescription: "サービス設定",
     icon: Layers,
-    purpose: "サービス・領域・自治体を選び、ルールブックを確定します。",
+    purpose: "サービスと自治体を選び、ルールブックを確定します。",
     steps: [
-      "サービスと領域と自治体を選ぶ",
+      "サービスと自治体を選ぶ",
       "下書きを直して確定する",
-      "ルールブックを見る",
+      "ルールブックを閲覧する",
     ],
     links: [
       {

@@ -11,17 +11,22 @@ import {
   getComposeJobAction,
   retireComposeRuleAction,
   setComposeItemIncludedAction,
-  updateComposeItemGuidanceAction,
   type ComposeJobItemView,
   type ComposeJobView,
 } from "@/app/actions/compose-rulebook"
 import { servicePath } from "@/lib/rule-engine/services"
+import { coverageFromLayerCounts } from "@/lib/rule-engine/evidence-coverage"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import { viewRulebookPath } from "@/lib/rule-engine/check-rule-scope"
 import type { FindingSeverity } from "@/types/database"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { sourceListPath } from "@/lib/rule-engine/rulebook-source-links"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import { EvidenceCoveragePanel } from "@/components/features/admin/rules/evidence-coverage-panel"
+import {
+  RuleScopeBadge,
+  RulebookRuleCard,
+} from "@/components/features/admin/rules/rulebook-rule-card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -42,19 +47,6 @@ type Props = {
   initial: ComposeJobView
 }
 
-const ORIGIN_LABEL: Record<ComposeJobItemView["origin"], string> = {
-  existing: "既存",
-  template: "自動",
-  manual: "追加",
-  city_pdf: "市資料",
-  official: "公式資料",
-}
-
-const SCOPE_LABEL: Record<string, string> = {
-  shared: "国・県",
-  city: "市固有",
-}
-
 export function ComposeRulebookReview({ service, initial }: Props) {
   const router = useRouter()
   const [data, setData] = useState(initial)
@@ -67,16 +59,15 @@ export function ComposeRulebookReview({ service, initial }: Props) {
   const [addSeverity, setAddSeverity] = useState<FindingSeverity>("mid")
   const [editing, setEditing] = useState<Record<string, string>>({})
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, ComposeJobItemView[]>()
-    for (const item of data.items) {
-      const key = item.domainTitle?.trim() || "未分類"
-      const list = map.get(key) ?? []
-      list.push(item)
-      map.set(key, list)
-    }
-    return Array.from(map.entries())
-  }, [data.items])
+  const coverage = useMemo(() => {
+    const noteCount = (layer: "national" | "prefecture" | "city") =>
+      data.extractionNotes.find((n) => n.layer === layer)?.sourceCount ?? 0
+    return coverageFromLayerCounts({
+      national: noteCount("national"),
+      prefecture: noteCount("prefecture"),
+      city: noteCount("city"),
+    })
+  }, [data.extractionNotes])
 
   const isDraft = data.job.status === "draft"
 
@@ -91,9 +82,23 @@ export function ComposeRulebookReview({ service, initial }: Props) {
 
   function confirm() {
     startTransition(async () => {
+      const guidanceUpdates = data.items.flatMap((item) => {
+        if (!(item.id in editing)) return []
+        if (!item.included) return []
+        if (item.version?.review_status !== "pending_review") return []
+        const versionId = item.version?.id
+        if (!versionId) return []
+        return [
+          {
+            versionId,
+            guidanceText: editing[item.id] ?? "",
+          },
+        ]
+      })
       const result = await confirmComposeJobAction({
         jobId: data.job.id,
         note,
+        guidanceUpdates,
       })
       if (!result.ok) {
         toast.error(result.error ?? "確定できませんでした。")
@@ -165,30 +170,6 @@ export function ComposeRulebookReview({ service, initial }: Props) {
     })
   }
 
-  function saveGuidance(item: ComposeJobItemView) {
-    const versionId = item.version?.id
-    if (!versionId) return
-    const text = (editing[item.id] ?? item.version?.guidance_text ?? "").trim()
-    startTransition(async () => {
-      const result = await updateComposeItemGuidanceAction({
-        versionId,
-        guidanceText: text,
-        severity: (item.version?.severity as FindingSeverity) ?? "mid",
-      })
-      if (!result.ok) {
-        toast.error(result.error ?? "保存できませんでした。")
-        return
-      }
-      toast.success("ルールを更新しました。")
-      setEditing((prev) => {
-        const next = { ...prev }
-        delete next[item.id]
-        return next
-      })
-      await reload()
-    })
-  }
-
   function onAdd(e: FormEvent) {
     e.preventDefault()
     startTransition(async () => {
@@ -225,12 +206,20 @@ export function ComposeRulebookReview({ service, initial }: Props) {
           ]}
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          {data.serviceLabel}／{data.domainLabel}／{data.cityName}
+          {data.serviceLabel}／{data.cityName}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          下書き {data.includedCount}件（国・県 {data.sharedCount}件／市固有 {data.cityCount}件。承認待ち {data.pendingCount}件）。確定するまでチェックには使いません。{RULES_UI.ruleText}は、どの書類の何を見比べるかを人が判断できる文にしてください。
+          {RULES_UI.composeDraft}です。承認待ちの本文は必要なら直してください。直した文は、下の「確定する」で一緒に残ります。確定するまでチェックには使いません。
         </p>
       </div>
+
+      <EvidenceCoveragePanel
+        coverage={coverage}
+        ruleCount={data.includedCount}
+        sharedRuleCount={data.sharedCount}
+        cityRuleCount={data.cityCount}
+        pendingCount={data.pendingCount}
+      />
 
       {data.extractionNotes.length > 0 ? (
         <section
@@ -259,7 +248,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                       needsText: true,
                     })}
                   >
-                    資料庫でリンクを確認する
+                    根拠情報でリンクを確認する
                   </Link>
                 </Button>
               </AlertDescription>
@@ -286,8 +275,8 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                         })}
                       >
                         {note.status === "no_sources"
-                          ? "資料庫でURLを追加する"
-                          : "資料庫でリンクを直す"}
+                          ? "根拠情報でURLを追加する"
+                          : "根拠情報でリンクを直す"}
                       </Link>
                     </Button>
                   </div>
@@ -298,55 +287,80 @@ export function ComposeRulebookReview({ service, initial }: Props) {
         </section>
       ) : null}
 
-      {grouped.map(([domainTitle, items]) => (
-        <section
-          key={domainTitle}
-          className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
-        >
-          <h2 className="text-lg font-semibold text-primary-dark">
-            {domainTitle}
-          </h2>
+      <section className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
+        <h2 className="text-lg font-semibold text-primary-dark">
+          ルールの一覧
+        </h2>
+        {data.items.length > 0 ? (
           <ul className="space-y-3">
-            {items.map((item) => {
+            {data.items.map((item) => {
               const pendingReview =
                 item.version?.review_status === "pending_review"
+              const approved = item.version?.review_status === "approved"
               const guidance =
                 editing[item.id] ?? item.version?.guidance_text ?? ""
-              return (
-                <li
-                  key={item.id}
-                  className="rounded-xl border border-border p-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <p className="text-base font-semibold text-primary-dark">
-                        {item.rule?.title ?? "（名称なし）"}
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        <Badge variant="outline" className="rounded-md">
-                          {ORIGIN_LABEL[item.origin]}
-                        </Badge>
-                        <Badge variant="outline" className="rounded-md">
-                          {SCOPE_LABEL[item.rule?.scope_kind ?? "shared"] ??
-                            "国・県"}
-                        </Badge>
-                        {item.included ? null : (
-                          <Badge variant="outline" className="rounded-md">
-                            対象外
-                          </Badge>
-                        )}
-                        {pendingReview ? (
-                          <Badge className="rounded-md">承認待ち</Badge>
-                        ) : (
-                          <Badge variant="outline" className="rounded-md">
-                            登録済み
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+              const canEditPending = isDraft && item.included && pendingReview
+              const guidanceText = item.version?.guidance_text
 
-                  {item.included && pendingReview ? (
+              return (
+                <RulebookRuleCard
+                  key={item.id}
+                  title={item.rule?.title ?? "（名称なし）"}
+                  badges={
+                    <>
+                      <RuleScopeBadge scopeKind={item.rule?.scope_kind} />
+                      {item.included ? null : (
+                        <Badge variant="outline" className="rounded-md">
+                          対象外
+                        </Badge>
+                      )}
+                      {item.included && pendingReview ? (
+                        <Badge className="rounded-md">
+                          {RULES_UI.pendingApproval}
+                        </Badge>
+                      ) : null}
+                    </>
+                  }
+                  actions={
+                    isDraft ? (
+                      <>
+                        {item.included ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-11"
+                            disabled={pending}
+                            onClick={() => exclude(item)}
+                          >
+                            下書きから外す
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-11"
+                            disabled={pending}
+                            onClick={() => restore(item)}
+                          >
+                            下書きに戻す
+                          </Button>
+                        )}
+                        {item.included && approved ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-11"
+                            disabled={pending}
+                            onClick={() => retire(item)}
+                          >
+                            ルールを停止する
+                          </Button>
+                        ) : null}
+                      </>
+                    ) : undefined
+                  }
+                >
+                  {canEditPending ? (
                     <div className="mt-3 space-y-2">
                       <Label htmlFor={`guidance-${item.id}`}>
                         {RULES_UI.ruleText}
@@ -355,7 +369,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                         id={`guidance-${item.id}`}
                         className="min-h-24 text-base"
                         value={guidance}
-                        disabled={!isDraft || pending}
+                        disabled={pending}
                         onChange={(e) =>
                           setEditing((prev) => ({
                             ...prev,
@@ -364,66 +378,21 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                         }
                       />
                     </div>
-                  ) : item.included && item.version?.guidance_text ? (
+                  ) : guidanceText ? (
                     <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-                      {item.version.guidance_text}
+                      {guidanceText}
                     </p>
                   ) : null}
-
-                  {isDraft ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {item.included && pendingReview ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11"
-                          disabled={pending}
-                          onClick={() => saveGuidance(item)}
-                        >
-                          ルールを保存する
-                        </Button>
-                      ) : null}
-                      {item.included ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11"
-                          disabled={pending}
-                          onClick={() => exclude(item)}
-                        >
-                          下書きから外す
-                        </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11"
-                          disabled={pending}
-                          onClick={() => restore(item)}
-                        >
-                          下書きに戻す
-                        </Button>
-                      )}
-                      {item.included &&
-                      item.version?.review_status === "approved" ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11"
-                          disabled={pending}
-                          onClick={() => retire(item)}
-                        >
-                          ルールを停止する
-                        </Button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </li>
+                </RulebookRuleCard>
               )
             })}
           </ul>
-        </section>
-      ))}
+        ) : (
+          <p className="text-base text-muted-foreground">
+            この下書きのルールはまだありません。下のフォームから追加するか、ルール案を生成し直してください。
+          </p>
+        )}
+      </section>
 
       {isDraft ? (
         <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
@@ -478,8 +447,11 @@ export function ComposeRulebookReview({ service, initial }: Props) {
       {isDraft ? (
         <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
           <h2 className="text-lg font-semibold text-primary-dark">
-            確定する
+            このルールを確定する
           </h2>
+          <p className="text-base leading-relaxed text-muted-foreground">
+            承認待ちの本文を直している場合は、確定するときに一緒に残ります。
+          </p>
           <div className="space-y-2">
             <Label htmlFor="confirm-note">確認記録</Label>
             <Textarea
@@ -508,7 +480,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
               disabled={pending}
               onClick={discard}
             >
-              下書きを破棄する
+              {RULES_UI.discardAllDraft}
             </Button>
           </div>
         </section>

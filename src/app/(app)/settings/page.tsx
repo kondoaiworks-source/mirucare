@@ -73,7 +73,7 @@ async function SettingsContent({ searchParams }: PageProps) {
     <div className="mx-auto max-w-3xl space-y-8">
       <PageHeader
         title="設定"
-        description="ご自身の表示名・事業所情報の確認、同僚の招待ができます。"
+        description="表示名・事業所情報の確認、同僚の招待などができます。"
       />
 
       {params.billing === "success" ? (
@@ -112,7 +112,7 @@ async function SettingsContent({ searchParams }: PageProps) {
         <SectionHeading icon={CreditCard}>契約・事業所</SectionHeading>
         <Card className="rounded-lg shadow-subtle">
           <CardHeader>
-            <CardTitleWithIcon icon={CreditCard}>ご契約プラン</CardTitleWithIcon>
+            <CardTitleWithIcon icon={CreditCard}>ご契約</CardTitleWithIcon>
             <CardDescription className="text-base leading-relaxed">
               カード変更・解約はStripeのお客様ポータルから行えます。
             </CardDescription>
@@ -179,11 +179,11 @@ async function SettingsContent({ searchParams }: PageProps) {
         <>
           <Separator />
           <section className="space-y-4">
-            <SectionHeading icon={ShieldCheck}>管理者向けメニュー</SectionHeading>
+            <SectionHeading icon={ShieldCheck}>管理者メニュー</SectionHeading>
             <Card className="rounded-lg shadow-subtle">
               <CardHeader>
                 <CardTitleWithIcon icon={ShieldCheck}>
-                  チェック結果の公開
+                  公開前チェック
                 </CardTitleWithIcon>
                 <CardDescription className="text-base leading-relaxed">
                   AIの指摘を、公開前に人が確認するかどうかを選べます。
@@ -233,7 +233,7 @@ async function SettingsContent({ searchParams }: PageProps) {
         <>
           <Separator />
           <section className="space-y-4">
-            <SectionHeading icon={ClipboardList}>運営向け</SectionHeading>
+            <SectionHeading icon={ClipboardList}>運営者メニュー</SectionHeading>
             <Card className="rounded-lg shadow-subtle">
               <CardHeader>
                 <CardTitleWithIcon icon={ClipboardList}>

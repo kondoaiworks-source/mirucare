@@ -34,7 +34,7 @@ describe("check-rule-scope", () => {
     expect(ruleCodePrefix(yokohama)).toBe("YOKOHAMA")
   })
 
-  it("places manage screens on ルールブックを見る", () => {
+  it("places manage screens on ルールブック閲覧", () => {
     expect(checkRulesManagePath(shared)).toBe(
       "/admin/rules/services/homecare/book?city=national-prefecture"
     )
@@ -43,7 +43,7 @@ describe("check-rule-scope", () => {
     )
   })
 
-  it("routes a changed document to ルールブックを作る", () => {
+  it("routes a changed document to ルールブック作成", () => {
     expect(
       composeRulebookPathFromDocument({
         jurisdictionLevel: "市区町村",

@@ -1,5 +1,6 @@
 /**
- * サービス × 領域 × 自治体 からルールブック下書きを組み立てる純ロジック。
+ * サービス × 自治体 からルールブック下書きを組み立てる純ロジック。
+ * 領域は内部の紐づけのみで、画面の選択軸にはしない。
  */
 
 import type { AuditItemCategory, DocType, FindingSeverity } from "@/types/database"
@@ -53,7 +54,7 @@ export type ComposeExtractionNote = {
 
 /** 本文0件のとき、了承画面と抽出メモで使う */
 export const COMPOSE_NO_TEXT_HINT =
-  "資料庫でリンクを開き、PDFの直リンクに直してから下書きを作り直してください。"
+  "根拠情報でリンクを開き、PDFの直リンクに直してから下書きを作り直してください。"
 
 export function pickTemplateItemsForDomains(input: {
   items: readonly HomeVisitAuditTemplateItem[]

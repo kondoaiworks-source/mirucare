@@ -94,7 +94,7 @@ export const CHECK_UI = {
   setPrimaryLink: "今回一緒に入れた分の結果を見る",
   laterListTitle: "あとで確認",
   laterListDescription:
-    "「あとで」を押した指摘がここに集まります。時間のあるときに結果画面から対応できます。",
+    "チェック結果で「あとで」を押すと、ここに入ります。時間のあるときに結果画面から対応できます。",
   laterListEmptyTitle: "あとで確認の指摘はありません",
   laterListEmptyDescription:
     "チェック結果で「あとで」を押すと、ここに入ります。",

@@ -5,6 +5,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { getCityRulebookAction, type CityRulebookData } from "@/app/actions/city-rulebook"
 import { listComposeOptionsAction } from "@/app/actions/compose-rulebook"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
+import { EvidenceCategoryCoverageSection } from "@/components/features/admin/rules/evidence-category-coverage"
+import { composeRulebookPath } from "@/lib/rule-engine/check-rule-scope"
+import { buildEvidenceCoverage } from "@/lib/rule-engine/evidence-coverage"
 import { servicePath } from "@/lib/rule-engine/services"
 import { SOURCE_URL_FIX_HINT, isReadablePdfSource } from "@/lib/rule-engine/source-urls"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
@@ -54,7 +57,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
     setError(null)
     const result = await getCityRulebookAction(slug)
     if (!result.ok || !result.data) {
-      setError(result.error ?? "資料庫を開けませんでした。")
+      setError(result.error ?? "根拠情報を開けませんでした。")
       setData(null)
       setLoading(false)
       return
@@ -116,6 +119,13 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
     ).length
   }, [data])
 
+  const coverage = useMemo(
+    () => (data ? buildEvidenceCoverage(data.sources) : null),
+    [data]
+  )
+
+  const composeHref = composeRulebookPath(service.slug, citySlug || null)
+
   return (
     <div className="space-y-6">
       <div>
@@ -130,7 +140,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
           {RULES_UI.sourceList}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          ルールブックを作るときに読む公式PDFと、人が開く参考リンク（HTML）を置きます。PDFの直リンクは監視状況に載ります。本文が無いPDFは、人がリンク先を確認して直します。
+          監査に必要な公式PDFと参考リンクを、根拠カテゴリごとに置きます。カバー率は、カテゴリのうち資料を登録した割合です。PDFの直リンクは監視状況に載ります。
         </p>
       </div>
 
@@ -165,6 +175,13 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
         ) : null}
       </section>
 
+      {coverage ? (
+        <EvidenceCategoryCoverageSection
+          coverage={coverage}
+          composeHref={composeHref}
+        />
+      ) : null}
+
       {error ? (
         <Alert variant="destructive" className="rounded-xl">
           <AlertTriangle />
@@ -185,7 +202,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
               </AlertTitle>
               <AlertDescription className="text-base leading-relaxed">
                 {SOURCE_URL_FIX_HINT}{" "}
-                直したあと、ルールブックを作るから下書きを作り直してください。
+                直したあと、ルールブック作成から下書きを作り直してください。
               </AlertDescription>
             </Alert>
           ) : (
@@ -230,6 +247,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
                     jurisdictionId={data.layerJurisdictions[layer]?.id ?? null}
                     sources={visible}
                     showMonitoringAlert={index === 0 && !onlyNeedsText}
+                    composeHref={composeHref}
                     onChanged={() => void loadCity(citySlug, true)}
                   />
                 )}
