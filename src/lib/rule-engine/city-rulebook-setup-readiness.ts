@@ -4,6 +4,7 @@ import {
   getPhase1ExpectedRules,
   getPhase1OperationCheckMeta,
 } from "@/lib/rule-engine/phase1-rule-groups"
+import { FREQUENT_GUIDANCE_RULE_SEEDS } from "@/lib/phase1-ai-rules-seed"
 
 const PHASE1_UNIQUE_AUDIT_CODES = Array.from(
   new Set(getPhase1ExpectedRules().map((r) => r.auditItemCode))
@@ -34,14 +35,33 @@ export type CityPhase1CheckBlock = {
   done: boolean
 }
 
+export type CityFrequentCoverageRow = {
+  code: string
+  title: string
+  category: string
+  sourceLabel: string
+  statusLabel: "確認済み" | "根拠確認待ち" | "了承待ち" | "未作成"
+  nextAction: string
+  hasApprovedRule: boolean
+  hasPendingRule: boolean
+  hasDocumentEvidence: boolean
+  isCitySpecific: boolean
+}
+
 export type CityRulebookSetupReadiness = {
   cityName: string
   steps: CitySetupStep[]
   phase1Checks: CityPhase1CheckBlock[]
+  frequentCoverage: CityFrequentCoverageRow[]
   stepsDone: number
   stepsTotal: number
   phase1Approved: number
   phase1Total: number
+  frequentApproved: number
+  frequentTotal: number
+  frequentWithEvidence: number
+  frequentPending: number
+  frequentMissing: number
   isComplete: boolean
   statusLabel: "未着手" | "準備中" | "完了" | "要確認"
   nextStep: CitySetupStep | null
@@ -57,6 +77,7 @@ export type CityRulebookSetupInput = {
   cityDocumentCount: number
   phase1AuditItemCodes: string[]
   approvedRules: CityRulebookCheckRule[]
+  pendingRules: CityRulebookCheckRule[]
   pendingRuleCount: number
   pendingDraftCount: number
   openAlertCount: number
@@ -71,6 +92,56 @@ function ruleHasEvidence(rule: CityRulebookCheckRule | undefined): boolean {
   )
 }
 
+function frequentCoverageCategory(code: string): string {
+  if (code.includes("CONTRACT") || code.includes("PRIVACY_CONSENT")) {
+    return "契約・同意"
+  }
+  if (
+    code.includes("PLAN") ||
+    code.includes("ASSESS") ||
+    code.includes("MONITORING")
+  ) {
+    return "計画"
+  }
+  if (
+    code.includes("RECORD") ||
+    code.includes("SAFETY") ||
+    code.includes("COMPLAINT")
+  ) {
+    return "記録・対応"
+  }
+  if (code.includes("GOV") || code.includes("TRAINING")) {
+    return "人員・運営体制"
+  }
+  if (code.includes("ADD") || code.includes("BILLING")) {
+    return "加算・請求"
+  }
+  if (
+    code.includes("ABUSE") ||
+    code.includes("INFECTION") ||
+    code.includes("BCP") ||
+    code.includes("HARASSMENT") ||
+    code.includes("RETENTION") ||
+    code.includes("PRIVACY")
+  ) {
+    return "安全・管理"
+  }
+  return "その他"
+}
+
+function preferredRuleByCode(
+  rules: CityRulebookCheckRule[]
+): Map<string, CityRulebookCheckRule> {
+  const byCode = new Map<string, CityRulebookCheckRule>()
+  for (const rule of rules) {
+    const existing = byCode.get(rule.code)
+    if (!existing || (existing.scopeKind !== "city" && rule.scopeKind === "city")) {
+      byCode.set(rule.code, rule)
+    }
+  }
+  return byCode
+}
+
 export function buildCityRulebookSetupReadiness(
   input: CityRulebookSetupInput
 ): CityRulebookSetupReadiness {
@@ -83,6 +154,53 @@ export function buildCityRulebookSetupReadiness(
       approvedByCode.set(rule.code, rule)
     }
   }
+  const frequentApprovedByCode = preferredRuleByCode(input.approvedRules)
+  const frequentPendingByCode = preferredRuleByCode(input.pendingRules)
+
+  const frequentCoverage: CityFrequentCoverageRow[] =
+    FREQUENT_GUIDANCE_RULE_SEEDS.map((seed) => {
+      const approved = frequentApprovedByCode.get(seed.code)
+      const pending = frequentPendingByCode.get(seed.code)
+      const hasDocumentEvidence = ruleHasEvidence(approved)
+      const isCitySpecific = approved?.scopeKind === "city"
+      const sourceLabel = approved
+        ? isCitySpecific
+          ? input.city.name
+          : "国・県共通"
+        : pending
+          ? pending.scopeKind === "city"
+            ? `${input.city.name}候補`
+            : "共通候補"
+          : "未確認"
+      const statusLabel: CityFrequentCoverageRow["statusLabel"] = approved
+        ? hasDocumentEvidence
+          ? "確認済み"
+          : "根拠確認待ち"
+        : pending
+          ? "了承待ち"
+          : "未作成"
+      const nextAction =
+        statusLabel === "確認済み"
+          ? "なし"
+          : statusLabel === "根拠確認待ち"
+            ? "根拠PDFから再生成または根拠を確認"
+            : statusLabel === "了承待ち"
+              ? "候補を確認して了承"
+              : "PDF追加・候補生成または手動追加"
+
+      return {
+        code: seed.code,
+        title: seed.title,
+        category: frequentCoverageCategory(seed.code),
+        sourceLabel,
+        statusLabel,
+        nextAction,
+        hasApprovedRule: Boolean(approved),
+        hasPendingRule: Boolean(pending),
+        hasDocumentEvidence,
+        isCitySpecific,
+      }
+    })
 
   const phase1Checks: CityPhase1CheckBlock[] = ([1, 3, 7, 8] as const).map(
     (no) => {
@@ -116,6 +234,15 @@ export function buildCityRulebookSetupReadiness(
   ).length
   const phase1Total = expected.length
   const allPhase1Evidence = phase1Checks.every((c) => c.done)
+  const frequentTotal = frequentCoverage.length
+  const frequentApproved = frequentCoverage.filter((r) => r.hasApprovedRule).length
+  const frequentWithEvidence = frequentCoverage.filter(
+    (r) => r.hasDocumentEvidence
+  ).length
+  const frequentPending = frequentCoverage.filter((r) => r.hasPendingRule).length
+  const frequentMissing = frequentCoverage.filter(
+    (r) => !r.hasApprovedRule && !r.hasPendingRule
+  ).length
 
   const layersReady =
     input.nationalSourceCount > 0 &&
@@ -239,10 +366,16 @@ export function buildCityRulebookSetupReadiness(
     cityName: input.city.name,
     steps,
     phase1Checks,
+    frequentCoverage,
     stepsDone,
     stepsTotal,
     phase1Approved,
     phase1Total,
+    frequentApproved,
+    frequentTotal,
+    frequentWithEvidence,
+    frequentPending,
+    frequentMissing,
     isComplete,
     statusLabel,
     nextStep,
