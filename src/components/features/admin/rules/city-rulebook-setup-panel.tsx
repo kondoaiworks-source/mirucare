@@ -16,7 +16,6 @@ import {
   Check,
   CheckCircle2,
   Circle,
-  ExternalLink,
   ListChecks,
   Minus,
   X,
@@ -108,9 +107,8 @@ export function CityRulebookSetupPanel({ readiness, citySlug }: Props) {
               {statusLabel}
             </Badge>
             <Button asChild variant="outline" size="sm" className="min-h-11">
-              <Link href="/admin/rules/services">
-                全体の進捗を見る
-                <ExternalLink className="size-4" aria-hidden />
+              <Link href="/admin/rules/setup">
+                利用設定へ戻る
               </Link>
             </Button>
           </div>

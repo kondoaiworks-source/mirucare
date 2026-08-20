@@ -11,7 +11,7 @@ type Props = {
 }
 
 /**
- * サービス配下のハブ。ルールブックを作る／見る／資料庫。
+ * サービス配下のハブ。ルールブック作成／閲覧／根拠情報。
  */
 export function ServiceHub({ service }: Props) {
   const menus = [

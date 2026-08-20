@@ -71,11 +71,11 @@ export function primarySourceUrl(row: {
 export const SOURCE_URL_MONITORING_ALERT_TITLE = "自動監視について"
 
 export const SOURCE_URL_MONITORING_ALERT_BODY =
-  "読むPDFの直リンクを置くと、監視状況に載り、ルールブックを作るときに読みます。参考リンク（HTML）はリンク集に置き、ルール抽出には使いません。変わったら人が原文を確認し、作るから作り直してください。自動では本番の物差しを書き換えません。"
+  "読むPDFの直リンクを置くと、監視状況に載り、ルールブック作成のときに読みます。参考リンク（HTML）はリンク集に置き、ルール抽出には使いません。変わったら人が原文を確認し、作成から作り直してください。自動では本番の物差しを書き換えません。"
 
 /** 直接ファイルURL欄の短い補足 */
 export const SOURCE_URL_DIRECT_FILE_HINT =
-  "公式PDFの直リンクです。ルールを作るときに読みます。一覧ページではなく、ファイルそのもののURLを置いてください。"
+  "公式PDFの直リンクです。ルールブック作成のときに読みます。一覧ページではなく、ファイルそのもののURLを置いてください。"
 
 /** 本文が無いときの、人によるリンク確認 */
 export const SOURCE_URL_FIX_HINT =

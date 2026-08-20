@@ -16,12 +16,14 @@ import {
   type ComposeJobView,
 } from "@/app/actions/compose-rulebook"
 import { servicePath } from "@/lib/rule-engine/services"
+import { coverageFromLayerCounts } from "@/lib/rule-engine/evidence-coverage"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import { viewRulebookPath } from "@/lib/rule-engine/check-rule-scope"
 import type { FindingSeverity } from "@/types/database"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { sourceListPath } from "@/lib/rule-engine/rulebook-source-links"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import { EvidenceCoveragePanel } from "@/components/features/admin/rules/evidence-coverage-panel"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -67,16 +69,15 @@ export function ComposeRulebookReview({ service, initial }: Props) {
   const [addSeverity, setAddSeverity] = useState<FindingSeverity>("mid")
   const [editing, setEditing] = useState<Record<string, string>>({})
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, ComposeJobItemView[]>()
-    for (const item of data.items) {
-      const key = item.domainTitle?.trim() || "未分類"
-      const list = map.get(key) ?? []
-      list.push(item)
-      map.set(key, list)
-    }
-    return Array.from(map.entries())
-  }, [data.items])
+  const coverage = useMemo(() => {
+    const noteCount = (layer: "national" | "prefecture" | "city") =>
+      data.extractionNotes.find((n) => n.layer === layer)?.sourceCount ?? 0
+    return coverageFromLayerCounts({
+      national: noteCount("national"),
+      prefecture: noteCount("prefecture"),
+      city: noteCount("city"),
+    })
+  }, [data.extractionNotes])
 
   const isDraft = data.job.status === "draft"
 
@@ -225,12 +226,20 @@ export function ComposeRulebookReview({ service, initial }: Props) {
           ]}
         />
         <h1 className="mt-2 text-2xl font-bold text-primary-dark md:text-3xl">
-          {data.serviceLabel}／{data.domainLabel}／{data.cityName}
+          {data.serviceLabel}／{data.cityName}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          下書き {data.includedCount}件（国・県 {data.sharedCount}件／市固有 {data.cityCount}件。承認待ち {data.pendingCount}件）。確定するまでチェックには使いません。{RULES_UI.ruleText}は、どの書類の何を見比べるかを人が判断できる文にしてください。
+          {RULES_UI.composeDraft}です。確定するまでチェックには使いません。{RULES_UI.ruleText}は、どの書類の何を見比べるかを人が判断できる文にしてください。
         </p>
       </div>
+
+      <EvidenceCoveragePanel
+        coverage={coverage}
+        ruleCount={data.includedCount}
+        sharedRuleCount={data.sharedCount}
+        cityRuleCount={data.cityCount}
+        pendingCount={data.pendingCount}
+      />
 
       {data.extractionNotes.length > 0 ? (
         <section
@@ -259,7 +268,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                       needsText: true,
                     })}
                   >
-                    資料庫でリンクを確認する
+                    根拠情報でリンクを確認する
                   </Link>
                 </Button>
               </AlertDescription>
@@ -286,8 +295,8 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                         })}
                       >
                         {note.status === "no_sources"
-                          ? "資料庫でURLを追加する"
-                          : "資料庫でリンクを直す"}
+                          ? "根拠情報でURLを追加する"
+                          : "根拠情報でリンクを直す"}
                       </Link>
                     </Button>
                   </div>
@@ -298,16 +307,12 @@ export function ComposeRulebookReview({ service, initial }: Props) {
         </section>
       ) : null}
 
-      {grouped.map(([domainTitle, items]) => (
-        <section
-          key={domainTitle}
-          className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
-        >
-          <h2 className="text-lg font-semibold text-primary-dark">
-            {domainTitle}
-          </h2>
-          <ul className="space-y-3">
-            {items.map((item) => {
+      <section className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
+        <h2 className="text-lg font-semibold text-primary-dark">
+          ルールの一覧
+        </h2>
+        <ul className="space-y-3">
+          {data.items.map((item) => {
               const pendingReview =
                 item.version?.review_status === "pending_review"
               const guidance =
@@ -423,7 +428,6 @@ export function ComposeRulebookReview({ service, initial }: Props) {
             })}
           </ul>
         </section>
-      ))}
 
       {isDraft ? (
         <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
@@ -478,7 +482,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
       {isDraft ? (
         <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
           <h2 className="text-lg font-semibold text-primary-dark">
-            確定する
+            このルールを確定する
           </h2>
           <div className="space-y-2">
             <Label htmlFor="confirm-note">確認記録</Label>
@@ -508,7 +512,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
               disabled={pending}
               onClick={discard}
             >
-              下書きを破棄する
+              {RULES_UI.discardAllDraft}
             </Button>
           </div>
         </section>

@@ -151,7 +151,7 @@ export function ComposeRulebookForm({
           {RULES_UI.composeRulebook}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          共通ルールを作ってから、自治体ルールを作ります。確定するまでチェックには使いません。
+          ルールの根拠にするPDFのURLを登録して、「ルール案を生成」をクリックしてください。表示されるルールを保存すると、ルールブックが完成します。確定するまでチェックには使いません。
         </p>
       </div>
 
@@ -190,10 +190,10 @@ export function ComposeRulebookForm({
           id="compose-shared-heading"
           className="text-lg font-semibold text-primary-dark"
         >
-          1. 共通ルールを作る
+          1. 国・県
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          国・県の公式資料から、全市で使う共通ルール案を作ります。読むPDFが無ければここで置きます。参考リンクはリンク集です。ルール案を生成したあと、直して確定してください。
+          国・県の公式PDFから、全市で使うルール案を作ります。読むPDFが無ければここで置きます。参考リンクはリンク集です。ルール案を生成したあと、直して確定してください。
         </p>
         {bookLoading && !book ? (
           <p className="text-base text-muted-foreground">読み込み中です。</p>
@@ -230,7 +230,7 @@ export function ComposeRulebookForm({
           </div>
         ) : (
           <p className="text-base text-muted-foreground">
-            資料庫を読み込めませんでした。資料庫ページから置いてください。
+            根拠情報を読み込めませんでした。根拠情報ページから置いてください。
           </p>
         )}
         <Button
@@ -262,10 +262,10 @@ export function ComposeRulebookForm({
           id="compose-city-heading"
           className="text-lg font-semibold text-primary-dark"
         >
-          2. 自治体ルールを作る
+          2. 市
         </h2>
         <p className="text-base leading-relaxed text-muted-foreground">
-          市固有の公式資料から、自治体ルール案を作ります。共通ルールの確定後に進めてください。
+          市固有の公式PDFから、自治体ルール案を作ります。国・県の確定後に進めてください。
         </p>
         <div className="space-y-2">
           <Label htmlFor="compose-city">自治体</Label>

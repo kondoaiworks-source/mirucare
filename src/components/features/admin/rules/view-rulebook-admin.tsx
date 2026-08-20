@@ -15,14 +15,15 @@ import {
   retireViewRulebookRuleAction,
   updateViewRulebookGuidanceAction,
 } from "@/app/actions/view-rulebook"
-import { ALL_DOMAINS_VALUE, ruleMatchesDomain } from "@/lib/rule-engine/domains"
 import { servicePath } from "@/lib/rule-engine/services"
 import { VIEW_SHARED_CITY } from "@/lib/rule-engine/check-rule-scope"
+import { buildEvidenceCoverage } from "@/lib/rule-engine/evidence-coverage"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
-import type { FindingSeverity, RuleDomain } from "@/types/database"
+import type { FindingSeverity } from "@/types/database"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { CityRulebookSetupPanel } from "@/components/features/admin/rules/city-rulebook-setup-panel"
+import { EvidenceCoveragePanel } from "@/components/features/admin/rules/evidence-coverage-panel"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -59,14 +60,12 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [pending, startTransition] = useTransition()
-  const [domains, setDomains] = useState<RuleDomain[]>([])
   const [municipalities, setMunicipalities] = useState<MunicipalityOption[]>(
     []
   )
   const [citySlug, setCitySlug] = useState(
     initialCitySlug?.trim() || VIEW_SHARED_CITY
   )
-  const [domainValue, setDomainValue] = useState<string>(ALL_DOMAINS_VALUE)
   const [data, setData] = useState<CityRulebookData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -85,7 +84,6 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
         setError(result.error ?? "選択肢を取得できませんでした。")
         return
       }
-      setDomains(result.data.domains)
       setMunicipalities(result.data.municipalities)
       if (!initialCitySlug?.trim() && !citySlug) {
         setCitySlug(VIEW_SHARED_CITY)
@@ -131,47 +129,17 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
     router.replace(query ? `${pathname}?${query}` : pathname)
   }
 
-  const selectedDomain = domains.find((d) => d.id === domainValue) ?? null
-
   const visibleRules = useMemo(() => {
-    let rules = data?.approvedCheckRules ?? []
-    rules = isSharedView
+    const rules = data?.approvedCheckRules ?? []
+    return isSharedView
       ? rules.filter((rule) => rule.scopeKind === "shared")
       : rules.filter((rule) => rule.scopeKind === "city")
-    if (!selectedDomain) return rules
-    return rules.filter((rule) => {
-      if (rule.domainId && rule.domainId === selectedDomain.id) return true
-      return ruleMatchesDomain(rule, {
-        slug: selectedDomain.slug,
-        title: selectedDomain.title,
-        keywords: selectedDomain.keywords,
-        templateCategories: selectedDomain.template_categories,
-        templateCodes: selectedDomain.template_codes,
-      })
-    })
-  }, [data?.approvedCheckRules, selectedDomain, isSharedView])
+  }, [data?.approvedCheckRules, isSharedView])
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, CityRulebookCheckRule[]>()
-    for (const rule of visibleRules) {
-      const domainHit =
-        domains.find((d) => d.id === rule.domainId) ??
-        domains.find((d) =>
-          ruleMatchesDomain(rule, {
-            slug: d.slug,
-            title: d.title,
-            keywords: d.keywords,
-            templateCategories: d.template_categories,
-            templateCodes: d.template_codes,
-          })
-        )
-      const key = domainHit?.title ?? "未分類"
-      const list = map.get(key) ?? []
-      list.push(rule)
-      map.set(key, list)
-    }
-    return Array.from(map.entries())
-  }, [visibleRules, domains])
+  const coverage = useMemo(
+    () => (data ? buildEvidenceCoverage(data.sources) : null),
+    [data]
+  )
 
   async function reload() {
     if (!loadCitySlug) return
@@ -242,7 +210,7 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
         severity: addSeverity,
         jurisdictionId,
         citySlug: isSharedView ? null : citySlug,
-        domainId: domainValue === ALL_DOMAINS_VALUE ? null : domainValue,
+        domainId: null,
         scopeKind: isSharedView ? "shared" : "city",
       })
       if (!result.ok) {
@@ -272,44 +240,26 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
       </div>
 
       <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="view-city">国・県／自治体</Label>
-            <Select
-              value={citySlug || undefined}
-              onValueChange={syncCityInUrl}
-            >
-              <SelectTrigger id="view-city" className="h-11 min-h-11">
-                <SelectValue placeholder="国・県または自治体を選ぶ" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={VIEW_SHARED_CITY}>国・県</SelectItem>
-                {municipalities.map((m) =>
-                  m.slug ? (
-                    <SelectItem key={m.id} value={m.slug}>
-                      {m.name}
-                    </SelectItem>
-                  ) : null
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="view-domain">領域</Label>
-            <Select value={domainValue} onValueChange={setDomainValue}>
-              <SelectTrigger id="view-domain" className="h-11 min-h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_DOMAINS_VALUE}>全て</SelectItem>
-                {domains.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.title}
+        <div className="space-y-2">
+          <Label htmlFor="view-city">国・県／自治体</Label>
+          <Select
+            value={citySlug || undefined}
+            onValueChange={syncCityInUrl}
+          >
+            <SelectTrigger id="view-city" className="h-11 min-h-11">
+              <SelectValue placeholder="国・県または自治体を選ぶ" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={VIEW_SHARED_CITY}>国・県</SelectItem>
+              {municipalities.map((m) =>
+                m.slug ? (
+                  <SelectItem key={m.id} value={m.slug}>
+                    {m.name}
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                ) : null
+              )}
+            </SelectContent>
+          </Select>
         </div>
       </section>
 
@@ -336,6 +286,20 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
               : `${service.label}／${data.city.name}の確定済みルール ${visibleRules.length}件。この市だけのルールです。`}
           </p>
 
+          {coverage ? (
+            <EvidenceCoveragePanel
+              coverage={coverage}
+              ruleCount={visibleRules.length}
+              sharedRuleCount={
+                isSharedView
+                  ? visibleRules.length
+                  : data.approvedCheckRules.filter((r) => r.scopeKind === "shared")
+                      .length
+              }
+              cityRuleCount={isSharedView ? 0 : visibleRules.length}
+            />
+          ) : null}
+
           {!isSharedView ? (
             <CityRulebookSetupPanel
               readiness={data.setupReadiness}
@@ -343,16 +307,13 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
             />
           ) : null}
 
-          {grouped.map(([domainTitle, rules]) => (
-            <section
-              key={domainTitle}
-              className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5"
-            >
-              <h2 className="text-lg font-semibold text-primary-dark">
-                {domainTitle}
-              </h2>
+          <section className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
+            <h2 className="text-lg font-semibold text-primary-dark">
+              ルールの一覧
+            </h2>
+            {visibleRules.length > 0 ? (
               <ul className="space-y-3">
-                {rules.map((rule) => {
+                {visibleRules.map((rule) => {
                   const guidance = editing[rule.ruleId] ?? rule.guidanceText
                   return (
                     <li
@@ -431,14 +392,12 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
                   )
                 })}
               </ul>
-            </section>
-          ))}
-
-          {visibleRules.length === 0 ? (
-            <p className="text-base text-muted-foreground">
-              この条件の確定済みルールはまだありません。ルールブックを作るから下書きを確定してください。
-            </p>
-          ) : null}
+            ) : (
+              <p className="text-base text-muted-foreground">
+                この条件の確定済みルールはまだありません。ルールブック作成から下書きを確定してください。
+              </p>
+            )}
+          </section>
 
           <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-subtle sm:p-5">
             <h2 className="text-lg font-semibold text-primary-dark">

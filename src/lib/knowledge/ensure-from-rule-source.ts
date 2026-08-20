@@ -153,7 +153,7 @@ export async function ensureKnowledgeDocumentFromRuleSource(
       synced: false,
       monitoringReady: false,
       message:
-        "参考リンクとして資料庫のリンク集に載せました。ルール抽出には使いません。",
+        "参考リンクとして根拠情報のリンク集に載せました。ルール抽出には使いません。",
     }
   }
 
@@ -266,6 +266,6 @@ export async function ensureKnowledgeDocumentFromRuleSource(
       ? created
         ? "公開情報を登録し、公開情報監視の監視を開始しました。"
         : "公開情報監視の監視を更新しました。"
-      : `台帳は用意しましたが、本文の初回取得に問題があります（${syncResult.message}）。資料庫の「本文を取り直す」からやり直せます。`,
+      : `台帳は用意しましたが、本文の初回取得に問題があります（${syncResult.message}）。根拠情報の「本文を取り直す」からやり直せます。`,
   }
 }

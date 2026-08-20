@@ -195,7 +195,7 @@ export function DocumentChangesAdmin() {
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
             監視で検知した変更を確認します。問題なければ承認し、
-            <strong>ルールブックを作る</strong>
+            <strong>ルールブック作成</strong>
             から下書きを作り直してください。確定するまでチェックには使いません。
           </p>
           {cityFromQuery ? (
@@ -257,7 +257,7 @@ export function DocumentChangesAdmin() {
           </p>
           <Button asChild variant="outline" className="min-h-11">
             <Link href="/admin/rules/services/homecare/compose">
-              ルールブックを作る
+              ルールブック作成
             </Link>
           </Button>
         </AlertDescription>

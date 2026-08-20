@@ -21,6 +21,7 @@ import {
   primarySourceUrl,
   sourceNeedsPdfTextFix,
 } from "@/lib/rule-engine/source-urls"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -43,6 +44,7 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  BookPlus,
   X,
 } from "lucide-react"
 
@@ -61,6 +63,8 @@ type Props = {
   jurisdictionId: string | null
   sources: CityRulebookSource[]
   showMonitoringAlert?: boolean
+  /** 根拠情報からルールブック作成へ進む */
+  composeHref?: string | null
   onChanged?: () => void
 }
 
@@ -92,7 +96,7 @@ function urlOf(source: CityRulebookSource): string {
 }
 
 /**
- * 資料庫の国／県／市。読むPDFと参考リンク（HTML）を分けて置く。
+ * 根拠情報の国／県／市。読むPDFと参考リンク（HTML）を分けて置く。
  */
 export function CityRulebookSourcesPanel({
   layerLabel,
@@ -100,6 +104,7 @@ export function CityRulebookSourcesPanel({
   jurisdictionId,
   sources,
   showMonitoringAlert = true,
+  composeHref,
   onChanged,
 }: Props) {
   const router = useRouter()
@@ -205,7 +210,7 @@ export function CityRulebookSourcesPanel({
         synced: result.data?.synced,
         description:
           editing.kind === "pdf"
-            ? "本文が取れたら、ルールブックを作るから下書きを作り直してください。"
+            ? "本文が取れたら、ルールブック作成から下書きを作り直してください。"
             : "リンク集の参考リンクとして保存しました。",
       })
       setEditing(null)
@@ -239,7 +244,7 @@ export function CityRulebookSourcesPanel({
         toast.error(result.error ?? "削除に失敗しました。")
         return
       }
-      toast.success("資料庫から外しました。")
+      toast.success("根拠情報から外しました。")
       if (editing?.id === source.id) setEditing(null)
       refresh()
     })
@@ -256,7 +261,7 @@ export function CityRulebookSourcesPanel({
         kind: "pdf",
         message: result.data?.message ?? "本文の取り直しが終わりました。",
         synced: result.data?.synced,
-        description: "本文ありが付けば、ルールブックを作るで使えます。",
+        description: "本文ありが付けば、ルールブック作成で使えます。",
       })
       refresh()
     })
@@ -266,7 +271,7 @@ export function CityRulebookSourcesPanel({
     <section
       id={`source-layer-${layer}`}
       className="space-y-4"
-      aria-label={`${layerLabel}の資料庫`}
+      aria-label={`${layerLabel}の根拠情報`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-base font-semibold text-primary-dark">
@@ -332,7 +337,7 @@ export function CityRulebookSourcesPanel({
                   selected={newKind === "pdf"}
                   disabled={pending}
                   title="読むPDF"
-                  hint="ルールを作るときに読みます"
+                  hint="ルールブック作成のときに読みます"
                   onSelect={() => setNewKind("pdf")}
                 />
                 <KindButton
@@ -412,6 +417,7 @@ export function CityRulebookSourcesPanel({
         layer={layer}
         editing={editing}
         pending={pending}
+        composeHref={composeHref}
         onStartEdit={startEdit}
         onSaveEdit={onSaveEdit}
         onCancelEdit={() => setEditing(null)}
@@ -429,6 +435,7 @@ export function CityRulebookSourcesPanel({
         layer={layer}
         editing={editing}
         pending={pending}
+        composeHref={composeHref}
         onStartEdit={startEdit}
         onSaveEdit={onSaveEdit}
         onCancelEdit={() => setEditing(null)}
@@ -483,6 +490,7 @@ function SourceGroup({
   layer,
   editing,
   pending,
+  composeHref,
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
@@ -498,6 +506,7 @@ function SourceGroup({
   layer: SourceLayer
   editing: EditDraft | null
   pending: boolean
+  composeHref?: string | null
   onStartEdit: (source: CityRulebookSource) => void
   onSaveEdit: () => void
   onCancelEdit: () => void
@@ -554,7 +563,7 @@ function SourceGroup({
                             selected={editing.kind === "pdf"}
                             disabled={pending}
                             title="読むPDF"
-                            hint="ルールを作るときに読みます"
+                            hint="ルールブック作成のときに読みます"
                             onSelect={() =>
                               onChangeEdit({ ...editing, kind: "pdf" })
                             }
@@ -709,6 +718,19 @@ function SourceGroup({
                           <Pencil className="size-4" aria-hidden />
                           {needsLinkFix || !url ? "リンクを直す" : "修正する"}
                         </Button>
+                        {composeHref ? (
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="min-h-11"
+                          >
+                            <a href={composeHref}>
+                              <BookPlus className="size-4" aria-hidden />
+                              {RULES_UI.addToRulebook}
+                            </a>
+                          </Button>
+                        ) : null}
                         {s.human_review_status !== "verified" ? (
                           <Button
                             type="button"

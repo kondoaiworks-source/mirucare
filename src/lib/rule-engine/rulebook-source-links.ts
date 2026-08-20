@@ -102,7 +102,7 @@ export function sourceListPath(
   return query ? `${base}?${query}` : base
 }
 
-/** 監視エラー時など、資料の管轄から資料庫へ */
+/** 監視エラー時など、資料の管轄から根拠情報へ */
 export function sourceListPathFromDocument(input: {
   serviceSlug?: string
   jurisdictionLevel?: string | null

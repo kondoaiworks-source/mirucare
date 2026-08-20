@@ -104,7 +104,7 @@ export async function addViewRulebookRuleAction(input: {
       review_status: "approved",
       reviewed_by: op.userId,
       reviewed_at: new Date().toISOString(),
-      review_reason: "ルールブックを見る画面から追加",
+      review_reason: "ルールブック閲覧画面から追加",
       change_summary: "ルールブックへの手入力",
     })
   if (verError) return { ok: false, error: toUserErrorMessage(verError) }

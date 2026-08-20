@@ -1,11 +1,11 @@
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
+import { ServiceMasterAdmin } from "@/components/features/admin/rules/service-master-admin"
+import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 
 export const metadata: Metadata = {
-  title: "利用設定",
+  title: RULES_UI.serviceMaster,
 }
 
-/** 旧「介護サービス選定」一覧 → 利用設定ハブへ */
-export default function ServicesPage() {
-  redirect("/admin/rules/setup")
+export default function ServicesMasterPage() {
+  return <ServiceMasterAdmin />
 }

@@ -643,7 +643,7 @@ export async function createMunicipalitySourceUrlAction(input: {
 }
 
 /**
- * 読むPDFの本文を取り直す（資料庫の「本文なし」から使う）。
+ * 読むPDFの本文を取り直す（根拠情報の「本文なし」から使う）。
  */
 export async function resyncRuleSourceTextAction(
   sourceId: string
