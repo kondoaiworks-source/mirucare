@@ -11,7 +11,6 @@ import {
   getComposeJobAction,
   retireComposeRuleAction,
   setComposeItemIncludedAction,
-  updateComposeItemGuidanceAction,
   type ComposeJobItemView,
   type ComposeJobView,
 } from "@/app/actions/compose-rulebook"
@@ -83,9 +82,23 @@ export function ComposeRulebookReview({ service, initial }: Props) {
 
   function confirm() {
     startTransition(async () => {
+      const guidanceUpdates = data.items.flatMap((item) => {
+        if (!(item.id in editing)) return []
+        if (!item.included) return []
+        if (item.version?.review_status !== "pending_review") return []
+        const versionId = item.version?.id
+        if (!versionId) return []
+        return [
+          {
+            versionId,
+            guidanceText: editing[item.id] ?? "",
+          },
+        ]
+      })
       const result = await confirmComposeJobAction({
         jobId: data.job.id,
         note,
+        guidanceUpdates,
       })
       if (!result.ok) {
         toast.error(result.error ?? "確定できませんでした。")
@@ -157,30 +170,6 @@ export function ComposeRulebookReview({ service, initial }: Props) {
     })
   }
 
-  function saveGuidance(item: ComposeJobItemView) {
-    const versionId = item.version?.id
-    if (!versionId) return
-    const text = (editing[item.id] ?? item.version?.guidance_text ?? "").trim()
-    startTransition(async () => {
-      const result = await updateComposeItemGuidanceAction({
-        versionId,
-        guidanceText: text,
-        severity: (item.version?.severity as FindingSeverity) ?? "mid",
-      })
-      if (!result.ok) {
-        toast.error(result.error ?? "保存できませんでした。")
-        return
-      }
-      toast.success("ルールを更新しました。")
-      setEditing((prev) => {
-        const next = { ...prev }
-        delete next[item.id]
-        return next
-      })
-      await reload()
-    })
-  }
-
   function onAdd(e: FormEvent) {
     e.preventDefault()
     startTransition(async () => {
@@ -220,7 +209,7 @@ export function ComposeRulebookReview({ service, initial }: Props) {
           {data.serviceLabel}／{data.cityName}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          {RULES_UI.composeDraft}です。確定するまでチェックには使いません。{RULES_UI.ruleText}は、どの書類の何を見比べるかを人が判断できる文にしてください。
+          {RULES_UI.composeDraft}です。承認待ちの本文は必要なら直してください。直した文は、下の「確定する」で一緒に残ります。確定するまでチェックには使いません。
         </p>
       </div>
 
@@ -335,17 +324,6 @@ export function ComposeRulebookReview({ service, initial }: Props) {
                   actions={
                     isDraft ? (
                       <>
-                        {canEditPending ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="min-h-11"
-                            disabled={pending}
-                            onClick={() => saveGuidance(item)}
-                          >
-                            ルールを保存する
-                          </Button>
-                        ) : null}
                         {item.included ? (
                           <Button
                             type="button"
@@ -471,6 +449,9 @@ export function ComposeRulebookReview({ service, initial }: Props) {
           <h2 className="text-lg font-semibold text-primary-dark">
             このルールを確定する
           </h2>
+          <p className="text-base leading-relaxed text-muted-foreground">
+            承認待ちの本文を直している場合は、確定するときに一緒に残ります。
+          </p>
           <div className="space-y-2">
             <Label htmlFor="confirm-note">確認記録</Label>
             <Textarea
