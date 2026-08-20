@@ -22,6 +22,7 @@ import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import type { FindingSeverity, RuleDomain } from "@/types/database"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
+import { CityRulebookSetupPanel } from "@/components/features/admin/rules/city-rulebook-setup-panel"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -334,6 +335,13 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
               ? `${service.label}／国・県の確定済みルール ${visibleRules.length}件。全市のチェックに足されます。`
               : `${service.label}／${data.city.name}の確定済みルール ${visibleRules.length}件。この市だけのルールです。`}
           </p>
+
+          {!isSharedView ? (
+            <CityRulebookSetupPanel
+              readiness={data.setupReadiness}
+              citySlug={data.city.slug}
+            />
+          ) : null}
 
           {grouped.map(([domainTitle, rules]) => (
             <section
