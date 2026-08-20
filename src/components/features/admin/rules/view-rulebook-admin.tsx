@@ -13,7 +13,6 @@ import {
   addViewRulebookRuleAction,
   deleteViewRulebookRuleAction,
   retireViewRulebookRuleAction,
-  updateViewRulebookGuidanceAction,
 } from "@/app/actions/view-rulebook"
 import { servicePath } from "@/lib/rule-engine/services"
 import { VIEW_SHARED_CITY } from "@/lib/rule-engine/check-rule-scope"
@@ -69,7 +68,6 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
   const [data, setData] = useState<CityRulebookData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState<Record<string, string>>({})
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [addTitle, setAddTitle] = useState("")
   const [addGuidance, setAddGuidance] = useState("")
@@ -145,28 +143,6 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
     if (!loadCitySlug) return
     const result = await getCityRulebookAction(loadCitySlug)
     if (result.ok && result.data) setData(result.data)
-  }
-
-  function saveGuidance(rule: CityRulebookCheckRule) {
-    const text = (editing[rule.ruleId] ?? rule.guidanceText).trim()
-    startTransition(async () => {
-      const result = await updateViewRulebookGuidanceAction({
-        versionId: rule.versionId,
-        guidanceText: text,
-        severity: rule.severity,
-      })
-      if (!result.ok) {
-        toast.error(result.error ?? "保存できませんでした。")
-        return
-      }
-      toast.success("ルールを更新しました。")
-      setEditing((prev) => {
-        const next = { ...prev }
-        delete next[rule.ruleId]
-        return next
-      })
-      await reload()
-    })
   }
 
   function retire(rule: CityRulebookCheckRule) {
@@ -314,7 +290,6 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
             {visibleRules.length > 0 ? (
               <ul className="space-y-3">
                 {visibleRules.map((rule) => {
-                  const guidance = editing[rule.ruleId] ?? rule.guidanceText
                   return (
                     <li
                       key={rule.ruleId}
@@ -330,33 +305,12 @@ export function ViewRulebookAdmin({ service, initialCitySlug }: Props) {
                           </Badge>
                         </div>
                       </div>
-                      <div className="mt-3 space-y-2">
-                        <Label htmlFor={`guidance-${rule.ruleId}`}>
-                          {RULES_UI.ruleText}
-                        </Label>
-                        <Textarea
-                          id={`guidance-${rule.ruleId}`}
-                          className="min-h-24 text-base"
-                          value={guidance}
-                          disabled={pending}
-                          onChange={(e) =>
-                            setEditing((prev) => ({
-                              ...prev,
-                              [rule.ruleId]: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
+                      {rule.guidanceText ? (
+                        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+                          {rule.guidanceText}
+                        </p>
+                      ) : null}
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11"
-                          disabled={pending}
-                          onClick={() => saveGuidance(rule)}
-                        >
-                          ルールを保存する
-                        </Button>
                         <Button
                           type="button"
                           variant="outline"

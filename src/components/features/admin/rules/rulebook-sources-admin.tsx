@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { getCityRulebookAction, type CityRulebookData } from "@/app/actions/city-rulebook"
 import { listComposeOptionsAction } from "@/app/actions/compose-rulebook"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
-import { EvidenceCoveragePanel } from "@/components/features/admin/rules/evidence-coverage-panel"
+import { EvidenceCategoryCoverageSection } from "@/components/features/admin/rules/evidence-category-coverage"
 import { composeRulebookPath } from "@/lib/rule-engine/check-rule-scope"
 import { buildEvidenceCoverage } from "@/lib/rule-engine/evidence-coverage"
 import { servicePath } from "@/lib/rule-engine/services"
@@ -14,7 +14,6 @@ import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
 import type { RuleServiceDef } from "@/lib/rule-engine/services"
 import { AdminBreadcrumb } from "@/components/features/admin/admin-breadcrumb"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -141,7 +140,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
           {RULES_UI.sourceList}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          監査に必要な公式PDFと参考リンクを置きます。カバー率で、国・県・市の根拠を登録できているかご確認ください。PDFの直リンクは監視状況に載ります。
+          監査に必要な公式PDFと参考リンクを、根拠カテゴリごとに置きます。カバー率は、カテゴリのうち資料を登録した割合です。PDFの直リンクは監視状況に載ります。
         </p>
       </div>
 
@@ -176,43 +175,11 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
         ) : null}
       </section>
 
-      {coverage ? <EvidenceCoveragePanel coverage={coverage} /> : null}
-
-      {coverage && coverage.recommendedCategories.length > 0 ? (
-        <section
-          className="space-y-3 rounded-xl border border-accent/40 bg-accent/5 p-4 sm:p-5"
-          aria-labelledby="recommended-evidence-heading"
-        >
-          <div>
-            <h2
-              id="recommended-evidence-heading"
-              className="text-lg font-semibold text-primary-dark"
-            >
-              カバー率を上げるために、次の情報追加をご確認ください
-            </h2>
-            <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-              {RULES_UI.evidenceCategory}ごとに、監査でよく使う根拠の置き場です。未登録のものは下の国・県・市から追加できます。
-            </p>
-          </div>
-          <ul className="space-y-2">
-            {coverage.recommendedCategories.map((cat) => (
-              <li
-                key={cat.category}
-                className="flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2"
-              >
-                <span className="text-base font-semibold text-primary-dark">
-                  {cat.label}
-                </span>
-                <Button asChild variant="outline" className="min-h-11">
-                  <a href={`#source-layer-national`}>資料を追加する</a>
-                </Button>
-              </li>
-            ))}
-          </ul>
-          <Button asChild className="min-h-11">
-            <a href={composeHref}>{RULES_UI.addToRulebook}</a>
-          </Button>
-        </section>
+      {coverage ? (
+        <EvidenceCategoryCoverageSection
+          coverage={coverage}
+          composeHref={composeHref}
+        />
       ) : null}
 
       {error ? (

@@ -1,6 +1,6 @@
 /**
  * 根拠情報のカバー率。
- * 監査に必要な公式PDF（国・県・市）を置いたかを、目視で確認するための指標。
+ * 根拠カテゴリごとに資料を置いたかを、目視で確認するための指標。
  * 合否や「足りていること」の保証ではない。
  */
 
@@ -9,11 +9,14 @@ import {
   MATERIAL_CATEGORIES,
   MATERIAL_CATEGORY_LABEL,
   isReadablePdfSource,
+  primarySourceUrl,
 } from "@/lib/rule-engine/source-urls"
 
 export type EvidenceLayer = "national" | "prefecture" | "city"
 
 export type EvidenceCoverageSource = {
+  id?: string
+  title?: string
   layer: EvidenceLayer
   material_category?: RuleMaterialCategory | null
   file_type?: string | null
@@ -31,27 +34,49 @@ export type EvidenceLayerCoverage = {
   filled: boolean
 }
 
+export type EvidenceCategorySource = {
+  id: string
+  title: string
+  url: string | null
+}
+
 export type EvidenceCategoryCoverage = {
   category: RuleMaterialCategory
   label: string
   count: number
   recommended: boolean
+  sources: EvidenceCategorySource[]
 }
 
 export type EvidenceCoverage = {
-  /** 0〜100。国・県・市の読むPDFの有無 */
+  /** 0〜100。国・県・市の読むPDFの有無（下書き・閲覧用） */
   percent: number
+  /** 0〜100。根拠カテゴリのうち資料がある割合（根拠情報ページ用） */
+  categoryPercent: number
   nationalPrefectureCount: number
   cityCount: number
   layers: EvidenceLayerCoverage[]
   categories: EvidenceCategoryCoverage[]
   recommendedCategories: EvidenceCategoryCoverage[]
+  uncategorizedSources: EvidenceCategorySource[]
 }
 
 const LAYER_LABEL: Record<EvidenceLayer, string> = {
   national: "国",
   prefecture: "県",
   city: "市区町村",
+}
+
+function toCategorySource(source: EvidenceCoverageSource): EvidenceCategorySource {
+  return {
+    id: source.id?.trim() || source.title?.trim() || "unknown",
+    title: source.title?.trim() || "（名称なし）",
+    url: primarySourceUrl({
+      direct_file_url: source.direct_file_url ?? null,
+      parent_page_url: source.parent_page_url ?? null,
+      official_url: source.official_url ?? null,
+    }),
+  }
 }
 
 export function buildEvidenceCoverage(
@@ -82,24 +107,35 @@ export function buildEvidenceCoverage(
 
   const categories: EvidenceCategoryCoverage[] = MATERIAL_CATEGORIES.map(
     (category) => {
-      const count = sources.filter((s) => s.material_category === category)
-        .length
+      const matched = sources.filter((s) => s.material_category === category)
       return {
         category,
         label: MATERIAL_CATEGORY_LABEL[category],
-        count,
-        recommended: count === 0,
+        count: matched.length,
+        recommended: matched.length === 0,
+        sources: matched.map(toCategorySource),
       }
     }
   )
 
+  const filledCategories = categories.filter((c) => c.count > 0).length
+  const categoryPercent = Math.round(
+    (filledCategories / categories.length) * 100
+  )
+
+  const uncategorizedSources = sources
+    .filter((s) => !s.material_category)
+    .map(toCategorySource)
+
   return {
     percent,
+    categoryPercent,
     nationalPrefectureCount,
     cityCount,
     layers,
     categories,
     recommendedCategories: categories.filter((c) => c.recommended),
+    uncategorizedSources,
   }
 }
 
