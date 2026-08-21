@@ -337,7 +337,6 @@ export async function listMunicipalitySourceUrlsAction(opts?: {
       rule_jurisdictions ( id, name, code, municipality_name, level )
     `
     )
-    .not("material_category", "is", null)
     .order("priority", { ascending: true })
     .order("updated_at", { ascending: false })
     .limit(500)

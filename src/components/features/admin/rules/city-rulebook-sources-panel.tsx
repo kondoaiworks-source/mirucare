@@ -12,8 +12,6 @@ import {
 import type { CityRulebookSource } from "@/app/actions/city-rulebook"
 import {
   HUMAN_REVIEW_STATUS_LABEL,
-  MATERIAL_CATEGORIES,
-  MATERIAL_CATEGORY_LABEL,
   SOURCE_URL_DIRECT_FILE_HINT,
   SOURCE_URL_FIX_HINT,
   SOURCE_URL_MONITORING_ALERT_BODY,
@@ -24,7 +22,6 @@ import {
   sourceNeedsPdfTextFix,
 } from "@/lib/rule-engine/source-urls"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
-import type { RuleMaterialCategory } from "@/types/database"
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -38,13 +35,6 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   CheckCircle2,
   ExternalLink,
@@ -84,7 +74,6 @@ type EditDraft = {
   kind: RegisterKind
   url: string
   memo: string
-  category: RuleMaterialCategory | ""
 }
 
 function kindOf(source: CityRulebookSource): RegisterKind {
@@ -127,7 +116,6 @@ export function CityRulebookSourcesPanel({
   const [newKind, setNewKind] = useState<RegisterKind>("pdf")
   const [newUrl, setNewUrl] = useState("")
   const [newMemo, setNewMemo] = useState("")
-  const [newCategory, setNewCategory] = useState<RuleMaterialCategory | "">("")
 
   const canManage = Boolean(jurisdictionId)
   const pdfSources = sources.filter((s) => isReadablePdfSource(s))
@@ -162,7 +150,6 @@ export function CityRulebookSourcesPanel({
       kind: kindOf(source),
       url: urlOf(source),
       memo: source.memo ?? "",
-      category: source.material_category ?? "",
     })
   }
 
@@ -173,7 +160,6 @@ export function CityRulebookSourcesPanel({
         jurisdictionId,
         title: newTitle,
         serviceType: "訪問介護",
-        materialCategory: newCategory || undefined,
         kind: newKind,
         url: newUrl,
         memo: newMemo,
@@ -199,7 +185,6 @@ export function CityRulebookSourcesPanel({
       setNewUrl("")
       setNewMemo("")
       setNewKind("pdf")
-      setNewCategory("")
       setShowAdd(false)
       refresh()
     })
@@ -214,7 +199,6 @@ export function CityRulebookSourcesPanel({
         kind: editing.kind,
         url: editing.url,
         memo: editing.memo,
-        materialCategory: editing.category || undefined,
       })
       if (!result.ok) {
         toast.error(result.error ?? "保存に失敗しました。")
@@ -376,12 +360,6 @@ export function CityRulebookSourcesPanel({
                 disabled={pending}
               />
             </div>
-            <CategoryField
-              id={`new-source-category-${layer}`}
-              value={newCategory}
-              disabled={pending}
-              onChange={setNewCategory}
-            />
             <div className="space-y-2">
               <Label htmlFor={`new-source-url-${layer}`}>
                 {newKind === "pdf" ? "PDFの直リンク" : "参考リンク（HTML）"}
@@ -467,40 +445,6 @@ export function CityRulebookSourcesPanel({
         onDelete={onDelete}
       />
     </section>
-  )
-}
-
-function CategoryField({
-  id,
-  value,
-  disabled,
-  onChange,
-}: {
-  id: string
-  value: RuleMaterialCategory | ""
-  disabled: boolean
-  onChange: (value: RuleMaterialCategory | "") => void
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{RULES_UI.evidenceCategory}</Label>
-      <Select
-        value={value || undefined}
-        onValueChange={(v) => onChange(v as RuleMaterialCategory)}
-        disabled={disabled}
-      >
-        <SelectTrigger id={id} className="h-11 min-h-11">
-          <SelectValue placeholder="カテゴリを選ぶ（カバー率に入ります）" />
-        </SelectTrigger>
-        <SelectContent>
-          {MATERIAL_CATEGORIES.map((category) => (
-            <SelectItem key={category} value={category}>
-              {MATERIAL_CATEGORY_LABEL[category]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
   )
 }
 
@@ -647,14 +591,6 @@ function SourceGroup({
                           disabled={pending}
                         />
                       </div>
-                      <CategoryField
-                        id={`edit-category-${s.id}`}
-                        value={editing.category}
-                        disabled={pending}
-                        onChange={(category) =>
-                          onChangeEdit({ ...editing, category })
-                        }
-                      />
                       <div className="space-y-2">
                         <Label htmlFor={`edit-url-${s.id}`}>
                           {editing.kind === "pdf"
@@ -709,11 +645,6 @@ function SourceGroup({
                       <Badge variant="outline" className="rounded-md">
                         {LAYER_BADGE[layer]}
                       </Badge>
-                      {s.material_category ? (
-                        <Badge variant="outline" className="rounded-md">
-                          {MATERIAL_CATEGORY_LABEL[s.material_category]}
-                        </Badge>
-                      ) : null}
                       {isLinks ? (
                         <Badge variant="outline" className="rounded-md">
                           参考リンク
