@@ -8,10 +8,12 @@ import { FindingsResultView } from "@/components/features/check/findings-result-
 import { ApproveFindingsButton } from "@/components/features/check/approve-findings-button"
 import { ZeroFindingsComplete } from "@/components/features/check/zero-findings-complete"
 import { AppliedRulesPanel } from "@/components/features/check/applied-rules-panel"
+import { CheckRunSummaryPanel } from "@/components/features/check/check-run-summary"
 import { CheckResultSkeleton } from "@/components/features/skeletons/page-skeletons"
 import { getDocumentWithFindingsAction } from "@/app/actions/findings"
 import { getCurrentProfile } from "@/app/actions/auth"
 import { CHECK_UI } from "@/lib/copy/check-ui"
+import { buildCheckRunSummary } from "@/lib/check/check-run-summary"
 import { RETENTION_COPY } from "@/lib/documents/retention"
 import { DOC_TYPE_OPTIONS } from "@/lib/documents"
 import type { AppliedRulesSnapshot } from "@/types/database"
@@ -73,6 +75,10 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
 
   const openFindings = findings.filter((f) => f.status === "open")
   const countForSummary = openFindings.length || findings.length
+  const checkRunSummary = buildCheckRunSummary({
+    findings,
+    snapshot: appliedSnapshot,
+  })
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 pb-16">
@@ -177,6 +183,10 @@ async function CheckResultContent({ documentId }: { documentId: string }) {
                 </p>
               </>
             )}
+
+            <div className="mt-6">
+              <CheckRunSummaryPanel summary={checkRunSummary} />
+            </div>
 
             <div className="mt-6">
               <AppliedRulesPanel

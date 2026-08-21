@@ -17,10 +17,7 @@ import {
 } from "@/lib/check/check-type"
 import type { Finding } from "@/types/database"
 import { FindingCard } from "@/components/features/check/finding-card"
-import {
-  FindingCheckTypeFilterBar,
-  FindingCheckTypeSummary,
-} from "@/components/features/check/finding-check-type-bar"
+import { FindingCheckTypeFilterBar } from "@/components/features/check/finding-check-type-bar"
 
 function FindingSection({
   title,
@@ -119,7 +116,6 @@ export function FindingsResultView({
 
   return (
     <div className="space-y-8">
-      <FindingCheckTypeSummary counts={typeCounts} />
       <FindingCheckTypeFilterBar
         counts={typeCounts}
         value={checkFilter}

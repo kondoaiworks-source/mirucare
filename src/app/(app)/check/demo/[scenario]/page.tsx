@@ -2,11 +2,14 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { DemoFindingsResultView } from "@/components/features/check/demo-findings-result-view"
+import { CheckRunSummaryPanel } from "@/components/features/check/check-run-summary"
 import { CHECK_UI } from "@/lib/copy/check-ui"
+import { ALIGNMENT_CATALOG } from "@/lib/check/alignment-catalog"
+import { buildCheckRunSummary } from "@/lib/check/check-run-summary"
 import { parseWithRetryAndFallback } from "@/lib/dify/parse"
 import { mockRawForScenario } from "@/lib/dify/mock"
 import { normalizeSeverity, type MockScenario } from "@/lib/dify/types"
-import type { Finding } from "@/types/database"
+import type { AppliedRulesSnapshot, Finding } from "@/types/database"
 import { Button } from "@/components/ui/button"
 
 export const metadata: Metadata = {
@@ -52,6 +55,52 @@ function buildDemoFindings(scenario: MockScenario): Finding[] {
   }))
 }
 
+function buildDemoSnapshot(): AppliedRulesSnapshot {
+  const builtins = ALIGNMENT_CATALOG.map((item) => ({
+    versionId: `builtin:${item.code}`,
+    code: item.code,
+    title: item.code,
+    versionNo: 1 as const,
+    severity: "mid" as const,
+    effectiveFrom: "2024-04-01",
+    effectiveTo: null,
+    auditItemTitle: "書類同士の整合",
+    sourceTitle: "標準観点（ルールブック非依存）",
+  }))
+  const rulebook = [
+    {
+      versionId: "mock-version-consent",
+      code: "HC_CONSENT_DATE",
+      title: "同意日付の確認",
+      versionNo: 1 as const,
+      severity: "high" as const,
+      effectiveFrom: "2026-04-01",
+      effectiveTo: null,
+      auditItemTitle: "利用者契約",
+      sourceTitle: "ルールブック",
+    },
+    {
+      versionId: "mock-version-shared",
+      code: "HC_RECORD_SERVICE_CONTENT",
+      title: "提供記録の内容確認",
+      versionNo: 1 as const,
+      severity: "mid" as const,
+      effectiveFrom: "2026-04-01",
+      effectiveTo: null,
+      auditItemTitle: null,
+      sourceTitle: "ルールブック",
+    },
+  ]
+  const rules = [...builtins, ...rulebook]
+  return {
+    asOf: "2026-08-21",
+    ruleCount: rules.length,
+    truncated: false,
+    rules,
+    regulatoryBasis: [],
+  }
+}
+
 export default function CheckDemoPage({ params }: PageProps) {
   const scenario = params.scenario as MockScenario
   if (!SCENARIOS.includes(scenario)) {
@@ -60,6 +109,10 @@ export default function CheckDemoPage({ params }: PageProps) {
 
   const findings = buildDemoFindings(scenario)
   const count = findings.filter((f) => f.status === "open").length
+  const checkRunSummary = buildCheckRunSummary({
+    findings,
+    snapshot: scenario === "parse_error" ? null : buildDemoSnapshot(),
+  })
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 pb-16">
@@ -91,6 +144,7 @@ export default function CheckDemoPage({ params }: PageProps) {
           <p className="text-base leading-relaxed text-muted-foreground">
             {CHECK_UI.summaryZeroNote}
           </p>
+          <CheckRunSummaryPanel summary={checkRunSummary} />
           <Button asChild size="lg">
             <Link href="/audit-history">{CHECK_UI.backToList}</Link>
           </Button>
@@ -100,6 +154,7 @@ export default function CheckDemoPage({ params }: PageProps) {
           <h1 className="text-3xl font-bold leading-tight text-primary-dark tabular-nums">
             {CHECK_UI.summaryWithFindings(count)}
           </h1>
+          <CheckRunSummaryPanel summary={checkRunSummary} />
           <DemoFindingsResultView initialFindings={findings} />
         </>
       )}
