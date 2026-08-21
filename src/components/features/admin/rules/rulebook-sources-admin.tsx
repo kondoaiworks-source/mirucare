@@ -5,9 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { getCityRulebookAction, type CityRulebookData } from "@/app/actions/city-rulebook"
 import { listComposeOptionsAction } from "@/app/actions/compose-rulebook"
 import { CityRulebookSourcesPanel } from "@/components/features/admin/rules/city-rulebook-sources-panel"
-import { EvidenceCategoryCoverageSection } from "@/components/features/admin/rules/evidence-category-coverage"
 import { composeRulebookPath } from "@/lib/rule-engine/check-rule-scope"
-import { buildEvidenceCoverage } from "@/lib/rule-engine/evidence-coverage"
 import { servicePath } from "@/lib/rule-engine/services"
 import { SOURCE_URL_FIX_HINT, isReadablePdfSource } from "@/lib/rule-engine/source-urls"
 import { RULES_UI } from "@/lib/rule-engine/ui-glossary"
@@ -119,11 +117,6 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
     ).length
   }, [data])
 
-  const coverage = useMemo(
-    () => (data ? buildEvidenceCoverage(data.sources) : null),
-    [data]
-  )
-
   const composeHref = composeRulebookPath(service.slug, citySlug || null)
 
   return (
@@ -140,7 +133,7 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
           {RULES_UI.sourceList}
         </h1>
         <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          監査に必要な公式PDFと参考リンクを、根拠カテゴリごとに置きます。カバー率は、カテゴリのうち資料を登録した割合です。PDFの直リンクは監視状況に載ります。
+          監査に必要な公式PDFと参考リンクを、国・県・市ごとに置きます。PDFの直リンクは監視状況に載ります。
         </p>
       </div>
 
@@ -174,13 +167,6 @@ export function RulebookSourcesAdmin({ service, initialCitySlug }: Props) {
           </label>
         ) : null}
       </section>
-
-      {coverage ? (
-        <EvidenceCategoryCoverageSection
-          coverage={coverage}
-          composeHref={composeHref}
-        />
-      ) : null}
 
       {error ? (
         <Alert variant="destructive" className="rounded-xl">

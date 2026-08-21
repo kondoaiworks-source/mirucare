@@ -14,6 +14,7 @@ export const TARGET_MUNICIPALITY_CODES = [
   "JP-14-14207", // 茅ヶ崎市
 ] as const
 
+/** seed・DB用。画面の選択軸には出さない */
 export const MATERIAL_CATEGORIES: RuleMaterialCategory[] = [
   "訪問介護",
   "総合事業訪問型",
