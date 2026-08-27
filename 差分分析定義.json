@@ -1,0 +1,163 @@
+{
+  "version": "1.0.0",
+  "description": "MiruCare シナリオ検証（11ケース）の差分分析用期待値定義。PASS/PARTIAL/FAIL 判定の基準。",
+  "scoring": {
+    "pass_threshold": 1.0,
+    "partial_threshold": 0.5,
+    "weights": {
+      "finding_count": 0.4,
+      "check_types": 0.3,
+      "severities": 0.15,
+      "rule_code": 0.15
+    }
+  },
+  "test_case_expectations": {
+    "正常系_01": {
+      "test_case_name": "完全に一致した通常のサービス提供",
+      "category": "正常系",
+      "expected_finding_count": 0,
+      "expected_finding_count_min": 0,
+      "expected_finding_count_max": 0,
+      "expected_check_types": [],
+      "expected_severities": [],
+      "expected_rule_code": null,
+      "expected_rule_codes": [],
+      "notes": "ケアプラン・実績・請求が完全一致。findings は 0 件を期待。"
+    },
+    "正常系_02": {
+      "test_case_name": "複数サービスの正常な運用",
+      "category": "正常系",
+      "expected_finding_count": 0,
+      "expected_finding_count_min": 0,
+      "expected_finding_count_max": 0,
+      "expected_check_types": [],
+      "expected_severities": [],
+      "expected_rule_code": null,
+      "expected_rule_codes": [],
+      "notes": "複数サービスでも整合が取れている場合は findings 0 件を期待。"
+    },
+    "異常系_01": {
+      "test_case_name": "プランにない介護を実施（不正請求の兆候）",
+      "category": "異常系",
+      "expected_finding_count": 1,
+      "expected_finding_count_min": 1,
+      "expected_finding_count_max": 3,
+      "expected_check_types": ["consistency"],
+      "expected_severities": ["high", "medium"],
+      "expected_rule_code": "HC_PLAN_CARE_PLAN_ALIGNMENT",
+      "expected_rule_codes": ["HC_PLAN_CARE_PLAN_ALIGNMENT", "HC_PLAN_SERVICE_CONTENT"],
+      "notes": "ルール11相当。プラン外サービス（庭の掃除）の検出を期待。"
+    },
+    "異常系_02": {
+      "test_case_name": "実績時間と請求額の不整合",
+      "category": "異常系",
+      "expected_finding_count": 1,
+      "expected_finding_count_min": 1,
+      "expected_finding_count_max": 3,
+      "expected_check_types": ["consistency"],
+      "expected_severities": ["high", "medium"],
+      "expected_rule_code": "HC_BILLING_ACTUAL_RESULT_MATCH",
+      "expected_rule_codes": [
+        "HC_BILLING_ACTUAL_RESULT_MATCH",
+        "HC_BILLING_SERVICE_RECORD_MATCH",
+        "HC_BILLING_MISSING_OR_ERROR"
+      ],
+      "notes": "ルール13相当。実績時間と請求単価の不整合検出を期待。"
+    },
+    "異常系_03": {
+      "test_case_name": "実績記録の完全欠落",
+      "category": "異常系",
+      "expected_finding_count": 1,
+      "expected_finding_count_min": 1,
+      "expected_finding_count_max": 3,
+      "expected_check_types": ["consistency", "rule"],
+      "expected_severities": ["high", "medium"],
+      "expected_rule_code": "HC_RECORD_SERVICE_CONTENT",
+      "expected_rule_codes": [
+        "HC_RECORD_SERVICE_CONTENT",
+        "HC_RECORD_SERVICE_DATETIME",
+        "HC_PLAN_CARE_PLAN_ALIGNMENT"
+      ],
+      "notes": "ルール12相当。プランがあるのに実績が欠落していることの検出を期待。"
+    },
+    "異常系_04": {
+      "test_case_name": "資格のない者によるサービス提供",
+      "category": "異常系",
+      "expected_finding_count": 1,
+      "expected_finding_count_min": 1,
+      "expected_finding_count_max": 3,
+      "expected_check_types": ["rule"],
+      "expected_severities": ["high"],
+      "expected_rule_code": "HC_GOV_QUALIFICATION_CERT",
+      "expected_rule_codes": ["HC_GOV_QUALIFICATION_CERT", "HC_GOV_TRAINING_RECORD"],
+      "notes": "ルール3相当。無資格者による身体介護の検出を期待。"
+    },
+    "異常系_05": {
+      "test_case_name": "実績はあるが請求に含まれていない",
+      "category": "異常系",
+      "expected_finding_count": 1,
+      "expected_finding_count_min": 1,
+      "expected_finding_count_max": 3,
+      "expected_check_types": ["consistency"],
+      "expected_severities": ["high", "medium"],
+      "expected_rule_code": "HC_BILLING_MISSING_OR_ERROR",
+      "expected_rule_codes": [
+        "HC_BILLING_MISSING_OR_ERROR",
+        "HC_BILLING_SERVICE_RECORD_MATCH",
+        "HC_BILLING_ACTUAL_RESULT_MATCH"
+      ],
+      "notes": "ルール13相当。過少請求（実績2回・請求1回）の検出を期待。"
+    },
+    "異常系_06": {
+      "test_case_name": "ケアプラン変更時の同意がない",
+      "category": "異常系",
+      "expected_finding_count": 1,
+      "expected_finding_count_min": 1,
+      "expected_finding_count_max": 3,
+      "expected_check_types": ["rule"],
+      "expected_severities": ["high", "medium"],
+      "expected_rule_code": "HC_PLAN_USER_CONSENT",
+      "expected_rule_codes": [
+        "HC_PLAN_USER_CONSENT",
+        "HC_CONTRACT_PERSONAL_INFO_CONSENT"
+      ],
+      "notes": "ルール18相当。プラン変更時の利用者同意欠落の検出を期待。"
+    },
+    "エッジケース_01": {
+      "test_case_name": "月跨ぎのサービス提供（請求月の判定）",
+      "category": "エッジケース",
+      "expected_finding_count": 0,
+      "expected_finding_count_min": 0,
+      "expected_finding_count_max": 3,
+      "expected_check_types": [],
+      "expected_severities": [],
+      "expected_rule_code": null,
+      "expected_rule_codes": [],
+      "notes": "月別請求が適切なら findings 0。誤検出があれば 1〜3 件まで許容範囲として PARTIAL 判定の余地あり。"
+    },
+    "エッジケース_02": {
+      "test_case_name": "利用者不在によるサービスキャンセル",
+      "category": "エッジケース",
+      "expected_finding_count": 0,
+      "expected_finding_count_min": 0,
+      "expected_finding_count_max": 3,
+      "expected_check_types": [],
+      "expected_severities": [],
+      "expected_rule_code": null,
+      "expected_rule_codes": [],
+      "notes": "キャンセル記録と請求除外が適切なら findings 0。0〜3 件を許容帯とする。"
+    },
+    "エッジケース_03": {
+      "test_case_name": "ケアプランのサービス内容を部分的にしか実施できなかった場合",
+      "category": "エッジケース",
+      "expected_finding_count": 1,
+      "expected_finding_count_min": 0,
+      "expected_finding_count_max": 3,
+      "expected_check_types": ["consistency"],
+      "expected_severities": ["low", "medium"],
+      "expected_rule_code": null,
+      "expected_rule_codes": ["HC_PLAN_CARE_PLAN_ALIGNMENT", "HC_PLAN_SERVICE_CONTENT"],
+      "notes": "部分実施の記録・請求が妥当なら軽微な指摘または 0 件。0〜3 件を許容帯とする。"
+    }
+  }
+}

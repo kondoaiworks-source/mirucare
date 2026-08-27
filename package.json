@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:rls": "tsx --env-file=.env.local scripts/test-rls-isolation.ts",
     "test:check": "tsx scripts/test-check-mock.ts",
+    "test:check:live": "tsx --env-file=.env.local scripts/test-check-scenarios.ts",
     "test:review": "tsx --env-file=.env.local scripts/test-findings-review.ts",
     "test:lockout": "tsx --env-file=.env.local scripts/test-login-lockout.ts",
     "backfill:knowledge-snapshots": "tsx --env-file=.env.local scripts/backfill-knowledge-snapshots.ts",

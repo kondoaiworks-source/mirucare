@@ -162,21 +162,22 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
    DIFY_MOCK_SCENARIO=success
    ```
 3. `npm run test:check` で正常系・パース失敗・0件のモックテストが PASS すること
-4. デモ画面（ログイン後・DB不要）で3画面を目視確認する
+4. （任意・CI外）`npm run test:check:live` で `test-data/scenarios/` の11ケースを Dify live 実行し、`test-data/scenarios-result.json` を目視レビューする（`.env.local` の `DIFY_API_KEY` 必須。スクリプト内で `DIFY_MOCK=0` を強制）
+5. デモ画面（ログイン後・DB不要）で3画面を目視確認する
    - [正常系](http://localhost:3000/check/demo/success)
    - [パース失敗](http://localhost:3000/check/demo/parse_error)
    - [0件](http://localhost:3000/check/demo/empty)
-5. 実ファイル動線: `/check/upload` → チェック開始 → `/check/[documentId]`
+6. 実ファイル動線: `/check/upload` → チェック開始 → `/check/[documentId]`
    - 「チェック中」のあと結果サマリーと指摘カードが表示されること
    - 「対応した / あとで / これは違うと思う」が片手で押せること（44px以上）
    - 操作後の並びが「これから確認 → あとで確認 → 違う指摘 → 対応した」になること
    - 「あとで」を押すと結果画面の「あとで確認」と `/later` の両方に出ること
    - 全件対応（あとでを残さない）で完了演出が出ること
    - 指摘0件のときは「完了」ボタン → 一覧で完了バッジになり、ナビの未完了件数が減ること
-6. 書類一覧（`/documents`）の今日の分が「確認待ち → 後で確認 → 完了」の順に並ぶこと（約4秒ごとに更新）
-7. 「日次」ナビに未完了件数バッジが出ること
-8. 設定 →「人間レビューをスキップ」をオフにすると、承認前は指摘が非表示になること
-9. 「対応した」操作が `finding_action_logs` に残ること（月次レポート集計用）
+7. 書類一覧（`/documents`）の今日の分が「確認待ち → 後で確認 → 完了」の順に並ぶこと（約4秒ごとに更新）
+8. 「日次」ナビに未完了件数バッジが出ること
+9. 設定 →「人間レビューをスキップ」をオフにすると、承認前は指摘が非表示になること
+10. 「対応した」操作が `finding_action_logs` に残ること（月次レポート集計用）
 
 ## 動作確認手順（指摘の分類とルール本文の渡し方）
 
@@ -740,6 +741,7 @@ npm run lint        # ESLint
 npm run test        # 単体テスト（矛盾検知・請求突合）
 npm run test:rls     # RLS事業所分離テスト
 npm run test:check   # AIチェック モック／パーステスト
+npm run test:check:live  # シナリオ11件を Dify live 実行 → test-data/scenarios-result.json
 npm run test:review  # 人間レビュー公開制御テスト
 npm run seed:rule-sources  # 自治体別公開情報マスタの初期投入
 ```
