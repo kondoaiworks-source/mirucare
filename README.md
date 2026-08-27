@@ -185,15 +185,18 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
 
 1. SQL Editor で `supabase/migrations/20260818090000_findings_check_type.sql` を実行する
 2. Dify Workflow のプロンプト／出力 JSON を [docs/dify-check-workflow.md](docs/dify-check-workflow.md) に合わせて再公開する（アプリの入力変数は増やさない）
-3. `npx vitest run src/lib/check/check-type.test.ts src/lib/rule-engine/guidance-for-dify.test.ts src/lib/rule-engine/resolve-check-rules.test.ts` が PASS すること
+3. `npx vitest run src/lib/check/check-type.test.ts src/lib/check/check-run-summary.test.ts src/lib/rule-engine/guidance-for-dify.test.ts src/lib/rule-engine/resolve-check-rules.test.ts` が PASS すること
 4. `npm run test:check` が PASS すること（モックに `consistency` と `rule` が混在）
 5. `/check/demo/success` を開き、次を確認する
-   - 「AIチェック結果」に整合性・ルールの件数が分かれて出ること
+   - 「今回のWチェック」に「整合性チェック：◉件チェック　◉件不備」「ルールチェック：ルール◉件でチェックして　◉件不備」が出ること
+   - ルール件数は書類同士の標準観点を除いたルールブック件数であること（デモは2件）
    - フィルター「すべて / 整合性 / ルール」で表示が切り替わること
    - 整合性カードは「比較内容を表示」、ルールカードは「適用ルールを表示」があること
-6. 実チェック後の Vercel / 開発ログに `[dify] rules payload check` が出ること（`guidanceLength` / `guidanceTruncated` のみ。`document_text` や guidance 全文は出ない）
-7. 結果の「このチェックで使った基準」に、渡した本文の字数と（抜粋時は）その旨が出ること
-8. マイグレーション前の過去結果は画面エラーにならず「分類未設定」になること
+6. `/check/demo/empty` でも同じ2行が出て、不備が0件であること。不備0件でも物差しを渡した旨があること
+7. 実チェック後の結果（`/check/[id]`）でも同じ2行が出ること。ルール件数は国・県の確定＋その市の確定（閲覧の片方の「現在のルール数」ではない）こと
+8. 実チェック後の Vercel / 開発ログに `[dify] rules payload check` が出ること（`guidanceLength` / `guidanceTruncated` のみ。`document_text` や guidance 全文は出ない）
+9. 結果の「このチェックで使った基準」に、渡した本文の字数と（抜粋時は）その旨が出ること
+10. マイグレーション前の過去結果は画面エラーにならず「分類未設定」になること。ルール件数は「再チェック後に表示」になること
 
 ## 動作確認手順（STEP 4：Dify 接続）
 

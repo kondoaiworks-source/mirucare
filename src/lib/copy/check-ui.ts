@@ -65,6 +65,25 @@ export const CHECK_UI = {
   checkResultsHeading: "AIチェック結果",
   checkResultsTotal: (count: number) =>
     `${count}件の確認事項があります`,
+  checkRunHeading: "今回のWチェック",
+  checkRunHint:
+    "投入した資料同士の整合と、ルールブック（国・県＋この事業所の市）を物差しにした確認です。合否の保証ではありません。",
+  consistencyCheckLabel: "整合性チェック",
+  consistencyCheckLine: (checked: number, findings: number) =>
+    `${checked}件チェック　${findings}件不備`,
+  ruleCheckLabel: "ルールチェック",
+  ruleCheckLine: (rules: number, findings: number) =>
+    `ルール${rules}件でチェックして　${findings}件不備`,
+  ruleCheckLineWithoutCount: (findings: number) =>
+    `${findings}件不備`,
+  ruleCheckCountMissing:
+    "使ったルール件数は、再チェック後に表示されます。",
+  ruleCheckCompareHint:
+    "この件数は、ルールブック閲覧の「国・県の確定」と「この市の確定」を足した数です。片方の画面の「現在のルール数」だけと比べると違って見えることがあります。",
+  ruleCheckZeroHint:
+    "不備が0件でも、物差しは渡しています。問題候補が見当たらなかった可能性があります。",
+  ruleCheckTruncatedHint:
+    "ルールが多いため、先頭の一部だけを渡しています。閲覧の合計と違うことがあります。",
   checkTypeConsistency: "記録の整合性チェック",
   checkTypeConsistencyShort: "整合性",
   checkTypeConsistencyHint:
