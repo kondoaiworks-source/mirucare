@@ -589,10 +589,10 @@ npm install -D @types/papaparse
    - `supabase/migrations/20260727100000_announcements_seen_at.sql`（お知らせ未読バッジ用）
 2. （任意）川崎の公開情報 seed: `npm run seed:rule-sources`
 3. ログイン後、サイドバーに次があること
-   - 運用AI監査 / あとで確認 / 監査結果
+   - 運用AI監査 / あとで確認 / 監査結果 / 設定
    - お知らせは運用AI監査内（直近3件）。**未読があるとき**「運用AI監査」にバッジ（一覧を開くと消える）
-   - 法令AI監査・運営AI監査は「準備中」
-   - 設定（事業所情報の確認。運営は「運営管理」からルール設定へ）
+   - 設定は事業所情報の確認（運営は「運営管理」からルール設定へ）
+   - **法令AI監査・運営AI監査がサイドバーに無い**こと
    - **月末の確認・月次レポートが主导線に出ない**こと
    - **お知らせが独立メニューに出ない**こと
    - **サイドバーに「初期設定」が無い**こと
@@ -700,8 +700,6 @@ npm install -D @types/papaparse
 | `/guide` | 使い方・注意事項 |
 | `/audit-history` | 監査結果と対応状況 |
 | `/audit/operations` | `/` へリダイレクト |
-| `/audit/legal` | 法令AI監査（準備中） |
-| `/audit/management` | 運営AI監査（準備中） |
 | `/later` | あとで確認リスト |
 | `/documents` | （旧）→ `/audit-history` へリダイレクト |
 | `/check/upload` | 監査書類アップロード（同意・7日オプション） |

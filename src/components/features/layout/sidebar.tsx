@@ -66,25 +66,13 @@ export function Sidebar({
                 "flex min-h-11 items-center gap-3 rounded-lg px-3 text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 isActive
                   ? "bg-primary/10 text-primary"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent",
-                item.comingSoon && !isActive && "opacity-80"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent"
               )}
               aria-current={isActive ? "page" : undefined}
-              aria-label={
-                showBadge
-                  ? `${item.label}（${badgeCount}件）`
-                  : item.comingSoon
-                    ? `${item.label}（準備中）`
-                    : undefined
-              }
+              aria-label={showBadge ? `${item.label}（${badgeCount}件）` : undefined}
             >
               <Icon className="size-5 shrink-0" aria-hidden />
               <span className="flex-1 leading-snug">{item.label}</span>
-              {item.comingSoon ? (
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                  準備中
-                </span>
-              ) : null}
               {showBadge ? (
                 <span
                   className={cn(

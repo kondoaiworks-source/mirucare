@@ -3,8 +3,6 @@ import {
   Clock,
   History,
   Settings,
-  Scale,
-  Building2,
   BookOpen,
   type LucideIcon,
 } from "lucide-react"
@@ -14,8 +12,6 @@ export type NavItem = {
   label: string
   shortLabel: string
   icon: LucideIcon
-  /** プレースホルダ（第2フェーズ） */
-  comingSoon?: boolean
 }
 
 /** PCサイドバー（お知らせは運用AI監査内。運用AIは `/` に集約） */
@@ -39,20 +35,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: History,
   },
   {
-    href: "/audit/legal",
-    label: "法令AI監査",
-    shortLabel: "法令",
-    icon: Scale,
-    comingSoon: true,
-  },
-  {
-    href: "/audit/management",
-    label: "運営AI監査",
-    shortLabel: "運営",
-    icon: Building2,
-    comingSoon: true,
-  },
-  {
     href: "/settings",
     label: "設定",
     shortLabel: "設定",
@@ -65,7 +47,7 @@ export const MOBILE_TAB_ITEMS: NavItem[] = [
   NAV_ITEMS[0],
   NAV_ITEMS[1],
   NAV_ITEMS[2],
-  NAV_ITEMS[5],
+  NAV_ITEMS[3],
 ]
 
 /** ヘッダーハンバーガー：使い方（事業所設定は「設定」内） */
