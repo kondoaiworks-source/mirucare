@@ -21,11 +21,17 @@ export type DifyFindingItem = {
   comparison?: FindingComparisonItem[]
 }
 
+import type { StructuredDifyError } from "./errors"
+
 export type DifyCheckResult = {
   findings: DifyFindingItem[]
   rawText: string
   parseOk: boolean
   usedFallback: boolean
+  /** 実際の Dify Workflow 呼び出し回数 */
+  attempts?: number
+  /** 失敗時の構造化エラー（Traceback は含めない） */
+  errorInfo?: StructuredDifyError
 }
 
 export type DifyCheckInput = {
