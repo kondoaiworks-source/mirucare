@@ -184,7 +184,7 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
 書類同士の不整合と、適用ルール根拠の指摘を混ぜない。1ルール 400 文字の先頭切り捨てはしない。
 
 1. SQL Editor で `supabase/migrations/20260818090000_findings_check_type.sql` を実行する
-2. Dify Workflow のプロンプト／出力 JSON を [docs/dify-check-workflow.md](docs/dify-check-workflow.md) に合わせて再公開する（アプリの入力変数は増やさない）
+2. Dify Workflow のプロンプト／出力 JSON を [docs/dify-check-workflow.md](docs/dify-check-workflow.md) に合わせて再公開する（アプリの入力変数は増やさない）。Knowledge 並列検索の削減は [docs/dify-workflow-optimization.md](docs/dify-workflow-optimization.md) を参照
 3. `npx vitest run src/lib/check/check-type.test.ts src/lib/rule-engine/guidance-for-dify.test.ts src/lib/rule-engine/resolve-check-rules.test.ts` が PASS すること
 4. `npm run test:check` が PASS すること（モックに `consistency` と `rule` が混在）
 5. `/check/demo/success` を開き、次を確認する
@@ -196,6 +196,8 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
 8. マイグレーション前の過去結果は画面エラーにならず「分類未設定」になること
 
 ## 動作確認手順（STEP 4：Dify 接続）
+
+Gemini / Knowledge の呼び出し回数削減（KB 条件分岐・キャッシュ）は [docs/dify-workflow-optimization.md](docs/dify-workflow-optimization.md) を参照。
 
 ### Dify が動いているか確かめる
 

@@ -7,8 +7,6 @@
  *
  * 環境変数:
  *   SCENARIO_DELAY_MS   ケース間待機（既定 15000）
- *   SCENARIO_MAX_RETRIES rate limit 時の再試行回数（既定 4）
- *   SCENARIO_RETRY_MS   rate limit 初回待機（既定 45000、以降は指数増加）
  */
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises"
 import path from "node:path"
@@ -24,6 +22,7 @@ import {
   summarizeDifyRequestPayload,
 } from "../src/lib/dify/workflow-payload"
 import type { DifyCheckResult } from "../src/lib/dify/types"
+import type { StructuredDifyError } from "../src/lib/dify/errors"
 import { PHASE1_AI_RULE_SEEDS } from "../src/lib/phase1-ai-rules-seed"
 import {
   buildSerializedRulesPayload,
@@ -31,7 +30,6 @@ import {
   type ResolvedCheckRule,
 } from "../src/lib/rule-engine/resolve-check-rules"
 import { prefectureFromMunicipality } from "../src/lib/municipalities"
-import { CHECK_UI } from "../src/lib/copy/check-ui"
 
 const ROOT = path.resolve(__dirname, "..")
 const TEST_DATA_DIR = path.join(ROOT, "test-data", "scenarios")
@@ -41,8 +39,6 @@ const MUNICIPALITY = "横浜市"
 const CHECK_AS_OF = "2024-02-29"
 
 const DELAY_MS = Number(process.env.SCENARIO_DELAY_MS ?? "15000")
-const MAX_RETRIES = Number(process.env.SCENARIO_MAX_RETRIES ?? "4")
-const RETRY_BASE_MS = Number(process.env.SCENARIO_RETRY_MS ?? "45000")
 
 /**
  * テストケース「検出すべき問題ルール」（ルール3/11/12/13/18）→ Phase1 HC_*
@@ -81,7 +77,7 @@ type ScenarioResultRow = {
     description?: string
   }>
   attempts?: number
-  error?: string
+  error?: StructuredDifyError | string
 }
 
 function sleep(ms: number): Promise<void> {
@@ -110,6 +106,7 @@ function buildScenarioApprovedRules(): { json: string; codes: string[] } {
 }
 
 function isRateLimitedResult(result: DifyCheckResult): boolean {
+  if (result.errorInfo?.statusCode === 429) return true
   const blob = [
     result.rawText,
     ...result.findings.map((f) => `${f.title ?? ""}${f.description ?? ""}`),
@@ -122,65 +119,53 @@ function isRateLimitedResult(result: DifyCheckResult): boolean {
   )
 }
 
-function isSystemFallback(result: DifyCheckResult): boolean {
-  if (!result.usedFallback) return false
-  return result.findings.some(
-    (f) =>
-      f.title === CHECK_UI.summaryFallback ||
-      f.title === CHECK_UI.summaryUnreadable
-  )
+function buildScenarioError(
+  difyResult: DifyCheckResult
+): StructuredDifyError | string | undefined {
+  if (difyResult.errorInfo) return difyResult.errorInfo
+  if (difyResult.usedFallback) {
+    return {
+      errorKind: "workflow_failed",
+      retryable: false,
+    }
+  }
+  if (isRateLimitedResult(difyResult)) {
+    return {
+      errorKind: "http_error",
+      statusCode: 429,
+      retryable: true,
+    }
+  }
+  return undefined
 }
 
-async function runDifyWithRetries(input: {
+async function runScenarioDify(input: {
   municipality: string
   prefecture: string
   national: "0" | "1"
   documentText: string
   approvedRulesJson: string
   regulatoryBasisJson: string
-}): Promise<{ result: DifyCheckResult; attempts: number }> {
-  let last: DifyCheckResult | null = null
-  for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt++) {
-    const result = await runDifyCheck({
-      municipality: input.municipality,
-      prefecture: input.prefecture,
-      national: input.national,
-      docType: SCENARIO_PRIMARY_DOC_TYPE,
-      documentText: input.documentText,
-      approvedRulesJson: input.approvedRulesJson,
-      regulatoryBasisJson: input.regulatoryBasisJson,
-      checkAsOf: CHECK_AS_OF,
-    })
-    last = result
-
-    if (!isRateLimitedResult(result) && !isSystemFallback(result)) {
-      return { result, attempts: attempt }
-    }
-    if (!isRateLimitedResult(result)) {
-      // フォールバックだが rate limit 以外 → 再試行しても同じ可能性が高い
-      return { result, attempts: attempt }
-    }
-    if (attempt > MAX_RETRIES) break
-
-    const wait = RETRY_BASE_MS * Math.pow(2, attempt - 1)
-    console.error("[scenario] rate_limit_backoff", {
-      attempt,
-      waitMs: wait,
-      hint: (result.rawText || "").slice(0, 120),
-    })
-    await sleep(wait)
-  }
-  return { result: last!, attempts: MAX_RETRIES + 1 }
+}): Promise<DifyCheckResult> {
+  return runDifyCheck({
+    municipality: input.municipality,
+    prefecture: input.prefecture,
+    national: input.national,
+    docType: SCENARIO_PRIMARY_DOC_TYPE,
+    documentText: input.documentText,
+    approvedRulesJson: input.approvedRulesJson,
+    regulatoryBasisJson: input.regulatoryBasisJson,
+    checkAsOf: CHECK_AS_OF,
+  })
 }
 
 function toRow(
   fileName: string,
   raw: Record<string, unknown>,
   documentTextLength: number,
-  difyResult: DifyCheckResult,
-  attempts: number
+  difyResult: DifyCheckResult
 ): ScenarioResultRow {
-  const rateLimited = isRateLimitedResult(difyResult)
+  const error = buildScenarioError(difyResult)
   return {
     fileName,
     testCaseId:
@@ -202,14 +187,8 @@ function toRow(
       title: f.title,
       description: f.description?.slice(0, 400),
     })),
-    attempts,
-    ...(difyResult.usedFallback || rateLimited
-      ? {
-          error: rateLimited
-            ? `rate_limit: ${(difyResult.rawText || "unknown").slice(0, 200)}`
-            : `usedFallback: ${(difyResult.rawText || "unknown").slice(0, 200)}`,
-        }
-      : {}),
+    attempts: difyResult.attempts ?? 1,
+    ...(error ? { error } : {}),
   }
 }
 
@@ -268,8 +247,6 @@ async function main() {
     docType: SCENARIO_PRIMARY_DOC_TYPE,
     ruleCodeCount: ruleCodes.length,
     delayMs: DELAY_MS,
-    maxRetries: MAX_RETRIES,
-    retryBaseMs: RETRY_BASE_MS,
   })
 
   const results: ScenarioResultRow[] = []
@@ -340,7 +317,7 @@ async function main() {
     )
 
     try {
-      const { result, attempts } = await runDifyWithRetries({
+      const result = await runScenarioDify({
         municipality: MUNICIPALITY,
         prefecture,
         national,
@@ -348,14 +325,14 @@ async function main() {
         approvedRulesJson,
         regulatoryBasisJson,
       })
-      const row = toRow(fileName, raw, documentText.length, result, attempts)
+      const row = toRow(fileName, raw, documentText.length, result)
       results.push(row)
       console.error("[scenario] done", fileName, {
         findingCount: result.findings.length,
         parseOk: result.parseOk,
         usedFallback: result.usedFallback,
-        attempts,
-        error: row.error?.slice(0, 80),
+        attempts: result.attempts,
+        error: row.error,
       })
     } catch (err) {
       const message =
@@ -388,8 +365,12 @@ async function main() {
   }
 
   const okCount = results.filter((r) => r.parseOk && !r.usedFallback).length
-  const rateLimitCount = results.filter((r) =>
-    r.error?.startsWith("rate_limit")
+  const rateLimitCount = results.filter(
+    (r) =>
+      typeof r.error === "object" &&
+      r.error !== null &&
+      "statusCode" in r.error &&
+      r.error.statusCode === 429
   ).length
   console.error(`[scenario] wrote ${RESULT_PATH}`, {
     cases: results.length,

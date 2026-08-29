@@ -3,6 +3,17 @@
 アプリは Workflow 変数を増やしません。既存の `document_text` / `approved_rules_json` / `regulatory_basis_json` / `check_as_of` 等のままです。  
 **LLM ノードのシステムプロンプトと、出力 JSON の形だけを更新して再公開**してください。
 
+**呼び出し回数の最適化**（Knowledge 条件分岐・キャッシュ等）は [dify-workflow-optimization.md](./dify-workflow-optimization.md) を参照。
+
+## 現行 Workflow 構成（参考）
+
+```
+ユーザー入力 → [市町村検索 | 都道府県検索 | 全国検索]（並列）→ Gemini LLM（1ノード）→ 出力
+```
+
+- LLM は **1 ノード**（consistency / rule / severity は統合プロンプトで 1 回）
+- 削減の主対象は **3 並列 Knowledge 検索**（`national` に応じた条件分岐で 1〜2 本に）
+
 ## 判定ルール（プロンプトに貼る）
 
 ```
@@ -31,6 +42,10 @@
 
 6. 読めない・点検不能なときは findings を空にし、
    meta.unreadable を true、model_notes に理由を書いてください。
+
+7. Knowledge 検索結果（市区町村 / 都道府県 / 全国）のうち空のものは無視してください。
+   ルール判定の主たる根拠は approved_rules_json と regulatory_basis_json です。
+   KB コンテキストは補足資料として参照し、重複指摘は避けてください。
 ```
 
 ## 出力 JSON
@@ -81,3 +96,5 @@
 - `check_type` 欠落の過去結果は画面エラーにせず「分類未設定」
 - 書類同士カタログ（計画日のずれ）はアプリが `consistency` を付ける
 - `approved_rules_json` の各要素は `guidance`（優先箇所を残した本文）と `guidance_truncated`
+- `national`: `"0"` = 自治体基準（市町村+都道府県 KB 推奨）/ `"1"` = 国基準（全国 KB のみ推奨）
+- 1 チェック = API 1 回。Dify 内の KB/Gemini 呼び出し回数は [dify-workflow-optimization.md](./dify-workflow-optimization.md) で管理

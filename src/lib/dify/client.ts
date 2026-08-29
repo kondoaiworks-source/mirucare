@@ -7,11 +7,13 @@ import {
   isProductionRuntime,
 } from "./env"
 import {
+  buildStructuredDifyError,
   isEmptyMessagesHint,
   isFatalDifyConfigHint,
   isFileParamHint,
   parseDifyErrorBody,
   sanitizeErrorHint,
+  type StructuredDifyError,
 } from "./errors"
 import {
   DIFY_CHECK_USER,
@@ -48,8 +50,28 @@ type WorkflowRequestBody = {
 type WorkflowAttemptResult =
   | { kind: "ok"; result: DifyCheckResult }
   | { kind: "retry_without_files"; raw: string; hint: string }
-  | { kind: "config_error"; raw: string; hint: string }
-  | { kind: "continue"; raw: string; hint?: string }
+  | { kind: "config_error"; raw: string; hint: string; errorInfo?: StructuredDifyError }
+  | { kind: "transient"; raw: string; hint?: string; errorInfo: StructuredDifyError }
+  | { kind: "fatal"; raw: string; hint?: string; errorInfo: StructuredDifyError }
+
+const MAX_WORKFLOW_ATTEMPTS = 3
+const TRANSIENT_BACKOFF_MS = [3000, 6000] as const
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function withAttemptMeta(
+  result: DifyCheckResult,
+  attempts: number,
+  errorInfo?: StructuredDifyError
+): DifyCheckResult {
+  return {
+    ...result,
+    attempts,
+    ...(errorInfo ? { errorInfo } : {}),
+  }
+}
 
 /**
  * Workflow outputs から findings 候補テキストを取り出す。
@@ -112,6 +134,81 @@ function coerceOutputValue(v: unknown): string | null {
   return null
 }
 
+const PLUGIN_INVOKE_ERROR = /PluginInvokeError/i
+/** traceback 末尾まで確認できる十分な長さ（ログ肥大化防止の上限） */
+const LOG_RAW_ERROR_MAX = 16_000
+
+function isPluginInvokeError(raw: string | undefined): boolean {
+  return Boolean(raw && PLUGIN_INVOKE_ERROR.test(raw))
+}
+
+function extractReqIdFromRaw(raw: string): string | undefined {
+  const match = raw.match(/req_id:\s*([a-f0-9]+)/i)
+  return match?.[1]
+}
+
+/** APIキー・Authorization 等をマスク（サーバーログ用） */
+function redactSecretsForLog(raw: string): string {
+  return raw
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [REDACTED]")
+    .replace(/(api[_-]?key|authorization)\s*[:=]\s*\S+/gi, "$1=[REDACTED]")
+    .replace(/\bapp-[A-Za-z0-9]+\b/g, "app-[REDACTED]")
+    .replace(/\bsk-[A-Za-z0-9]{10,}\b/g, "sk-[REDACTED]")
+}
+
+function prepareRawErrorForLog(raw: string): string {
+  const redacted = redactSecretsForLog(raw)
+  if (redacted.length <= LOG_RAW_ERROR_MAX) return redacted
+  const omitted = redacted.length - LOG_RAW_ERROR_MAX
+  return `...[truncated ${omitted} chars]...\n${redacted.slice(-LOG_RAW_ERROR_MAX)}`
+}
+
+type DifyErrorDiagContext = {
+  attempt: number
+  httpStatus?: number
+  workflowStatus?: string
+  outputKeys?: string[]
+  answerLength?: number
+  errorKind: string
+  errorHint?: string
+  errorCode?: string
+  errorMessage?: string
+  withoutFiles?: boolean
+  rawError: string
+}
+
+function logDifyErrorDiag(context: DifyErrorDiagContext): void {
+  const rawError = prepareRawErrorForLog(context.rawError)
+  logDifyDiag({
+    attempt: context.attempt,
+    httpStatus: context.httpStatus,
+    workflowStatus: context.workflowStatus,
+    outputKeys: context.outputKeys,
+    answerLength: context.answerLength,
+    errorKind: context.errorKind,
+    errorHint: context.errorHint,
+    errorCode: context.errorCode,
+    errorMessage: context.errorMessage,
+    withoutFiles: context.withoutFiles,
+    rawError,
+    rawErrorLength: context.rawError.length,
+  })
+  if (isPluginInvokeError(context.rawError)) {
+    console.error("[dify] plugin_invoke_error", {
+      attempt: context.attempt,
+      httpStatus: context.httpStatus,
+      workflowStatus: context.workflowStatus,
+      errorCode: context.errorCode,
+      errorMessage: context.errorMessage,
+      errorHint: context.errorHint,
+      withoutFiles: context.withoutFiles,
+      reqId: extractReqIdFromRaw(context.rawError),
+      rawError,
+      rawErrorLength: context.rawError.length,
+    })
+  }
+}
+
 function logDifyDiag(info: {
   attempt: number
   httpStatus?: number
@@ -125,6 +222,8 @@ function logDifyDiag(info: {
   errorCode?: string
   errorMessage?: string
   withoutFiles?: boolean
+  rawError?: string
+  rawErrorLength?: number
 }) {
   console.error("[dify] check", {
     attempt: info.attempt,
@@ -139,6 +238,9 @@ function logDifyDiag(info: {
     errorCode: info.errorCode,
     errorMessage: info.errorMessage,
     withoutFiles: info.withoutFiles,
+    ...(info.rawError !== undefined
+      ? { rawError: info.rawError, rawErrorLength: info.rawErrorLength }
+      : {}),
   })
 }
 
@@ -152,15 +254,17 @@ function ensureDocumentText(raw: string | undefined, hasImage: boolean): string 
   return "（書類テキストが取得できませんでした。可能な範囲でご確認ください。）"
 }
 
+type WorkflowFailureClass = "config_error" | "retry_without_files" | "default"
+
 function classifyWorkflowFailure(
   hint: string | undefined,
   sentFiles: boolean
-): Exclude<WorkflowAttemptResult, { kind: "ok" }>["kind"] {
+): WorkflowFailureClass {
   if (isFatalDifyConfigHint(hint)) return "config_error"
   if (isFileParamHint(hint) || isEmptyMessagesHint(hint)) {
     return sentFiles ? "retry_without_files" : "config_error"
   }
-  return "continue"
+  return "default"
 }
 
 function buildWorkflowFailedFinding(hint?: string): DifyCheckResult {
@@ -260,7 +364,13 @@ async function postWorkflowOnce(options: {
     const sentFiles = Object.keys(body.inputs).some((key) =>
       Array.isArray(body.inputs[key])
     )
-    logDifyDiag({
+    const errorInfo = buildStructuredDifyError({
+      raw: text,
+      httpStatus: res.status,
+      hint,
+      errorKind: "http_error",
+    })
+    logDifyErrorDiag({
       attempt,
       httpStatus: res.status,
       errorKind: "http_error",
@@ -269,6 +379,7 @@ async function postWorkflowOnce(options: {
       errorCode: parsedError.code,
       errorMessage: parsedError.message?.slice(0, 120),
       withoutFiles,
+      rawError: text,
     })
     repairTexts.push(text)
     const kind = classifyWorkflowFailure(hint, sentFiles)
@@ -276,9 +387,17 @@ async function postWorkflowOnce(options: {
       return { kind, raw: text, hint: hint ?? "invalid_file_param" }
     }
     if (kind === "config_error") {
-      return { kind, raw: text, hint: hint ?? "bad_request" }
+      return {
+        kind,
+        raw: text,
+        hint: hint ?? "bad_request",
+        errorInfo,
+      }
     }
-    return { kind: "continue", raw: text, hint }
+    if (errorInfo.retryable) {
+      return { kind: "transient", raw: text, hint, errorInfo }
+    }
+    return { kind: "fatal", raw: text, hint, errorInfo }
   }
 
   let payload: DifyWorkflowResponse
@@ -291,9 +410,19 @@ async function postWorkflowOnce(options: {
       errorKind: "invalid_json_body",
       answerLength: text.length,
       withoutFiles,
+      rawError: prepareRawErrorForLog(text),
+      rawErrorLength: text.length,
     })
     repairTexts.push(text)
-    return { kind: "continue", raw: text }
+    return {
+      kind: "fatal",
+      raw: text,
+      errorInfo: buildStructuredDifyError({
+        raw: text,
+        httpStatus: res.status,
+        errorKind: "workflow_failed",
+      }),
+    }
   }
 
   const workflowStatus = payload.data?.status
@@ -305,7 +434,13 @@ async function postWorkflowOnce(options: {
   if (workflowStatus === "failed" || workflowError) {
     const parsedError = parseDifyErrorBody(workflowError ?? text)
     const hint = sanitizeErrorHint(workflowError ?? text)
-    logDifyDiag({
+    const errorInfo = buildStructuredDifyError({
+      raw: workflowError ?? text,
+      httpStatus: res.status,
+      hint,
+      errorKind: "workflow_failed",
+    })
+    logDifyErrorDiag({
       attempt,
       httpStatus: res.status,
       workflowStatus,
@@ -315,6 +450,7 @@ async function postWorkflowOnce(options: {
       errorCode: parsedError.code,
       errorMessage: parsedError.message?.slice(0, 120),
       withoutFiles,
+      rawError: workflowError ?? text,
     })
     const sentFiles = Object.keys(body.inputs).some((key) =>
       Array.isArray(body.inputs[key])
@@ -324,7 +460,16 @@ async function postWorkflowOnce(options: {
       return { kind, raw: text, hint: hint ?? "llm_empty_messages" }
     }
     if (kind === "config_error") {
-      return { kind, raw: text, hint: hint ?? "workflow_failed" }
+      return {
+        kind,
+        raw: text,
+        hint: hint ?? "workflow_failed",
+        errorInfo,
+      }
+    }
+    if (errorInfo.retryable) {
+      repairTexts.push(text)
+      return { kind: "transient", raw: text, hint, errorInfo }
     }
     return {
       kind: "ok",
@@ -458,21 +603,9 @@ export async function runDifyCheck(
   })
 
   const repairTexts: string[] = []
-  const first = await postWorkflowOnce({
-    baseUrl,
-    apiKey,
-    body: bodyWithFiles,
-    attempt: 1,
-    withoutFiles: filesCount === 0,
-    repairTexts,
-  })
-
-  if (first.kind === "ok") {
-    return first.result
-  }
-  if (first.kind === "config_error") {
-    return buildWorkflowFailedFinding(first.hint)
-  }
+  let attempts = 0
+  let lastTransientError: StructuredDifyError | undefined
+  let lastHint: string | undefined
 
   const textOnlyInputs = buildDifyWorkflowInputs({
     documentText: ensureDocumentText(input.documentText, hasImage),
@@ -492,94 +625,114 @@ export async function runDifyCheck(
     user: DIFY_CHECK_USER,
   }
 
-  if (first.kind === "retry_without_files" && filesCount > 0) {
-    console.error("[dify] retry_without_files", {
-      reason: first.hint,
-      fileInputKey,
-    })
-    const second = await postWorkflowOnce({
-      baseUrl,
-      apiKey,
-      body: bodyTextOnly,
-      attempt: 2,
-      withoutFiles: true,
-      repairTexts,
-    })
-    if (second.kind === "ok") {
-      return second.result
-    }
-    if (second.kind === "config_error" || second.kind === "retry_without_files") {
-      return buildWorkflowFailedFinding(second.hint)
-    }
-  }
+  let currentBody = bodyWithFiles
+  let withoutFiles = filesCount === 0
 
-  let lastRaw = first.raw
-  for (let attempt = 2; attempt <= 3; attempt++) {
+  async function invokeWorkflow(): Promise<WorkflowAttemptResult> {
+    attempts++
     try {
-      const next = await postWorkflowOnce({
+      return await postWorkflowOnce({
         baseUrl,
         apiKey,
-        body: bodyWithFiles,
-        attempt,
-        withoutFiles: filesCount === 0,
+        body: currentBody,
+        attempt: attempts,
+        withoutFiles,
         repairTexts,
       })
-      if (next.kind === "ok") return next.result
-      if (next.kind === "config_error") {
-        return buildWorkflowFailedFinding(next.hint)
-      }
-      if (next.kind === "retry_without_files" && filesCount > 0) {
-        console.error("[dify] retry_without_files", {
-          reason: next.hint,
-          fileInputKey,
-          fromAttempt: attempt,
-        })
-        const textOnly = await postWorkflowOnce({
-          baseUrl,
-          apiKey,
-          body: bodyTextOnly,
-          attempt: attempt + 1,
-          withoutFiles: true,
-          repairTexts,
-        })
-        if (textOnly.kind === "ok") return textOnly.result
-        if (
-          textOnly.kind === "config_error" ||
-          textOnly.kind === "retry_without_files"
-        ) {
-          return buildWorkflowFailedFinding(textOnly.hint)
-        }
-        lastRaw = textOnly.raw
-      } else {
-        lastRaw = next.raw
-      }
     } catch (err) {
-      lastRaw = err instanceof Error ? err.message : "network_error"
-      logDifyDiag({
-        attempt,
-        errorKind: "network_or_throw",
-        answerLength: lastRaw.length,
+      const message = err instanceof Error ? err.message : "network_error"
+      const errorInfo = buildStructuredDifyError({
+        raw: message,
+        errorKind: "network_error",
       })
-      repairTexts.push(lastRaw)
+      logDifyDiag({
+        attempt: attempts,
+        errorKind: "network_or_throw",
+        answerLength: message.length,
+      })
+      repairTexts.push(message)
+      if (errorInfo.retryable) {
+        return { kind: "transient", raw: message, errorInfo }
+      }
+      return { kind: "fatal", raw: message, errorInfo }
     }
   }
 
-  const hint = sanitizeErrorHint(lastRaw)
-  if (
-    isEmptyMessagesHint(hint) ||
-    isFileParamHint(hint) ||
-    isFatalDifyConfigHint(hint)
-  ) {
-    return buildWorkflowFailedFinding(hint)
+  function finishFatal(hint?: string, errorInfo?: StructuredDifyError): DifyCheckResult {
+    return withAttemptMeta(
+      buildWorkflowFailedFinding(hint),
+      attempts,
+      errorInfo ?? lastTransientError
+    )
   }
 
-  const fallback = parseWithRetryAndFallback(lastRaw || "{}", repairTexts)
-  logDifyDiag({
-    attempt: 3,
-    parseOk: fallback.parseOk,
-    usedFallback: fallback.usedFallback,
-    errorKind: "exhausted_retries",
-    errorHint: hint,
-  })
-  return fallback
+  async function handleAttemptResult(
+    result: WorkflowAttemptResult
+  ): Promise<DifyCheckResult | "backoff"> {
+    if (result.kind === "ok") {
+      return withAttemptMeta(result.result, attempts, lastTransientError)
+    }
+    if (result.kind === "config_error" || result.kind === "fatal") {
+      return finishFatal(result.hint, result.errorInfo)
+    }
+    if (result.kind === "retry_without_files" && filesCount > 0 && !withoutFiles) {
+      console.error("[dify] retry_without_files", {
+        reason: result.hint,
+        fileInputKey,
+      })
+      currentBody = bodyTextOnly
+      withoutFiles = true
+      const retryResult = await invokeWorkflow()
+      if (retryResult.kind === "ok") {
+        return withAttemptMeta(retryResult.result, attempts)
+      }
+      if (retryResult.kind === "config_error" || retryResult.kind === "fatal") {
+        return finishFatal(retryResult.hint, retryResult.errorInfo)
+      }
+      if (retryResult.kind === "retry_without_files") {
+        return finishFatal(retryResult.hint)
+      }
+      if (retryResult.kind === "transient") {
+        lastTransientError = retryResult.errorInfo
+        lastHint = retryResult.hint
+        return "backoff"
+      }
+    }
+    if (result.kind === "transient") {
+      lastTransientError = result.errorInfo
+      lastHint = result.hint
+      return "backoff"
+    }
+    return finishFatal(lastHint)
+  }
+
+  for (let tryIndex = 0; tryIndex < MAX_WORKFLOW_ATTEMPTS; tryIndex++) {
+    const result = await invokeWorkflow()
+    const handled = await handleAttemptResult(result)
+    if (handled !== "backoff") {
+      return handled
+    }
+    if (tryIndex >= MAX_WORKFLOW_ATTEMPTS - 1) {
+      logDifyDiag({
+        attempt: attempts,
+        usedFallback: true,
+        errorKind: "exhausted_retries",
+        errorHint: lastHint,
+      })
+      return finishFatal(lastHint, lastTransientError)
+    }
+
+    const waitMs = TRANSIENT_BACKOFF_MS[tryIndex] ?? TRANSIENT_BACKOFF_MS.at(-1)!
+    console.error("[dify] transient_backoff", {
+      attempt: attempts,
+      waitMs,
+      errorKind: lastTransientError?.errorKind,
+      statusCode: lastTransientError?.statusCode,
+      reqId: lastTransientError?.reqId,
+      retryable: lastTransientError?.retryable,
+    })
+    await sleep(waitMs)
+  }
+
+  return finishFatal(lastHint, lastTransientError)
 }
