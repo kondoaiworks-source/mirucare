@@ -71,7 +71,15 @@ export function scenarioJsonToDocumentParts(
 
   const carePlanLines: string[] = []
   if (user) {
-    carePlanLines.push(formatSimpleFields("利用者", user, ["氏名", "年齢", "契約開始日"]))
+    carePlanLines.push(
+      formatSimpleFields("利用者", user, [
+        "氏名",
+        "年齢",
+        "契約開始日",
+        "初回同意日",
+        "初回署名",
+      ])
+    )
   }
   if (plan) {
     carePlanLines.push(
@@ -103,6 +111,29 @@ export function scenarioJsonToDocumentParts(
       for (const row of rows) {
         recordLines.push(formatRecordRow(asRecord(row)))
       }
+    }
+  }
+
+  const quals = Array.isArray(raw["実施者資格一覧"]) ? raw["実施者資格一覧"] : []
+  if (quals.length > 0) {
+    recordLines.push("実施者資格一覧:")
+    for (const q of quals) {
+      const row = asRecord(q)
+      if (!row) continue
+      recordLines.push(
+        [
+          row["実施者名"] != null ? `実施者 ${stringifyScalar(row["実施者名"])}` : "",
+          row["資格"] != null ? `資格 ${stringifyScalar(row["資格"])}` : "",
+          row["資格確認日"] != null
+            ? `資格確認日 ${stringifyScalar(row["資格確認日"])}`
+            : "",
+          row["資格証コピー確認"] != null
+            ? `資格証コピー確認 ${stringifyScalar(row["資格証コピー確認"])}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" / ")
+      )
     }
   }
 

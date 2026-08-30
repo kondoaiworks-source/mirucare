@@ -7,6 +7,7 @@
  *
  * 環境変数:
  *   SCENARIO_DELAY_MS   ケース間待機（既定 15000）
+ *   SCENARIO_FILTER     ファイル名の部分一致（例: converted-from-excel）
  */
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises"
 import path from "node:path"
@@ -194,8 +195,14 @@ function toRow(
 
 async function loadScenarioFiles(): Promise<string[]> {
   const names = await readdir(TEST_DATA_DIR)
+  const filter = (process.env.SCENARIO_FILTER ?? "").trim()
   return names
-    .filter((n) => n.endsWith(".json") && n.startsWith("テストケース_"))
+    .filter(
+      (n) =>
+        n.endsWith(".json") &&
+        (n.startsWith("テストケース_") || n.startsWith("converted-from-excel-"))
+    )
+    .filter((n) => (filter ? n.includes(filter) : true))
     .sort((a, b) => a.localeCompare(b, "ja"))
 }
 

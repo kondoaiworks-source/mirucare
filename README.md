@@ -162,7 +162,7 @@ SQL Editor で `supabase/migrations/20260812080000_ai_check_rules_scope.sql` を
    DIFY_MOCK_SCENARIO=success
    ```
 3. `npm run test:check` で正常系・パース失敗・0件のモックテストが PASS すること
-4. （任意・CI外）`npm run test:check:live` で `test-data/scenarios/` の11ケースを Dify live 実行し、`test-data/scenarios-result.json` を目視レビューする（`.env.local` の `DIFY_API_KEY` 必須。スクリプト内で `DIFY_MOCK=0` を強制）
+4. （任意・CI外）`npm run test:check:live` で `test-data/scenarios/` のシナリオを Dify live 実行し、`test-data/scenarios-result.json` を目視レビューする（`.env.local` の `DIFY_API_KEY` 必須。スクリプト内で `DIFY_MOCK=0` を強制）。Excel 入力は `docs/excel-input-guide.md` 参照（`npm run convert:excel`）
 5. デモ画面（ログイン後・DB不要）で3画面を目視確認する
    - [正常系](http://localhost:3000/check/demo/success)
    - [パース失敗](http://localhost:3000/check/demo/parse_error)
@@ -741,7 +741,9 @@ npm run lint        # ESLint
 npm run test        # 単体テスト（矛盾検知・請求突合）
 npm run test:rls     # RLS事業所分離テスト
 npm run test:check   # AIチェック モック／パーステスト
-npm run test:check:live  # シナリオ11件を Dify live 実行 → test-data/scenarios-result.json
+npm run test:check:live  # シナリオ（テストケース＋Excel変換分）を Dify live 実行 → scenarios-result.json
+npm run convert:excel    # test-data/input/*.xlsx → scenarios/converted-from-excel-*.json
+npm run generate:excel-template  # Excel テンプレート生成
 npm run test:review  # 人間レビュー公開制御テスト
 npm run seed:rule-sources  # 自治体別公開情報マスタの初期投入
 ```
